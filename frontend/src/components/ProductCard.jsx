@@ -94,7 +94,6 @@ const ProductCard = ({ product }) => {
           >
             Add to Cart
           </motion.button>
-          onClick={() => alert("Wishlist feature coming soon")}
         </div>
       </div>
     </motion.div>
