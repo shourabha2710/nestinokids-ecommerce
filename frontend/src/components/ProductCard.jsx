@@ -1,12 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { addToCart } from '../store/slices/cartSlice';
 import { motion } from 'framer-motion';
 
+const PLACEHOLDER = '/images/placeholder-product.svg';
+
 const ProductCard = ({ product }) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const [imgError, setImgError] = useState(false);
   const discount = product.discount_price
     ? Math.round(((product.price - product.discount_price) / product.price) * 100)
     : 0;
@@ -22,10 +25,11 @@ const ProductCard = ({ product }) => {
       {/* Image */}
       <div className="relative overflow-hidden bg-ivory h-64">
         <img
-          src={product.images?.[0]?.image_url || '/placeholder.jpg'}
+          src={imgError ? PLACEHOLDER : (product.images?.[0]?.image_url || PLACEHOLDER)}
           alt={product.name}
           className="w-full h-full object-cover cursor-pointer hover:scale-110 transition"
           onClick={() => navigate(`/products/${product.slug}`)}
+          onError={() => setImgError(true)}
         />
         {discount > 0 && (
           <div className="absolute top-4 right-4 bg-red-500 text-white px-2 py-1 rounded-lg text-sm font-bold">

@@ -154,31 +154,70 @@ const Header = () => {
         </div>
 
         {/* Navigation */}
-        <nav className="hidden md:flex border-t">
-          <button
-            className="px-4 py-3 hover:bg-ivory text-sm font-medium text-gold"
-            onClick={() => navigate('/categories')}
-          >
-            Categories
-          </button>
-          <button
-            className="px-4 py-3 hover:bg-ivory text-sm font-medium"
-            onClick={() => navigate('/products')}
-          >
-            All Products
-          </button>
-          <button
-            className="px-4 py-3 hover:bg-ivory text-sm font-medium"
-            onClick={() => navigate('/bestsellers')}
-          >
-            Best Sellers
-          </button>
-          <button
-            className="px-4 py-3 hover:bg-ivory text-sm font-medium"
-            onClick={() => navigate('/new-arrivals')}
-          >
-            New Arrivals
-          </button>
+        <nav className="hidden md:flex border-t items-center justify-between">
+          <div className="flex">
+            <button
+              className="px-4 py-3 hover:bg-ivory text-sm font-medium text-gold"
+              onClick={() => navigate('/categories')}
+            >
+              Categories
+            </button>
+            <button
+              className="px-4 py-3 hover:bg-ivory text-sm font-medium"
+              onClick={() => navigate('/products')}
+            >
+              All Products
+            </button>
+            <button
+              className="px-4 py-3 hover:bg-ivory text-sm font-medium"
+              onClick={() => navigate('/bestsellers')}
+            >
+              Best Sellers
+            </button>
+            <button
+              className="px-4 py-3 hover:bg-ivory text-sm font-medium"
+              onClick={() => navigate('/new-arrivals')}
+            >
+              New Arrivals
+            </button>
+          </div>
+
+          <div className="flex items-center space-x-1">
+            {isAuthenticated ? (
+              <>
+                <span className="px-3 py-3 text-sm font-medium text-gray-600">
+                  Hi, {user?.first_name || 'User'}
+                </span>
+                <button
+                  className="px-3 py-3 hover:bg-ivory text-sm font-medium"
+                  onClick={() => navigate('/profile')}
+                >
+                  Profile
+                </button>
+                <button
+                  className="px-3 py-3 hover:bg-ivory text-sm font-medium text-red-600"
+                  onClick={handleLogout}
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  className="px-3 py-3 hover:bg-ivory text-sm font-medium"
+                  onClick={() => navigate('/login')}
+                >
+                  Login
+                </button>
+                <button
+                  className="px-3 py-3 hover:bg-ivory text-sm font-medium text-gold"
+                  onClick={() => navigate('/register')}
+                >
+                  Register
+                </button>
+              </>
+            )}
+          </div>
         </nav>
       </div>
     </header>
