@@ -3,7 +3,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.schemas.schemas import UserCreate, UserResponse, LoginRequest, TokenResponse, UserUpdate, RefreshTokenRequest
-from app.models.models import User
+from app.models.models import User, RoleEnum
 from app.core.security import hash_password, verify_password, create_access_token, create_refresh_token
 from datetime import timedelta
 
@@ -124,6 +124,26 @@ def get_current_user(
         )
     
     return user
+
+
+def require_admin(current_user: User = Depends(get_current_user)):
+    """Dependency: require admin role"""
+    if current_user.role != RoleEnum.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+    return current_user
+
+
+def require_staff(current_user: User = Depends(get_current_user)):
+    """Dependency: require admin or moderator role"""
+    if current_user.role not in (RoleEnum.ADMIN, RoleEnum.MODERATOR):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Staff access required"
+        )
+    return current_user
 
 
 @router.get("/me", response_model=UserResponse)

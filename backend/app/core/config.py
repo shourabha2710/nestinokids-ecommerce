@@ -9,6 +9,10 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
 
+    # Uploads
+    UPLOAD_DIR: str = "uploads"
+    MAX_UPLOAD_SIZE: int = 5_242_880  # 5MB
+
     @field_validator("DEBUG", mode="before")
     @classmethod
     def parse_debug(cls, value):

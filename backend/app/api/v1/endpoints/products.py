@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from app.db.database import get_db
 from app.schemas.schemas import (
@@ -56,7 +56,7 @@ def get_products(
     db: Session = Depends(get_db)
 ):
     """Get all products with filtering and search"""
-    query = db.query(Product).filter(Product.is_active == True)
+    query = db.query(Product).options(joinedload(Product.images)).filter(Product.is_active == True)
     
     if category_id:
         query = query.filter(Product.category_id == category_id)

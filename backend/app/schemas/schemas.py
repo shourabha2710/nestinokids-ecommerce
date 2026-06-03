@@ -72,6 +72,15 @@ class CategoryCreate(CategoryBase):
     pass
 
 
+class CategoryUpdate(BaseModel):
+    name: Optional[str] = None
+    slug: Optional[str] = None
+    description: Optional[str] = None
+    image: Optional[str] = None
+    parent_id: Optional[int] = None
+    is_active: Optional[bool] = None
+
+
 class CategoryResponse(CategoryBase):
     id: int
     created_at: datetime

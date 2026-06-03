@@ -20,6 +20,25 @@ export const productsAPI = {
   search: (params) => api.get('/search', { params }),
 };
 
+// Admin APIs
+export const adminAPI = {
+  getDashboard: () => api.get('/admin/dashboard'),
+  getProducts: (params) => api.get('/admin/products', { params }),
+  getProduct: (id) => api.get(`/admin/products/${id}`),
+  createProduct: (data) => api.post('/admin/products', data),
+  updateProduct: (id, data) => api.put(`/admin/products/${id}`, data),
+  deleteProduct: (id) => api.delete(`/admin/products/${id}`),
+  uploadProductImage: (productId, formData) => api.post(`/admin/products/${productId}/images`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  deleteProductImage: (productId, imageId) => api.delete(`/admin/products/${productId}/images/${imageId}`),
+  setProductImagePrimary: (productId, imageId) => api.put(`/admin/products/${productId}/images/${imageId}/primary`),
+  getCategories: (params) => api.get('/admin/categories', { params }),
+  createCategory: (data) => api.post('/admin/categories', data),
+  updateCategory: (id, data) => api.put(`/admin/categories/${id}`, data),
+  deleteCategory: (id) => api.delete(`/admin/categories/${id}`),
+};
+
 // Shopping APIs
 export const shoppingAPI = {
   getAddresses: () => api.get('/addresses'),

@@ -128,7 +128,8 @@ class Product(Base):
     
     # Relationships
     category = relationship("Category", back_populates="products")
-    images = relationship("ProductImage", back_populates="product", cascade="all, delete-orphan")
+    images = relationship("ProductImage", back_populates="product", cascade="all, delete-orphan",
+                          order_by="ProductImage.is_primary.desc(), ProductImage.order.asc(), ProductImage.id.asc()")
     variants = relationship("ProductVariant", back_populates="product", cascade="all, delete-orphan")
     reviews = relationship("Review", back_populates="product", cascade="all, delete-orphan")
     order_items = relationship("OrderItem", back_populates="product")

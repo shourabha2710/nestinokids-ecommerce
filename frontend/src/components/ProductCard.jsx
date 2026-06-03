@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { addToCart } from '../store/slices/cartSlice';
@@ -10,6 +10,14 @@ const ProductCard = ({ product }) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    setImgError(false);
+  }, [product]);
+
+  const primaryImage = product.images?.find((img) => img.is_primary)?.image_url;
+  const fallbackImage = product.images?.[0]?.image_url;
+  const imageUrl = primaryImage || fallbackImage || PLACEHOLDER;
   const discount = product.discount_price
     ? Math.round(((product.price - product.discount_price) / product.price) * 100)
     : 0;
@@ -25,7 +33,7 @@ const ProductCard = ({ product }) => {
       {/* Image */}
       <div className="relative overflow-hidden bg-ivory h-64">
         <img
-          src={imgError ? PLACEHOLDER : (product.images?.[0]?.image_url || PLACEHOLDER)}
+          src={imgError ? PLACEHOLDER : imageUrl}
           alt={product.name}
           className="w-full h-full object-cover cursor-pointer hover:scale-110 transition"
           onClick={() => navigate(`/products/${product.slug}`)}

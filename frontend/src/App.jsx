@@ -1,16 +1,22 @@
-import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { Provider, useDispatch, useSelector } from 'react-redux';
-import store from './store/store';
-import Header from './components/Header';
-import Footer from './components/Footer';
-import HomePage from './pages/HomePage';
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
-import ProtectedRoute from './components/ProtectedRoute';
-import { setUser, logout } from './store/slices/authSlice';
-import { authAPI } from './api/endpoints';
-import './styles/globals.css';
+import React, { useEffect, useState } from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { Provider, useDispatch, useSelector } from "react-redux";
+import store from "./store/store";
+import StorefrontLayout from "./components/StorefrontLayout";
+import HomePage from "./pages/HomePage";
+import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
+import ProtectedAdminRoute from "./components/admin/ProtectedAdminRoute";
+import AdminLayout from "./components/admin/AdminLayout";
+import AdminLoginPage from "./pages/admin/AdminLoginPage";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminProductList from "./pages/admin/AdminProductList";
+import AdminProductForm from "./pages/admin/AdminProductForm";
+import AdminCategoryList from "./pages/admin/AdminCategoryList";
+import AdminCategoryForm from "./pages/admin/AdminCategoryForm";
+import { setUser, logout } from "./store/slices/authSlice";
+import { authAPI } from "./api/endpoints";
+import "./styles/globals.css";
 
 const AuthProvider = ({ children }) => {
   const dispatch = useDispatch();
@@ -52,15 +58,29 @@ function App() {
     <Provider store={store}>
       <Router>
         <AuthProvider>
-          <Header />
-          <main className="min-h-[calc(100vh-200px)]">
-            <Routes>
+          <Routes>
+            <Route element={<StorefrontLayout />}>
               <Route path="/" element={<HomePage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
-            </Routes>
-          </main>
-          <Footer />
+            </Route>
+
+            <Route path="/admin/login" element={<AdminLoginPage />} />
+
+            <Route element={<ProtectedAdminRoute />}>
+              <Route element={<AdminLayout />}>
+                <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                <Route path="/admin/products" element={<AdminProductList />} />
+                <Route path="/admin/products/new" element={<AdminProductForm />} />
+                <Route path="/admin/products/:id/edit" element={<AdminProductForm />} />
+                <Route path="/admin/categories" element={<AdminCategoryList />} />
+                <Route path="/admin/categories/new" element={<AdminCategoryForm />} />
+                <Route path="/admin/categories/:id/edit" element={<AdminCategoryForm />} />
+              </Route>
+            </Route>
+
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
         </AuthProvider>
       </Router>
     </Provider>
