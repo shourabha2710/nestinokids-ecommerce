@@ -22,8 +22,10 @@ const CheckoutPage = () => {
   const [error, setError] = useState(null);
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [addressForm, setAddressForm] = useState({
-    full_name: '', phone: '', address_line1: '', address_line2: '',
-    city: '', state: '', pincode: '', is_default: false,
+    first_name: '', last_name: '', email: '', phone: '',
+    address_line_1: '', address_line_2: '',
+    city: '', state: '', postal_code: '',
+    country: 'India', address_type: 'residential', is_default: false,
   });
 
   useEffect(() => {
@@ -70,7 +72,7 @@ const CheckoutPage = () => {
       setAddresses((prev) => [...prev, res.data]);
       setSelectedAddressId(res.data.id);
       setShowAddressForm(false);
-      setAddressForm({ full_name: '', phone: '', address_line1: '', address_line2: '', city: '', state: '', pincode: '', is_default: false });
+      setAddressForm({ first_name: '', last_name: '', email: '', phone: '', address_line_1: '', address_line_2: '', city: '', state: '', postal_code: '', country: 'India', address_type: 'residential', is_default: false });
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to create address');
     }
@@ -159,9 +161,9 @@ const CheckoutPage = () => {
                       onChange={() => setSelectedAddressId(addr.id)}
                       className="sr-only"
                     />
-                    <p className="font-semibold text-text">{addr.full_name}</p>
-                    <p className="text-sm text-gray-600">{addr.address_line1}{addr.address_line2 ? `, ${addr.address_line2}` : ''}</p>
-                    <p className="text-sm text-gray-600">{addr.city}, {addr.state} - {addr.pincode}</p>
+                    <p className="font-semibold text-text">{addr.first_name} {addr.last_name}</p>
+                    <p className="text-sm text-gray-600">{addr.address_line_1}{addr.address_line_2 ? `, ${addr.address_line_2}` : ''}</p>
+                    <p className="text-sm text-gray-600">{addr.city}, {addr.state} - {addr.postal_code}</p>
                     <p className="text-sm text-gray-600">Phone: {addr.phone}</p>
                   </label>
                 ))}
@@ -179,13 +181,16 @@ const CheckoutPage = () => {
             {showAddressForm && (
               <form onSubmit={handleCreateAddress} className="mt-4 space-y-3 border-t pt-4">
                 <div className="grid grid-cols-2 gap-3">
-                  <input required placeholder="Full Name" value={addressForm.full_name} onChange={(e) => setAddressForm((p) => ({ ...p, full_name: e.target.value }))} className="col-span-2 p-2 border rounded" />
+                  <input required placeholder="First Name" value={addressForm.first_name} onChange={(e) => setAddressForm((p) => ({ ...p, first_name: e.target.value }))} />
+                  <input required placeholder="Last Name" value={addressForm.last_name} onChange={(e) => setAddressForm((p) => ({ ...p, last_name: e.target.value }))} />
+                  <input required placeholder="Email" type="email" value={addressForm.email} onChange={(e) => setAddressForm((p) => ({ ...p, email: e.target.value }))} className="col-span-2 p-2 border rounded" />
                   <input required placeholder="Phone" value={addressForm.phone} onChange={(e) => setAddressForm((p) => ({ ...p, phone: e.target.value }))} className="col-span-2 p-2 border rounded" />
-                  <input required placeholder="Address Line 1" value={addressForm.address_line1} onChange={(e) => setAddressForm((p) => ({ ...p, address_line1: e.target.value }))} className="col-span-2 p-2 border rounded" />
-                  <input placeholder="Address Line 2" value={addressForm.address_line2} onChange={(e) => setAddressForm((p) => ({ ...p, address_line2: e.target.value }))} className="col-span-2 p-2 border rounded" />
+                  <input required placeholder="Address Line 1" value={addressForm.address_line_1} onChange={(e) => setAddressForm((p) => ({ ...p, address_line_1: e.target.value }))} className="col-span-2 p-2 border rounded" />
+                  <input placeholder="Address Line 2" value={addressForm.address_line_2} onChange={(e) => setAddressForm((p) => ({ ...p, address_line_2: e.target.value }))} className="col-span-2 p-2 border rounded" />
                   <input required placeholder="City" value={addressForm.city} onChange={(e) => setAddressForm((p) => ({ ...p, city: e.target.value }))} />
                   <input required placeholder="State" value={addressForm.state} onChange={(e) => setAddressForm((p) => ({ ...p, state: e.target.value }))} />
-                  <input required placeholder="Pincode" value={addressForm.pincode} onChange={(e) => setAddressForm((p) => ({ ...p, pincode: e.target.value }))} />
+                  <input required placeholder="Postal Code" value={addressForm.postal_code} onChange={(e) => setAddressForm((p) => ({ ...p, postal_code: e.target.value }))} />
+                  <input placeholder="Country" value={addressForm.country} onChange={(e) => setAddressForm((p) => ({ ...p, country: e.target.value }))} />
                 </div>
                 <motion.button
                   whileHover={{ scale: 1.02 }}

@@ -12,8 +12,10 @@ const AddressListPage = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({
-    full_name: '', phone: '', address_line1: '', address_line2: '',
-    city: '', state: '', pincode: '', is_default: false,
+    first_name: '', last_name: '', email: '', phone: '',
+    address_line_1: '', address_line_2: '',
+    city: '', state: '', postal_code: '',
+    country: 'India', address_type: 'residential', is_default: false,
   });
 
   useEffect(() => {
@@ -35,16 +37,17 @@ const AddressListPage = () => {
 
   const openCreateForm = () => {
     setEditingId(null);
-    setForm({ full_name: '', phone: '', address_line1: '', address_line2: '', city: '', state: '', pincode: '', is_default: false });
+    setForm({ first_name: '', last_name: '', email: '', phone: '', address_line_1: '', address_line_2: '', city: '', state: '', postal_code: '', country: 'India', address_type: 'residential', is_default: false });
     setShowForm(true);
   };
 
   const openEditForm = (addr) => {
     setEditingId(addr.id);
     setForm({
-      full_name: addr.full_name, phone: addr.phone, address_line1: addr.address_line1,
-      address_line2: addr.address_line2 || '', city: addr.city, state: addr.state,
-      pincode: addr.pincode, is_default: addr.is_default,
+      first_name: addr.first_name, last_name: addr.last_name, email: addr.email || '', phone: addr.phone,
+      address_line_1: addr.address_line_1, address_line_2: addr.address_line_2 || '',
+      city: addr.city, state: addr.state, postal_code: addr.postal_code,
+      country: addr.country || 'India', address_type: addr.address_type || 'residential', is_default: addr.is_default,
     });
     setShowForm(true);
   };
@@ -114,13 +117,16 @@ const AddressListPage = () => {
           <h2 className="text-lg font-semibold text-text mb-4">{editingId ? 'Edit Address' : 'New Address'}</h2>
           <form onSubmit={handleSubmit} className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
-              <input required placeholder="Full Name" value={form.full_name} onChange={(e) => setForm((p) => ({ ...p, full_name: e.target.value }))} className="col-span-2 p-2 border rounded" />
+              <input required placeholder="First Name" value={form.first_name} onChange={(e) => setForm((p) => ({ ...p, first_name: e.target.value }))} />
+              <input required placeholder="Last Name" value={form.last_name} onChange={(e) => setForm((p) => ({ ...p, last_name: e.target.value }))} />
+              <input required placeholder="Email" type="email" value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} className="col-span-2 p-2 border rounded" />
               <input required placeholder="Phone" value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} className="col-span-2 p-2 border rounded" />
-              <input required placeholder="Address Line 1" value={form.address_line1} onChange={(e) => setForm((p) => ({ ...p, address_line1: e.target.value }))} className="col-span-2 p-2 border rounded" />
-              <input placeholder="Address Line 2" value={form.address_line2} onChange={(e) => setForm((p) => ({ ...p, address_line2: e.target.value }))} className="col-span-2 p-2 border rounded" />
+              <input required placeholder="Address Line 1" value={form.address_line_1} onChange={(e) => setForm((p) => ({ ...p, address_line_1: e.target.value }))} className="col-span-2 p-2 border rounded" />
+              <input placeholder="Address Line 2" value={form.address_line_2} onChange={(e) => setForm((p) => ({ ...p, address_line_2: e.target.value }))} className="col-span-2 p-2 border rounded" />
               <input required placeholder="City" value={form.city} onChange={(e) => setForm((p) => ({ ...p, city: e.target.value }))} />
               <input required placeholder="State" value={form.state} onChange={(e) => setForm((p) => ({ ...p, state: e.target.value }))} />
-              <input required placeholder="Pincode" value={form.pincode} onChange={(e) => setForm((p) => ({ ...p, pincode: e.target.value }))} />
+              <input required placeholder="Postal Code" value={form.postal_code} onChange={(e) => setForm((p) => ({ ...p, postal_code: e.target.value }))} />
+              <input placeholder="Country" value={form.country} onChange={(e) => setForm((p) => ({ ...p, country: e.target.value }))} />
             </div>
             <label className="flex items-center gap-2">
               <input type="checkbox" checked={form.is_default} onChange={(e) => setForm((p) => ({ ...p, is_default: e.target.checked }))} />
@@ -156,9 +162,9 @@ const AddressListPage = () => {
             >
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="font-semibold text-text">{addr.full_name}</p>
-                  <p className="text-sm text-gray-600 mt-1">{addr.address_line1}{addr.address_line2 ? `, ${addr.address_line2}` : ''}</p>
-                  <p className="text-sm text-gray-600">{addr.city}, {addr.state} - {addr.pincode}</p>
+                  <p className="font-semibold text-text">{addr.first_name} {addr.last_name}</p>
+                  <p className="text-sm text-gray-600 mt-1">{addr.address_line_1}{addr.address_line_2 ? `, ${addr.address_line_2}` : ''}</p>
+                  <p className="text-sm text-gray-600">{addr.city}, {addr.state} - {addr.postal_code}</p>
                   <p className="text-sm text-gray-600">Phone: {addr.phone}</p>
                   {addr.is_default && (
                     <span className="inline-block mt-2 px-2 py-0.5 bg-gold bg-opacity-20 text-gold text-xs font-semibold rounded">Default</span>

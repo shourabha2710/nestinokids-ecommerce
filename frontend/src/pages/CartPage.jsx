@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { shoppingAPI } from '../api/endpoints';
-import { clearCart } from '../store/slices/cartSlice';
+import { clearCart, setCartItems } from '../store/slices/cartSlice';
 import { motion } from 'framer-motion';
 
 const PLACEHOLDER = '/images/placeholder-product.svg';
@@ -21,6 +21,7 @@ const CartPage = () => {
       setLoading(true);
       const res = await shoppingAPI.getCart();
       setItems(res.data);
+      dispatch(setCartItems(res.data));
       setError(null);
     } catch (err) {
       setError('Failed to load cart');

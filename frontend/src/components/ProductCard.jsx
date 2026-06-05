@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
+import { shoppingAPI } from '../api/endpoints';
 import { addToCart } from '../store/slices/cartSlice';
 import { motion } from 'framer-motion';
 
@@ -10,6 +11,9 @@ const ProductCard = ({ product }) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const [imgError, setImgError] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [added, setAdded] = useState(false);
+  const { isAuthenticated } = useSelector((state) => state.auth);
 
   useEffect(() => {
     setImgError(false);
@@ -98,13 +102,25 @@ const ProductCard = ({ product }) => {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => {
-              dispatch(addToCart(product));
-              // Show notification
+            onClick={async () => {
+              if (adding) return;
+              setAdding(true);
+              try {
+                await shoppingAPI.addToCart(product.id, { quantity: 1 });
+                dispatch(addToCart({ ...product, quantity: 1 }));
+                setAdded(true);
+                setTimeout(() => setAdded(false), 2000);
+              } catch {
+                // silently fail — item stays in local state
+              } finally {
+                setAdding(false);
+              }
             }}
-            className="flex-1 bg-gold text-white py-2 rounded-lg font-semibold hover:bg-opacity-90"
+            className={`flex-1 py-2 rounded-lg font-semibold transition ${
+              added ? 'bg-green-500 text-white' : adding ? 'bg-gold bg-opacity-60 text-white cursor-not-allowed' : 'bg-gold text-white hover:bg-opacity-90'
+            }`}
           >
-            Add to Cart
+            {added ? 'Added!' : adding ? 'Adding...' : 'Add to Cart'}
           </motion.button>
         </div>
       </div>

@@ -14,6 +14,7 @@ import OrderDetailPage from "./pages/OrderDetailPage";
 import AddressListPage from "./pages/AddressListPage";
 import WishlistPage from "./pages/WishlistPage";
 import ProfilePage from "./pages/ProfilePage";
+import ProductDetailPage from "./pages/ProductDetailPage";
 import ProtectedAdminRoute from "./components/admin/ProtectedAdminRoute";
 import AdminLayout from "./components/admin/AdminLayout";
 import AdminLoginPage from "./pages/admin/AdminLoginPage";
@@ -26,7 +27,8 @@ import AdminInventoryList from "./pages/admin/AdminInventoryList";
 import AdminBannerList from "./pages/admin/AdminBannerList";
 import AdminOrderList from "./pages/admin/AdminOrderList";
 import { setUser, logout } from "./store/slices/authSlice";
-import { authAPI } from "./api/endpoints";
+import { setCartItems } from "./store/slices/cartSlice";
+import { authAPI, shoppingAPI } from "./api/endpoints";
 import "./styles/globals.css";
 
 const AuthProvider = ({ children }) => {
@@ -40,6 +42,8 @@ const AuthProvider = ({ children }) => {
         try {
           const res = await authAPI.getCurrentUser();
           dispatch(setUser(res.data));
+          const cartRes = await shoppingAPI.getCart();
+          dispatch(setCartItems(cartRes.data));
         } catch {
           dispatch(logout());
         }
@@ -74,6 +78,7 @@ function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
+              <Route path="/products/:slug" element={<ProductDetailPage />} />
               <Route path="/cart" element={<CartPage />} />
               <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
               <Route path="/orders" element={<ProtectedRoute><OrderListPage /></ProtectedRoute>} />

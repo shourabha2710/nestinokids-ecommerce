@@ -23,6 +23,7 @@ from app.schemas.schemas import (
     ProductResponse,
     ProductUpdate,
 )
+from sqlalchemy.orm import joinedload
 from app.models.models import Product, Category, Order, OrderItem, User, ProductImage, Inventory, Banner, OrderStatusEnum, PaymentStatusEnum
 from app.api.v1.endpoints.auth import require_admin
 from app.utils.helpers import generate_slug, generate_sku
@@ -249,7 +250,17 @@ def _build_admin_order(order: Order) -> dict:
         "order_status": order.status.value if hasattr(order.status, 'value') else order.status,
         "item_count": len(order.items),
         "created_at": order.created_at,
-        "items": order.items,
+        "items": [
+            {
+                "id": item.id,
+                "product_id": item.product_id,
+                "product_name": item.product.name if item.product else "",
+                "quantity": item.quantity,
+                "price": item.price,
+                "total": item.total,
+            }
+            for item in order.items
+        ],
     }
 
 
@@ -273,7 +284,12 @@ def admin_get_orders(
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    query = db.query(Order).join(User).outerjoin(OrderItem)
+    query = (
+        db.query(Order)
+        .join(User)
+        .outerjoin(OrderItem)
+        .options(joinedload(Order.items).joinedload(OrderItem.product))
+    )
     if search:
         query = query.filter(Order.order_number.ilike(f"%{search}%"))
     if status:
@@ -294,7 +310,12 @@ def admin_get_order(
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    order = db.query(Order).filter(Order.id == order_id).first()
+    order = (
+        db.query(Order)
+        .options(joinedload(Order.items).joinedload(OrderItem.product))
+        .filter(Order.id == order_id)
+        .first()
+    )
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     return _build_admin_order(order)

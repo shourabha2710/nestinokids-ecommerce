@@ -274,7 +274,7 @@ const AdminOrderList = () => {
                     <tbody>
                       {detailOrder.items?.map((item) => (
                         <tr key={item.id} className="border-b">
-                          <td className="px-3 py-2 text-gray-800">Product #{item.product_id}</td>
+                          <td className="px-3 py-2 text-gray-800">{item.product_name || `Product #${item.product_id}`}</td>
                           <td className="px-3 py-2 text-right text-gray-600">{item.quantity}</td>
                           <td className="px-3 py-2 text-right text-gray-600">₹{item.price}</td>
                           <td className="px-3 py-2 text-right font-medium">₹{item.total}</td>
