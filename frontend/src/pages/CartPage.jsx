@@ -35,15 +35,17 @@ const CartPage = () => {
     fetchCart();
   }, [isAuthenticated]);
 
-  const handleQuantityChange = async (productId, newQty) => {
+  const getProductId = (item) => item.product_id || item.id;
+
+  const handleQuantityChange = async (item, newQty) => {
     if (newQty < 1) return;
     try {
-      await shoppingAPI.updateCartItem(productId, newQty);
+      await shoppingAPI.updateCartItem(getProductId(item), newQty);
       setItems((prev) =>
-        prev.map((item) =>
-          item.id === productId
-            ? { ...item, quantity: newQty, total: item.price * newQty }
-            : item
+        prev.map((i) =>
+          i.id === item.id
+            ? { ...i, quantity: newQty, total: i.price * newQty }
+            : i
         )
       );
     } catch {
@@ -51,10 +53,10 @@ const CartPage = () => {
     }
   };
 
-  const handleRemove = async (productId) => {
+  const handleRemove = async (item) => {
     try {
-      await shoppingAPI.removeFromCart(productId);
-      setItems((prev) => prev.filter((item) => item.id !== productId));
+      await shoppingAPI.removeFromCart(getProductId(item));
+      setItems((prev) => prev.filter((i) => i.id !== item.id));
     } catch {
       fetchCart();
     }
@@ -144,14 +146,14 @@ const CartPage = () => {
                 <p className="text-gold font-bold mt-1">₹{item.price}</p>
                 <div className="flex items-center gap-3 mt-3">
                   <button
-                    onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
+                    onClick={() => handleQuantityChange(item, item.quantity - 1)}
                     className="w-8 h-8 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-100"
                   >
                     -
                   </button>
                   <span className="w-8 text-center font-semibold">{item.quantity}</span>
                   <button
-                    onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
+                    onClick={() => handleQuantityChange(item, item.quantity + 1)}
                     className="w-8 h-8 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-100"
                   >
                     +
@@ -161,7 +163,7 @@ const CartPage = () => {
               <div className="text-right">
                 <p className="font-bold text-text">₹{item.total}</p>
                 <button
-                  onClick={() => handleRemove(item.id)}
+                  onClick={() => handleRemove(item)}
                   className="text-sm text-red-500 hover:text-red-700 mt-2"
                 >
                   Remove

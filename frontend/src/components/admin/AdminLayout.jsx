@@ -1,15 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
+import { motion, AnimatePresence } from 'framer-motion';
 import { logout } from '../../store/slices/authSlice';
+import {
+  LayoutDashboard,
+  Package,
+  FolderTree,
+  ClipboardList,
+  ShoppingCart,
+  Image,
+  ChevronLeft,
+  ChevronRight,
+  Menu,
+  X,
+  LogOut,
+  User,
+  Bell,
+} from 'lucide-react';
 
 const navItems = [
-  { path: '/admin/dashboard', label: 'Dashboard', icon: '📊' },
-  { path: '/admin/products', label: 'Products', icon: '📦' },
-  { path: '/admin/categories', label: 'Categories', icon: '📂' },
-  { path: '/admin/inventory', label: 'Inventory', icon: '📋' },
-  { path: '/admin/orders', label: 'Orders', icon: '🛒' },
-  { path: '/admin/banners', label: 'Banners', icon: '🖼️' },
+  { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/admin/products', label: 'Products', icon: Package },
+  { path: '/admin/categories', label: 'Categories', icon: FolderTree },
+  { path: '/admin/inventory', label: 'Inventory', icon: ClipboardList },
+  { path: '/admin/orders', label: 'Orders', icon: ShoppingCart },
+  { path: '/admin/banners', label: 'Banners', icon: Image },
 ];
 
 const AdminLayout = () => {
@@ -17,93 +33,207 @@ const AdminLayout = () => {
   const location = useLocation();
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    if (mobileSidebarOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [mobileSidebarOpen]);
 
   const handleLogout = () => {
     dispatch(logout());
     navigate('/admin/login');
   };
 
-  return (
-    <div className="min-h-screen flex bg-gray-100">
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+  const isActive = (itemPath) => {
+    if (itemPath === '/admin/dashboard') return location.pathname === itemPath;
+    return location.pathname.startsWith(itemPath);
+  };
 
-      <aside
-        className={`fixed md:static inset-y-0 left-0 z-50 w-64 bg-gray-900 text-white transform transition-transform md:transform-none ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+  return (
+    <div className="h-screen bg-gray-50 overflow-hidden">
+      {/* Mobile overlay */}
+      <AnimatePresence>
+        {mobileSidebarOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+            onClick={() => setMobileSidebarOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Sidebar - always fixed, full viewport height */}
+      <motion.aside
+        layout
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col bg-gray-900 text-white h-screen transition-all duration-300 ${
+          sidebarCollapsed ? 'w-16' : 'w-64'
+        } ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
       >
-        <div className="p-6 border-b border-gray-700">
-          <h1 className="text-xl font-bold text-gold">NestinoKids</h1>
-          <p className="text-xs text-gray-400 mt-1">Admin Panel</p>
+        {/* Logo area - fixed top */}
+        <div className="flex items-center h-16 px-4 border-b border-gray-800 flex-shrink-0">
+          <div className="flex items-center space-x-3 flex-1 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-gold flex items-center justify-center flex-shrink-0">
+              <span className="text-gray-900 font-bold text-sm">N</span>
+            </div>
+            {!sidebarCollapsed && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="min-w-0"
+              >
+                <h1 className="text-sm font-bold text-gold truncate">NestinoKids</h1>
+                <p className="text-[10px] text-gray-500 truncate">Admin Panel</p>
+              </motion.div>
+            )}
+          </div>
+          <button
+            onClick={() => setMobileSidebarOpen(false)}
+            className="lg:hidden text-gray-400 hover:text-white p-1 flex-shrink-0"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
-        <nav className="mt-4">
+        {/* Navigation - scrollable */}
+        <nav className="flex-1 overflow-y-auto py-4 space-y-1 px-2 scrollbar-thin">
           {navItems.map((item) => {
-            const isActive = location.pathname === item.path ||
-              (item.path === '/admin/products' && location.pathname.startsWith('/admin/products')) ||
-              (item.path === '/admin/categories' && location.pathname.startsWith('/admin/categories')) ||
-              (item.path === '/admin/inventory' && location.pathname.startsWith('/admin/inventory')) ||
-              (item.path === '/admin/orders' && location.pathname.startsWith('/admin/orders')) ||
-              (item.path === '/admin/banners' && location.pathname.startsWith('/admin/banners'));
+            const Icon = item.icon;
+            const active = isActive(item.path);
             return (
               <button
                 key={item.path}
                 onClick={() => {
                   navigate(item.path);
-                  setSidebarOpen(false);
+                  setMobileSidebarOpen(false);
                 }}
-                className={`w-full flex items-center space-x-3 px-6 py-3 text-sm transition ${
-                  isActive
-                    ? 'bg-gray-800 text-gold border-r-2 border-gold'
-                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 ${
+                  active
+                    ? 'bg-gold/10 text-gold'
+                    : 'text-gray-400 hover:text-white hover:bg-gray-800'
                 }`}
+                title={sidebarCollapsed ? item.label : undefined}
               >
-                <span>{item.icon}</span>
-                <span>{item.label}</span>
+                <Icon className={`w-5 h-5 flex-shrink-0 ${active ? 'text-gold' : ''}`} />
+                {!sidebarCollapsed && (
+                  <span className="font-medium truncate">{item.label}</span>
+                )}
+                {active && !sidebarCollapsed && (
+                  <motion.div
+                    layoutId="activeTab"
+                    className="w-1 h-5 rounded-full bg-gold ml-auto flex-shrink-0"
+                  />
+                )}
               </button>
             );
           })}
         </nav>
 
-        <div className="absolute bottom-0 left-0 right-0 p-6 border-t border-gray-700">
-          <p className="text-xs text-gray-400">{user?.email}</p>
-        </div>
-      </aside>
-
-      <div className="flex-1 flex flex-col min-h-screen">
-        <header className="bg-white shadow-sm border-b">
-          <div className="flex items-center justify-between px-4 md:px-6 py-3">
-            <button
-              className="md:hidden text-gray-600 hover:text-gray-900"
-              onClick={() => setSidebarOpen(true)}
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
-
-            <div className="flex items-center space-x-4 ml-auto">
-              <span className="text-sm text-gray-600">
-                {user?.first_name} {user?.last_name}
-              </span>
+        {/* User profile area - always visible at bottom */}
+        <div className="border-t border-gray-800 p-3 flex-shrink-0">
+          {!sidebarCollapsed ? (
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0">
+                <User className="w-4 h-4 text-gray-300" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-200 truncate">
+                  {user?.first_name} {user?.last_name}
+                </p>
+                <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+              </div>
               <button
                 onClick={handleLogout}
-                className="text-sm text-red-600 hover:text-red-800 font-medium"
+                className="text-gray-500 hover:text-red-400 transition-colors p-1 flex-shrink-0"
+                title="Logout"
               >
-                Logout
+                <LogOut className="w-4 h-4" />
               </button>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center space-y-3">
+              <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center">
+                <User className="w-4 h-4 text-gray-300" />
+              </div>
+              <button
+                onClick={handleLogout}
+                className="text-gray-500 hover:text-red-400 transition-colors p-1"
+                title="Logout"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Collapse toggle (desktop only) */}
+        <button
+          onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+          className="hidden lg:flex items-center justify-center h-8 border-t border-gray-800 text-gray-500 hover:text-white transition-colors flex-shrink-0"
+        >
+          {sidebarCollapsed ? (
+            <ChevronRight className="w-4 h-4" />
+          ) : (
+            <ChevronLeft className="w-4 h-4" />
+          )}
+        </button>
+      </motion.aside>
+
+      {/* Main content area - scrolls independently */}
+      <div
+        className={`flex-1 flex flex-col min-w-0 h-screen transition-all duration-300 ${
+          sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'
+        }`}
+      >
+        {/* Top header - fixed/sticky within scroll area */}
+        <header className="h-16 bg-white border-b border-gray-200 flex items-center px-4 lg:px-6 flex-shrink-0">
+          <button
+            onClick={() => setMobileSidebarOpen(true)}
+            className="lg:hidden text-gray-500 hover:text-gray-700 mr-3"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+
+          <div className="flex-1" />
+
+          <div className="flex items-center space-x-4">
+            <button className="relative text-gray-400 hover:text-gray-600 transition-colors">
+              <Bell className="w-5 h-5" />
+              <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
+            </button>
+            <div className="flex items-center space-x-3 pl-4 border-l border-gray-200">
+              <div className="hidden sm:block text-right">
+                <p className="text-sm font-medium text-gray-700">
+                  {user?.first_name} {user?.last_name}
+                </p>
+                <p className="text-xs text-gray-400">Administrator</p>
+              </div>
+              <div className="w-8 h-8 rounded-full bg-gold/20 flex items-center justify-center flex-shrink-0">
+                <User className="w-4 h-4 text-gold" />
+              </div>
             </div>
           </div>
         </header>
 
-        <main className="flex-1 p-4 md:p-6 overflow-auto">
-          <Outlet />
+        {/* Scrollable page content */}
+        <main className="flex-1 overflow-y-auto">
+          <div className="p-4 lg:p-6">
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <Outlet />
+            </motion.div>
+          </div>
         </main>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { toggleSidebar, toggleSearch } from '../store/slices/uiSlice';
@@ -11,6 +11,19 @@ const Header = () => {
   const { isAuthenticated, user } = useSelector(state => state.auth);
   const { quantity } = useSelector(state => state.cart);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    if (isDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isDropdownOpen]);
 
   const handleLogout = () => {
     dispatch(logout());
@@ -82,7 +95,7 @@ const Header = () => {
             </motion.button>
 
             {/* User Menu */}
-            <div className="relative">
+            <div className="relative" ref={dropdownRef}>
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}

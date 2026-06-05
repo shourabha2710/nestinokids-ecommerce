@@ -41,8 +41,13 @@ const WishlistPage = () => {
     }
   };
 
-  const handleAddToCart = (item) => {
-    dispatch(addToCart(item));
+  const handleAddToCart = async (item) => {
+    try {
+      await shoppingAPI.addToCart(item.id, { quantity: 1 });
+      dispatch(addToCart({ ...item, quantity: 1 }));
+    } catch {
+      // silently fail
+    }
   };
 
   if (loading) {

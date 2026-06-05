@@ -108,8 +108,10 @@ const OrderDetailPage = () => {
             </div>
           ))}
         </div>
-        {STATUS_STEPS.includes('cancelled') && currentStepIndex === -1 && (
-          <p className="text-center text-red-600 font-semibold mt-4">Order Cancelled</p>
+        {(order.status === 'cancelled' || order.status === 'returned') && (
+          <p className="text-center text-red-600 font-semibold mt-4">
+            Order {order.status === 'cancelled' ? 'Cancelled' : 'Returned'}
+          </p>
         )}
       </div>
 
