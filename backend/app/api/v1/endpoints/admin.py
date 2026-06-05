@@ -6,15 +6,20 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from app.db.database import get_db
 from app.schemas.schemas import (
+    BannerCreate,
+    BannerResponse,
+    BannerUpdate,
     CategoryCreate,
     CategoryResponse,
     CategoryUpdate,
+    InventoryUpdate,
+    InventoryResponse,
     ProductCreate,
     ProductImageResponse,
     ProductResponse,
     ProductUpdate,
 )
-from app.models.models import Product, Category, Order, User, ProductImage
+from app.models.models import Product, Category, Order, User, ProductImage, Inventory, Banner
 from app.api.v1.endpoints.auth import require_admin
 from app.utils.helpers import generate_slug, generate_sku
 from app.core.config import settings
@@ -31,6 +36,9 @@ class DashboardResponse(BaseModel):
     total_categories: int
     total_orders: int
     total_users: int
+    total_inventory_items: int
+    low_stock_products: int
+    out_of_stock_products: int
 
 
 @router.get("/dashboard", response_model=DashboardResponse)
@@ -38,12 +46,177 @@ def get_dashboard(
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
+    total_inventory = db.query(func.count(Inventory.id)).scalar() or 0
+    low_stock = (
+        db.query(func.count(Inventory.id))
+        .filter(Inventory.available_quantity <= Inventory.low_stock_threshold)
+        .filter(Inventory.available_quantity > 0)
+        .scalar() or 0
+    )
+    out_of_stock = (
+        db.query(func.count(Inventory.id))
+        .filter(Inventory.available_quantity <= 0)
+        .scalar() or 0
+    )
     return DashboardResponse(
         total_products=db.query(func.count(Product.id)).scalar() or 0,
         total_categories=db.query(func.count(Category.id)).scalar() or 0,
         total_orders=db.query(func.count(Order.id)).scalar() or 0,
         total_users=db.query(func.count(User.id)).scalar() or 0,
+        total_inventory_items=total_inventory,
+        low_stock_products=low_stock,
+        out_of_stock_products=out_of_stock,
     )
+
+
+def _build_inventory_response(inventory: Inventory) -> dict:
+    return {
+        "product_id": inventory.product_id,
+        "product_name": inventory.product.name,
+        "total_quantity": inventory.total_quantity,
+        "available_quantity": inventory.available_quantity,
+        "reserved_quantity": inventory.reserved_quantity,
+        "low_stock_threshold": inventory.low_stock_threshold,
+        "last_restocked": inventory.last_restocked,
+        "low_stock": inventory.available_quantity <= inventory.low_stock_threshold,
+    }
+
+
+@router.get("/inventory", response_model=List[InventoryResponse])
+def admin_get_inventory(
+    search: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    query = db.query(Inventory).join(Product)
+    if search:
+        query = query.filter(Product.name.ilike(f"%{search}%"))
+    inventory_list = query.order_by(Product.name.asc()).all()
+    return [_build_inventory_response(inv) for inv in inventory_list]
+
+
+@router.get("/inventory/{product_id}", response_model=InventoryResponse)
+def admin_get_inventory_item(
+    product_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    inventory = db.query(Inventory).filter(Inventory.product_id == product_id).first()
+    if not inventory:
+        raise HTTPException(status_code=404, detail="Inventory not found for this product")
+    return _build_inventory_response(inventory)
+
+
+@router.put("/inventory/{product_id}", response_model=InventoryResponse)
+def admin_update_inventory(
+    product_id: int,
+    data: InventoryUpdate,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    inventory = db.query(Inventory).filter(Inventory.product_id == product_id).first()
+    if not inventory:
+        raise HTTPException(status_code=404, detail="Inventory not found for this product")
+
+    update_data = data.dict(exclude_unset=True)
+
+    if "available_quantity" in update_data:
+        if update_data["available_quantity"] > inventory.total_quantity:
+            raise HTTPException(
+                status_code=400,
+                detail="available_quantity cannot exceed total_quantity",
+            )
+        inventory.available_quantity = update_data["available_quantity"]
+
+    if "reserved_quantity" in update_data:
+        if update_data["reserved_quantity"] > inventory.total_quantity:
+            raise HTTPException(
+                status_code=400,
+                detail="reserved_quantity cannot exceed total_quantity",
+            )
+        inventory.reserved_quantity = update_data["reserved_quantity"]
+
+    if "low_stock_threshold" in update_data:
+        inventory.low_stock_threshold = update_data["low_stock_threshold"]
+
+    db.add(inventory)
+    db.commit()
+    db.refresh(inventory)
+    return _build_inventory_response(inventory)
+
+
+@router.get("/banners", response_model=List[BannerResponse])
+def admin_get_banners(
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    banners = (
+        db.query(Banner)
+        .order_by(Banner.order.asc(), Banner.created_at.desc())
+        .all()
+    )
+    return banners
+
+
+@router.get("/banners/{banner_id}", response_model=BannerResponse)
+def admin_get_banner(
+    banner_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    banner = db.query(Banner).filter(Banner.id == banner_id).first()
+    if not banner:
+        raise HTTPException(status_code=404, detail="Banner not found")
+    return banner
+
+
+@router.post("/banners", response_model=BannerResponse, status_code=status.HTTP_201_CREATED)
+def admin_create_banner(
+    data: BannerCreate,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    banner = Banner(**data.dict())
+    db.add(banner)
+    db.commit()
+    db.refresh(banner)
+    return banner
+
+
+@router.put("/banners/{banner_id}", response_model=BannerResponse)
+def admin_update_banner(
+    banner_id: int,
+    data: BannerUpdate,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    banner = db.query(Banner).filter(Banner.id == banner_id).first()
+    if not banner:
+        raise HTTPException(status_code=404, detail="Banner not found")
+
+    update_data = data.dict(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(banner, field, value)
+
+    db.add(banner)
+    db.commit()
+    db.refresh(banner)
+    return banner
+
+
+@router.delete("/banners/{banner_id}")
+def admin_delete_banner(
+    banner_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    banner = db.query(Banner).filter(Banner.id == banner_id).first()
+    if not banner:
+        raise HTTPException(status_code=404, detail="Banner not found")
+
+    db.delete(banner)
+    db.commit()
+    return {"message": "Banner deleted successfully"}
 
 
 @router.get("/products", response_model=List[ProductResponse])

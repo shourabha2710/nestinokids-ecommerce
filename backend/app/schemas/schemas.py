@@ -319,6 +319,33 @@ class CartItemResponse(BaseModel):
         from_attributes = True
 
 
+# Inventory Schemas
+class InventoryResponse(BaseModel):
+    product_id: int
+    product_name: str
+    total_quantity: int
+    available_quantity: int
+    reserved_quantity: int
+    low_stock_threshold: int
+    last_restocked: Optional[datetime] = None
+    low_stock: bool = False
+
+    class Config:
+        from_attributes = True
+
+
+class InventoryUpdate(BaseModel):
+    available_quantity: Optional[int] = None
+    reserved_quantity: Optional[int] = None
+    low_stock_threshold: Optional[int] = None
+
+    @field_validator('available_quantity', 'reserved_quantity', 'low_stock_threshold')
+    def validate_non_negative(cls, v):
+        if v is not None and v < 0:
+            raise ValueError('Value cannot be negative')
+        return v
+
+
 # Banner Schemas
 class BannerBase(BaseModel):
     title: str
@@ -334,6 +361,18 @@ class BannerBase(BaseModel):
 
 class BannerCreate(BannerBase):
     pass
+
+
+class BannerUpdate(BaseModel):
+    title: Optional[str] = None
+    image_url: Optional[str] = None
+    mobile_image_url: Optional[str] = None
+    description: Optional[str] = None
+    button_text: Optional[str] = None
+    button_link: Optional[str] = None
+    target_category_id: Optional[int] = None
+    is_active: Optional[bool] = None
+    order: Optional[int] = None
 
 
 class BannerResponse(BannerBase):

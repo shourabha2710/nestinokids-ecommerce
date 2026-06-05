@@ -14,6 +14,8 @@ import AdminProductList from "./pages/admin/AdminProductList";
 import AdminProductForm from "./pages/admin/AdminProductForm";
 import AdminCategoryList from "./pages/admin/AdminCategoryList";
 import AdminCategoryForm from "./pages/admin/AdminCategoryForm";
+import AdminInventoryList from "./pages/admin/AdminInventoryList";
+import AdminBannerList from "./pages/admin/AdminBannerList";
 import { setUser, logout } from "./store/slices/authSlice";
 import { authAPI } from "./api/endpoints";
 import "./styles/globals.css";
@@ -76,6 +78,8 @@ function App() {
                 <Route path="/admin/categories" element={<AdminCategoryList />} />
                 <Route path="/admin/categories/new" element={<AdminCategoryForm />} />
                 <Route path="/admin/categories/:id/edit" element={<AdminCategoryForm />} />
+                <Route path="/admin/inventory" element={<AdminInventoryList />} />
+                <Route path="/admin/banners" element={<AdminBannerList />} />
               </Route>
             </Route>
 

@@ -3,15 +3,30 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from app.db.database import get_db
 from app.schemas.schemas import (
-    CategoryCreate, CategoryResponse, ProductCreate, ProductResponse,
+    BannerResponse, CategoryCreate, CategoryResponse, ProductCreate, ProductResponse,
     ProductUpdate, ProductImageResponse, ReviewCreate, ReviewResponse
 )
-from app.models.models import Category, Product, ProductImage, Review, User, Inventory, ProductVariant
+from app.models.models import Category, Product, ProductImage, Review, User, Inventory, ProductVariant, Banner
 from app.utils.helpers import generate_slug
 from app.api.v1.endpoints.auth import get_current_user
 from typing import List, Optional
 
 router = APIRouter(prefix="/api/v1", tags=["products"])
+
+
+# Banner Endpoints
+@router.get("/banners", response_model=List[BannerResponse])
+def get_active_banners(
+    db: Session = Depends(get_db)
+):
+    """Get all active banners sorted by order"""
+    banners = (
+        db.query(Banner)
+        .filter(Banner.is_active == True)
+        .order_by(Banner.order.asc(), Banner.created_at.desc())
+        .all()
+    )
+    return banners
 
 
 # Category Endpoints

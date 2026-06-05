@@ -18,6 +18,7 @@ export const productsAPI = {
   createReview: (productId, data) => api.post(`/products/${productId}/reviews`, data),
   getRelatedProducts: (productId, params) => api.get(`/products/${productId}/related`, { params }),
   search: (params) => api.get('/search', { params }),
+  getActiveBanners: () => api.get('/banners'),
 };
 
 // Admin APIs
@@ -37,6 +38,14 @@ export const adminAPI = {
   createCategory: (data) => api.post('/admin/categories', data),
   updateCategory: (id, data) => api.put(`/admin/categories/${id}`, data),
   deleteCategory: (id) => api.delete(`/admin/categories/${id}`),
+  getInventory: (params) => api.get('/admin/inventory', { params }),
+  getInventoryItem: (productId) => api.get(`/admin/inventory/${productId}`),
+  updateInventory: (productId, data) => api.put(`/admin/inventory/${productId}`, data),
+  getBanners: () => api.get('/admin/banners'),
+  getBanner: (id) => api.get(`/admin/banners/${id}`),
+  createBanner: (data) => api.post('/admin/banners', data),
+  updateBanner: (id, data) => api.put(`/admin/banners/${id}`, data),
+  deleteBanner: (id) => api.delete(`/admin/banners/${id}`),
 };
 
 // Shopping APIs

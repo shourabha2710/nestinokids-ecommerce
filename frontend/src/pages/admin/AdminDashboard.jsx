@@ -6,6 +6,9 @@ const cards = [
   { key: 'total_categories', label: 'Total Categories', color: 'bg-green-500', icon: '📁' },
   { key: 'total_orders', label: 'Total Orders', color: 'bg-purple-500', icon: '🛒' },
   { key: 'total_users', label: 'Total Users', color: 'bg-orange-500', icon: '👤' },
+  { key: 'total_inventory_items', label: 'Inventory Items', color: 'bg-teal-500', icon: '📋' },
+  { key: 'low_stock_products', label: 'Low Stock', color: 'bg-yellow-500', icon: '⚠️' },
+  { key: 'out_of_stock_products', label: 'Out of Stock', color: 'bg-red-500', icon: '🚫' },
 ];
 
 const AdminDashboard = () => {
@@ -34,7 +37,7 @@ const AdminDashboard = () => {
       <div>
         <h1 className="text-2xl font-bold text-gray-800 mb-6">Dashboard</h1>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[1, 2, 3, 4].map((i) => (
+          {[1, 2, 3, 4, 5, 6, 7].map((i) => (
             <div key={i} className="bg-white rounded-lg shadow p-6 animate-pulse">
               <div className="h-4 bg-gray-200 rounded w-1/2 mb-4" />
               <div className="h-8 bg-gray-200 rounded w-1/3" />

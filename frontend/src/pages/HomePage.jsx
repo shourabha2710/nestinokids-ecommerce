@@ -1,36 +1,22 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { productsAPI } from '../api/endpoints';
 import ProductCard from '../components/ProductCard';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
-const HomePage = () => {
-  const [products, setProducts] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
+const HeroBanner = ({ banners }) => {
+  const [current, setCurrent] = useState(0);
+
+  const next = useCallback(() => {
+    setCurrent((prev) => (prev + 1) % banners.length);
+  }, [banners.length]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const [productsRes, categoriesRes] = await Promise.all([
-          productsAPI.getProducts({ limit: 12 }),
-          productsAPI.getCategories(),
-        ]);
-        setProducts(productsRes.data);
-        setCategories(categoriesRes.data);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    const timer = setInterval(next, 5000);
+    return () => clearInterval(timer);
+  }, [next]);
 
-    fetchData();
-  }, []);
-
-  return (
-    <div className="min-h-screen bg-white">
-      {/* Hero Section */}
+  if (banners.length === 0) {
+    return (
       <motion.section
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -57,6 +43,107 @@ const HomePage = () => {
           </div>
         </div>
       </motion.section>
+    );
+  }
+
+  const banner = banners[current];
+
+  return (
+    <section className="relative overflow-hidden">
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={current}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.5 }}
+          className="relative h-[400px] md:h-[500px]"
+        >
+          <img
+            src={banner.image_url}
+            alt={banner.title}
+            className="w-full h-full object-cover"
+            onError={(e) => { e.target.style.display = 'none'; }}
+          />
+          <div className="absolute inset-0 bg-black bg-opacity-30" />
+          <div className="absolute inset-0 flex items-center">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+              <motion.div
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className="max-w-lg"
+              >
+                <h1 className="text-3xl md:text-5xl font-bold text-white mb-4">
+                  {banner.title}
+                </h1>
+                {banner.description && (
+                  <p className="text-lg md:text-xl text-white mb-6">
+                    {banner.description}
+                  </p>
+                )}
+                {banner.button_text && (
+                  <motion.a
+                    href={banner.button_link || '#'}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="inline-block bg-gold text-text px-8 py-3 rounded-lg font-bold text-lg hover:bg-opacity-90"
+                  >
+                    {banner.button_text}
+                  </motion.a>
+                )}
+              </motion.div>
+            </div>
+          </div>
+        </motion.div>
+      </AnimatePresence>
+
+      <div className="absolute bottom-4 left-0 right-0 flex justify-center space-x-2">
+        {banners.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => setCurrent(i)}
+            className={`w-3 h-3 rounded-full transition ${
+              i === current ? 'bg-gold' : 'bg-white bg-opacity-50'
+            }`}
+          />
+        ))}
+      </div>
+    </section>
+  );
+};
+
+const HomePage = () => {
+  const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [banners, setBanners] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [productsRes, categoriesRes, bannersRes] = await Promise.all([
+          productsAPI.getProducts({ limit: 12 }),
+          productsAPI.getCategories(),
+          productsAPI.getActiveBanners(),
+        ]);
+        setProducts(productsRes.data);
+        setCategories(categoriesRes.data);
+        setBanners(bannersRes.data);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-white">
+      <HeroBanner banners={banners} />
 
       {/* Why Choose Us */}
       <section className="py-16 bg-ivory">
