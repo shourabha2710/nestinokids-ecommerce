@@ -8,6 +8,7 @@ const navItems = [
   { path: '/admin/products', label: 'Products', icon: '📦' },
   { path: '/admin/categories', label: 'Categories', icon: '📂' },
   { path: '/admin/inventory', label: 'Inventory', icon: '📋' },
+  { path: '/admin/orders', label: 'Orders', icon: '🛒' },
   { path: '/admin/banners', label: 'Banners', icon: '🖼️' },
 ];
 
@@ -48,6 +49,7 @@ const AdminLayout = () => {
               (item.path === '/admin/products' && location.pathname.startsWith('/admin/products')) ||
               (item.path === '/admin/categories' && location.pathname.startsWith('/admin/categories')) ||
               (item.path === '/admin/inventory' && location.pathname.startsWith('/admin/inventory')) ||
+              (item.path === '/admin/orders' && location.pathname.startsWith('/admin/orders')) ||
               (item.path === '/admin/banners' && location.pathname.startsWith('/admin/banners'));
             return (
               <button

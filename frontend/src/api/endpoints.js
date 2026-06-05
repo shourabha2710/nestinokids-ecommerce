@@ -46,6 +46,9 @@ export const adminAPI = {
   createBanner: (data) => api.post('/admin/banners', data),
   updateBanner: (id, data) => api.put(`/admin/banners/${id}`, data),
   deleteBanner: (id) => api.delete(`/admin/banners/${id}`),
+  getOrders: (params) => api.get('/admin/orders', { params }),
+  getOrder: (id) => api.get(`/admin/orders/${id}`),
+  updateOrderStatus: (id, data) => api.put(`/admin/orders/${id}/status`, data),
 };
 
 // Shopping APIs

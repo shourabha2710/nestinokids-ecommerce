@@ -243,6 +243,30 @@ class OrderResponse(BaseModel):
         from_attributes = True
 
 
+class AdminOrderResponse(BaseModel):
+    id: int
+    order_number: str
+    customer_name: str
+    customer_email: str
+    total_amount: float
+    discount_amount: float
+    tax_amount: float
+    shipping_amount: float
+    final_amount: float
+    payment_status: str
+    order_status: str
+    item_count: int
+    created_at: datetime
+    items: List[OrderItemResponse] = []
+
+    class Config:
+        from_attributes = True
+
+
+class OrderStatusUpdate(BaseModel):
+    status: str
+
+
 # Coupon Schemas
 class CouponBase(BaseModel):
     code: str = Field(..., min_length=3, max_length=50)

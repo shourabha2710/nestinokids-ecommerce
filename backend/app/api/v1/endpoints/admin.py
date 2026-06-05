@@ -1,11 +1,13 @@
 import os
 import uuid
+from datetime import datetime
 from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from app.db.database import get_db
 from app.schemas.schemas import (
+    AdminOrderResponse,
     BannerCreate,
     BannerResponse,
     BannerUpdate,
@@ -14,12 +16,14 @@ from app.schemas.schemas import (
     CategoryUpdate,
     InventoryUpdate,
     InventoryResponse,
+    OrderItemResponse,
+    OrderStatusUpdate,
     ProductCreate,
     ProductImageResponse,
     ProductResponse,
     ProductUpdate,
 )
-from app.models.models import Product, Category, Order, User, ProductImage, Inventory, Banner
+from app.models.models import Product, Category, Order, OrderItem, User, ProductImage, Inventory, Banner, OrderStatusEnum, PaymentStatusEnum
 from app.api.v1.endpoints.auth import require_admin
 from app.utils.helpers import generate_slug, generate_sku
 from app.core.config import settings
@@ -39,6 +43,9 @@ class DashboardResponse(BaseModel):
     total_inventory_items: int
     low_stock_products: int
     out_of_stock_products: int
+    pending_orders: int
+    delivered_orders: int
+    total_revenue: float
 
 
 @router.get("/dashboard", response_model=DashboardResponse)
@@ -58,6 +65,11 @@ def get_dashboard(
         .filter(Inventory.available_quantity <= 0)
         .scalar() or 0
     )
+    total_revenue = (
+        db.query(func.coalesce(func.sum(Order.final_amount), 0))
+        .filter(Order.status == OrderStatusEnum.DELIVERED)
+        .scalar()
+    )
     return DashboardResponse(
         total_products=db.query(func.count(Product.id)).scalar() or 0,
         total_categories=db.query(func.count(Category.id)).scalar() or 0,
@@ -66,6 +78,9 @@ def get_dashboard(
         total_inventory_items=total_inventory,
         low_stock_products=low_stock,
         out_of_stock_products=out_of_stock,
+        pending_orders=db.query(func.count(Order.id)).filter(Order.status == OrderStatusEnum.PENDING).scalar() or 0,
+        delivered_orders=db.query(func.count(Order.id)).filter(Order.status == OrderStatusEnum.DELIVERED).scalar() or 0,
+        total_revenue=total_revenue,
     )
 
 
@@ -217,6 +232,109 @@ def admin_delete_banner(
     db.delete(banner)
     db.commit()
     return {"message": "Banner deleted successfully"}
+
+
+def _build_admin_order(order: Order) -> dict:
+    return {
+        "id": order.id,
+        "order_number": order.order_number,
+        "customer_name": f"{order.user.first_name} {order.user.last_name}",
+        "customer_email": order.user.email,
+        "total_amount": order.total_amount,
+        "discount_amount": order.discount_amount,
+        "tax_amount": order.tax_amount,
+        "shipping_amount": order.shipping_amount,
+        "final_amount": order.final_amount,
+        "payment_status": order.payment_status.value if hasattr(order.payment_status, 'value') else order.payment_status,
+        "order_status": order.status.value if hasattr(order.status, 'value') else order.status,
+        "item_count": len(order.items),
+        "created_at": order.created_at,
+        "items": order.items,
+    }
+
+
+VALID_STATUS_TRANSITIONS = {
+    "pending": ["confirmed", "cancelled"],
+    "confirmed": ["packed", "cancelled"],
+    "packed": ["shipped"],
+    "shipped": ["delivered"],
+    "delivered": [],
+    "cancelled": [],
+    "returned": [],
+}
+
+
+@router.get("/orders", response_model=List[AdminOrderResponse])
+def admin_get_orders(
+    search: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    query = db.query(Order).join(User).outerjoin(OrderItem)
+    if search:
+        query = query.filter(Order.order_number.ilike(f"%{search}%"))
+    if status:
+        query = query.filter(Order.status == status)
+    orders = (
+        query
+        .order_by(Order.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+    return [_build_admin_order(o) for o in orders]
+
+
+@router.get("/orders/{order_id}", response_model=AdminOrderResponse)
+def admin_get_order(
+    order_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    order = db.query(Order).filter(Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return _build_admin_order(order)
+
+
+@router.put("/orders/{order_id}/status", response_model=AdminOrderResponse)
+def admin_update_order_status(
+    order_id: int,
+    data: OrderStatusUpdate,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    order = db.query(Order).filter(Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    current_status = order.status.value if hasattr(order.status, 'value') else order.status
+    new_status = data.status.lower()
+
+    if new_status == current_status:
+        raise HTTPException(status_code=400, detail="Order is already in this status")
+
+    valid_next = VALID_STATUS_TRANSITIONS.get(current_status, [])
+    if new_status not in valid_next:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot transition from '{current_status}' to '{new_status}'. Valid transitions: {valid_next}",
+        )
+
+    order.status = new_status
+
+    if new_status == "shipped":
+        order.shipped_at = datetime.utcnow()
+    elif new_status == "delivered":
+        order.delivered_at = datetime.utcnow()
+
+    db.add(order)
+    db.commit()
+    db.refresh(order)
+    return _build_admin_order(order)
 
 
 @router.get("/products", response_model=List[ProductResponse])
