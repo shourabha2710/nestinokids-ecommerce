@@ -1,0 +1,180 @@
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { shoppingAPI } from '../api/endpoints';
+import { motion } from 'framer-motion';
+
+const AddressListPage = () => {
+  const navigate = useNavigate();
+  const { isAuthenticated } = useSelector((state) => state.auth);
+  const [addresses, setAddresses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [form, setForm] = useState({
+    full_name: '', phone: '', address_line1: '', address_line2: '',
+    city: '', state: '', pincode: '', is_default: false,
+  });
+
+  useEffect(() => {
+    if (!isAuthenticated) { navigate('/login'); return; }
+    fetchAddresses();
+  }, [isAuthenticated]);
+
+  const fetchAddresses = async () => {
+    try {
+      setLoading(true);
+      const res = await shoppingAPI.getAddresses();
+      setAddresses(res.data);
+    } catch {
+      // handled
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openCreateForm = () => {
+    setEditingId(null);
+    setForm({ full_name: '', phone: '', address_line1: '', address_line2: '', city: '', state: '', pincode: '', is_default: false });
+    setShowForm(true);
+  };
+
+  const openEditForm = (addr) => {
+    setEditingId(addr.id);
+    setForm({
+      full_name: addr.full_name, phone: addr.phone, address_line1: addr.address_line1,
+      address_line2: addr.address_line2 || '', city: addr.city, state: addr.state,
+      pincode: addr.pincode, is_default: addr.is_default,
+    });
+    setShowForm(true);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      if (editingId) {
+        await shoppingAPI.updateAddress(editingId, form);
+      } else {
+        await shoppingAPI.createAddress(form);
+      }
+      setShowForm(false);
+      fetchAddresses();
+    } catch {
+      // handled
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!confirm('Delete this address?')) return;
+    try {
+      await shoppingAPI.deleteAddress(id);
+      fetchAddresses();
+    } catch {
+      // handled
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <h1 className="text-2xl font-bold text-text mb-8">My Addresses</h1>
+        <div className="space-y-4">
+          {[1, 2].map((i) => (
+            <div key={i} className="bg-white rounded-lg shadow p-6 animate-pulse">
+              <div className="h-4 bg-gray-200 rounded w-1/2 mb-2" />
+              <div className="h-3 bg-gray-200 rounded w-3/4 mb-2" />
+              <div className="h-3 bg-gray-200 rounded w-1/3" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-2xl font-bold text-text">My Addresses</h1>
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={openCreateForm}
+          className="bg-gold text-white px-4 py-2 rounded-lg font-semibold"
+        >
+          + Add Address
+        </motion.button>
+      </div>
+
+      {showForm && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-lg shadow p-6 mb-6"
+        >
+          <h2 className="text-lg font-semibold text-text mb-4">{editingId ? 'Edit Address' : 'New Address'}</h2>
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <input required placeholder="Full Name" value={form.full_name} onChange={(e) => setForm((p) => ({ ...p, full_name: e.target.value }))} className="col-span-2 p-2 border rounded" />
+              <input required placeholder="Phone" value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} className="col-span-2 p-2 border rounded" />
+              <input required placeholder="Address Line 1" value={form.address_line1} onChange={(e) => setForm((p) => ({ ...p, address_line1: e.target.value }))} className="col-span-2 p-2 border rounded" />
+              <input placeholder="Address Line 2" value={form.address_line2} onChange={(e) => setForm((p) => ({ ...p, address_line2: e.target.value }))} className="col-span-2 p-2 border rounded" />
+              <input required placeholder="City" value={form.city} onChange={(e) => setForm((p) => ({ ...p, city: e.target.value }))} />
+              <input required placeholder="State" value={form.state} onChange={(e) => setForm((p) => ({ ...p, state: e.target.value }))} />
+              <input required placeholder="Pincode" value={form.pincode} onChange={(e) => setForm((p) => ({ ...p, pincode: e.target.value }))} />
+            </div>
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={form.is_default} onChange={(e) => setForm((p) => ({ ...p, is_default: e.target.checked }))} />
+              <span className="text-sm">Set as default address</span>
+            </label>
+            <div className="flex gap-3">
+              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="submit" className="bg-gold text-white px-4 py-2 rounded-lg font-semibold">
+                {editingId ? 'Update' : 'Save'}
+              </motion.button>
+              <button type="button" onClick={() => setShowForm(false)} className="text-gray-500 px-4 py-2">Cancel</button>
+            </div>
+          </form>
+        </motion.div>
+      )}
+
+      {addresses.length === 0 && !showForm ? (
+        <div className="text-center py-16">
+          <svg className="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          <h2 className="text-xl font-semibold text-text mb-2">No addresses saved</h2>
+          <p className="text-gray-500 mb-6">Add a shipping address for your orders.</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {addresses.map((addr) => (
+            <motion.div
+              key={addr.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-lg shadow p-6"
+            >
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="font-semibold text-text">{addr.full_name}</p>
+                  <p className="text-sm text-gray-600 mt-1">{addr.address_line1}{addr.address_line2 ? `, ${addr.address_line2}` : ''}</p>
+                  <p className="text-sm text-gray-600">{addr.city}, {addr.state} - {addr.pincode}</p>
+                  <p className="text-sm text-gray-600">Phone: {addr.phone}</p>
+                  {addr.is_default && (
+                    <span className="inline-block mt-2 px-2 py-0.5 bg-gold bg-opacity-20 text-gold text-xs font-semibold rounded">Default</span>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => openEditForm(addr)} className="text-gold text-sm font-semibold hover:underline">Edit</button>
+                  <button onClick={() => handleDelete(addr.id)} className="text-red-500 text-sm font-semibold hover:underline">Delete</button>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default AddressListPage;

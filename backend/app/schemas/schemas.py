@@ -206,6 +206,7 @@ class OrderItemBase(BaseModel):
 class OrderItemResponse(BaseModel):
     id: int
     product_id: int
+    product_name: str = ""
     quantity: int
     price: float
     total: float
@@ -224,6 +225,12 @@ class OrderBase(BaseModel):
 
 class OrderCreate(OrderBase):
     items: List[OrderItemBase] = Field(..., min_items=1)
+
+
+class CheckoutRequest(BaseModel):
+    shipping_address_id: int
+    billing_address_id: Optional[int] = None
+    coupon_code: Optional[str] = None
 
 
 class OrderResponse(BaseModel):

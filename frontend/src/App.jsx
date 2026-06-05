@@ -3,9 +3,17 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import { Provider, useDispatch, useSelector } from "react-redux";
 import store from "./store/store";
 import StorefrontLayout from "./components/StorefrontLayout";
+import ProtectedRoute from "./components/ProtectedRoute";
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import CartPage from "./pages/CartPage";
+import CheckoutPage from "./pages/CheckoutPage";
+import OrderListPage from "./pages/OrderListPage";
+import OrderDetailPage from "./pages/OrderDetailPage";
+import AddressListPage from "./pages/AddressListPage";
+import WishlistPage from "./pages/WishlistPage";
+import ProfilePage from "./pages/ProfilePage";
 import ProtectedAdminRoute from "./components/admin/ProtectedAdminRoute";
 import AdminLayout from "./components/admin/AdminLayout";
 import AdminLoginPage from "./pages/admin/AdminLoginPage";
@@ -66,6 +74,13 @@ function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
+              <Route path="/cart" element={<CartPage />} />
+              <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
+              <Route path="/orders" element={<ProtectedRoute><OrderListPage /></ProtectedRoute>} />
+              <Route path="/orders/:id" element={<ProtectedRoute><OrderDetailPage /></ProtectedRoute>} />
+              <Route path="/addresses" element={<ProtectedRoute><AddressListPage /></ProtectedRoute>} />
+              <Route path="/wishlist" element={<ProtectedRoute><WishlistPage /></ProtectedRoute>} />
+              <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
             </Route>
 
             <Route path="/admin/login" element={<AdminLoginPage />} />

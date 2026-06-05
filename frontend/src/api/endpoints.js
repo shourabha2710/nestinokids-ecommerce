@@ -64,8 +64,10 @@ export const shoppingAPI = {
   
   getCart: () => api.get('/cart'),
   addToCart: (productId, params) => api.post(`/cart/${productId}`, null, { params }),
+  updateCartItem: (productId, quantity) => api.put(`/cart/${productId}`, null, { params: { quantity } }),
   removeFromCart: (productId) => api.delete(`/cart/${productId}`),
   
+  checkout: (data) => api.post('/checkout', data),
   createOrder: (data) => api.post('/orders', data),
   getOrders: () => api.get('/orders'),
   getOrder: (id) => api.get(`/orders/${id}`),
