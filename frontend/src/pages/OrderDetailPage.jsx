@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { shoppingAPI } from '../api/endpoints';
+import MobilePageHeader from '../components/MobilePageHeader';
 import { motion } from 'framer-motion';
 
 const PLACEHOLDER = '/images/placeholder-product.svg';
@@ -76,7 +77,8 @@ const OrderDetailPage = () => {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
-      <button onClick={() => navigate('/orders')} className="text-gold font-semibold mb-6 hover:underline">
+      <MobilePageHeader title={`Order #${order.order_number}`} className="mb-4 -mx-4 -mt-2" />
+      <button onClick={() => navigate('/orders')} className="hidden md:inline-block text-gold font-semibold mb-6 hover:underline">
         &larr; Back to Orders
       </button>
 

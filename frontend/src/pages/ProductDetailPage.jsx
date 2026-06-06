@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { productsAPI, shoppingAPI } from '../api/endpoints';
 import { addToCart } from '../store/slices/cartSlice';
 import { addWishlistItem, removeWishlistItem } from '../store/slices/wishlistSlice';
+import MobilePageHeader from '../components/MobilePageHeader';
 import { motion } from 'framer-motion';
 import { Heart } from 'lucide-react';
 
@@ -119,8 +120,9 @@ const ProductDetailPage = () => {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
+      <MobilePageHeader title={product.name} className="mb-4 -mx-4 -mt-2" />
       {/* Breadcrumb */}
-      <nav className="text-sm text-gray-500 mb-6">
+      <nav className="hidden md:flex text-sm text-gray-500 mb-6">
         <button onClick={() => navigate('/')} className="hover:text-gold">Home</button>
         {product.category && (
           <>

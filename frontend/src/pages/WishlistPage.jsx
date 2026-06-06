@@ -4,6 +4,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { shoppingAPI } from '../api/endpoints';
 import { addToCart } from '../store/slices/cartSlice';
 import { removeWishlistItem, setWishlist } from '../store/slices/wishlistSlice';
+import MobilePageHeader from '../components/MobilePageHeader';
 import { motion } from 'framer-motion';
 
 const PLACEHOLDER = '/images/placeholder-product.svg';
@@ -56,7 +57,8 @@ const WishlistPage = () => {
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold text-text mb-8">My Wishlist</h1>
+        <MobilePageHeader title="My Wishlist" />
+        <h1 className="hidden md:block text-2xl font-bold text-text mb-8">My Wishlist</h1>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3].map((i) => (
             <div key={i} className="bg-white rounded-lg shadow animate-pulse">
@@ -75,7 +77,8 @@ const WishlistPage = () => {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold text-text mb-8">My Wishlist</h1>
+      <MobilePageHeader title="My Wishlist" />
+      <h1 className="hidden md:block text-2xl font-bold text-text mb-8">My Wishlist</h1>
 
       {items.length === 0 ? (
         <div className="text-center py-16">

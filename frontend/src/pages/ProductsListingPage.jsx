@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { productsAPI } from '../api/endpoints';
 import ProductCard from '../components/ProductCard';
+import MobilePageHeader from '../components/MobilePageHeader';
 import { motion } from 'framer-motion';
 import { Search, SlidersHorizontal, X } from 'lucide-react';
 
@@ -70,8 +71,9 @@ const ProductsListingPage = ({ filter, sort: sortProp }) => {
   return (
     <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <MobilePageHeader title={pageTitle} className="mb-4 -mx-4 -mt-2" />
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+        <div className="hidden md:flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-bold text-text">{pageTitle}</h1>
             <p className="text-gray-500 mt-1">

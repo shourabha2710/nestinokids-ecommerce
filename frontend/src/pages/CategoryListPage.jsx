@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { productsAPI } from '../api/endpoints';
+import MobilePageHeader from '../components/MobilePageHeader';
 import { motion } from 'framer-motion';
 import { FolderTree } from 'lucide-react';
 
@@ -29,7 +30,9 @@ const CategoryListPage = () => {
   return (
     <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
+
+        <MobilePageHeader title="Categories" />
+        <div className="hidden md:block mb-8">
           <h1 className="text-3xl font-bold text-text">Categories</h1>
           <p className="text-gray-500 mt-1">Browse our collection by category</p>
         </div>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { shoppingAPI } from '../api/endpoints';
 import { clearCart, setCartItems } from '../store/slices/cartSlice';
+import MobilePageHeader from '../components/MobilePageHeader';
 import { motion } from 'framer-motion';
 
 const PLACEHOLDER = '/images/placeholder-product.svg';
@@ -88,7 +89,8 @@ const CartPage = () => {
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold text-text mb-8">Shopping Cart</h1>
+        <MobilePageHeader title="Shopping Cart" />
+        <h1 className="hidden md:block text-2xl font-bold text-text mb-8">Shopping Cart</h1>
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
             <div key={i} className="flex gap-4 p-4 bg-white rounded-lg shadow animate-pulse">
@@ -107,7 +109,8 @@ const CartPage = () => {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold text-text mb-8">Shopping Cart</h1>
+      <MobilePageHeader title="Shopping Cart" />
+      <h1 className="hidden md:block text-2xl font-bold text-text mb-8">Shopping Cart</h1>
 
       {error && (
         <div className="bg-red-50 text-red-600 p-4 rounded-lg mb-6">{error}</div>

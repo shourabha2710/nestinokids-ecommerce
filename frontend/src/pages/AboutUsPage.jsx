@@ -1,4 +1,5 @@
 import React from 'react';
+import MobilePageHeader from '../components/MobilePageHeader';
 import { motion } from 'framer-motion';
 
 const AboutUsPage = () => {
@@ -9,7 +10,8 @@ const AboutUsPage = () => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <h1 className="text-3xl font-bold text-text mb-6">About NestinoKids</h1>
+          <MobilePageHeader title="About NestinoKids" className="mb-4 -mx-4 -mt-2" />
+          <h1 className="hidden md:block text-3xl font-bold text-text mb-6">About NestinoKids</h1>
           <div className="prose prose-gray max-w-none space-y-4">
             <p className="text-gray-600 leading-relaxed">
               NestinoKids is a premium kids' apparel brand dedicated to providing soft, comfortable, and stylish clothing for children. Based in New Delhi, we understand that your child's comfort is your top priority.

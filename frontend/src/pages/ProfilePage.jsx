@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { authAPI } from '../api/endpoints';
 import { setUser } from '../store/slices/authSlice';
+import MobilePageHeader from '../components/MobilePageHeader';
 import { motion } from 'framer-motion';
 
 const ProfilePage = () => {
@@ -44,7 +45,8 @@ const ProfilePage = () => {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold text-text mb-8">My Profile</h1>
+      <MobilePageHeader title="My Profile" />
+      <h1 className="hidden md:block text-2xl font-bold text-text mb-8">My Profile</h1>
 
       {message && (
         <div className={`p-4 rounded-lg mb-6 ${message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'}`}>

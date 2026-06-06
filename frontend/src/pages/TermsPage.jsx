@@ -1,4 +1,5 @@
 import React from 'react';
+import MobilePageHeader from '../components/MobilePageHeader';
 import { motion } from 'framer-motion';
 
 const TermsPage = () => {
@@ -9,7 +10,8 @@ const TermsPage = () => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <h1 className="text-3xl font-bold text-text mb-6">Terms & Conditions</h1>
+          <MobilePageHeader title="Terms &amp; Conditions" className="mb-4 -mx-4 -mt-2" />
+          <h1 className="hidden md:block text-3xl font-bold text-text mb-6">Terms & Conditions</h1>
           <div className="prose prose-gray max-w-none space-y-4 text-gray-600">
             <p>Welcome to NestinoKids. By using our website and services, you agree to the following terms and conditions.</p>
 

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import MobilePageHeader from '../components/MobilePageHeader';
 import { motion } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
 
@@ -47,7 +48,8 @@ const FAQPage = () => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <h1 className="text-3xl font-bold text-text mb-2">Frequently Asked Questions</h1>
+          <MobilePageHeader title="FAQ" className="mb-4 -mx-4 -mt-2" />
+          <h1 className="hidden md:block text-3xl font-bold text-text mb-2">Frequently Asked Questions</h1>
           <p className="text-gray-500 mb-8">Find answers to common questions about our products and services.</p>
 
           <div className="space-y-3">

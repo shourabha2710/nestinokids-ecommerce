@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { shoppingAPI } from '../api/endpoints';
 import { motion, AnimatePresence } from 'framer-motion';
+import MobilePageHeader from '../components/MobilePageHeader';
 import { AlertTriangle } from 'lucide-react';
 
 const AddressListPage = () => {
@@ -82,7 +83,8 @@ const AddressListPage = () => {
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold text-text mb-8">My Addresses</h1>
+        <MobilePageHeader title="My Addresses" />
+        <h1 className="hidden md:block text-2xl font-bold text-text mb-8">My Addresses</h1>
         <div className="space-y-4">
           {[1, 2].map((i) => (
             <div key={i} className="bg-white rounded-lg shadow p-6 animate-pulse">
@@ -98,13 +100,14 @@ const AddressListPage = () => {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
+      <MobilePageHeader title="My Addresses" className="mb-4 -mx-4 -mt-2" />
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold text-text">My Addresses</h1>
+        <h1 className="hidden md:block text-2xl font-bold text-text">My Addresses</h1>
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={openCreateForm}
-          className="bg-gold text-white px-4 py-2 rounded-lg font-semibold"
+          className="ml-auto bg-gold text-white px-4 py-2 rounded-lg font-semibold"
         >
           + Add Address
         </motion.button>

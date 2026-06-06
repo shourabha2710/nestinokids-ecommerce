@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { shoppingAPI } from '../api/endpoints';
+import MobilePageHeader from '../components/MobilePageHeader';
 import { motion } from 'framer-motion';
 
 const STATUS_COLORS = {
@@ -40,7 +41,8 @@ const OrderListPage = () => {
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold text-text mb-8">My Orders</h1>
+        <MobilePageHeader title="My Orders" />
+        <h1 className="hidden md:block text-2xl font-bold text-text mb-8">My Orders</h1>
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
             <div key={i} className="bg-white rounded-lg shadow p-6 animate-pulse">
@@ -56,7 +58,8 @@ const OrderListPage = () => {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold text-text mb-8">My Orders</h1>
+      <MobilePageHeader title="My Orders" />
+      <h1 className="hidden md:block text-2xl font-bold text-text mb-8">My Orders</h1>
 
       {orders.length === 0 ? (
         <div className="text-center py-16">

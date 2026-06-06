@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import MobilePageHeader from '../components/MobilePageHeader';
 import { motion } from 'framer-motion';
 import { Mail, Phone, MapPin, Send } from 'lucide-react';
 
@@ -19,7 +20,8 @@ const ContactUsPage = () => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <h1 className="text-3xl font-bold text-text mb-6">Contact Us</h1>
+          <MobilePageHeader title="Contact Us" className="mb-4 -mx-4 -mt-2" />
+          <h1 className="hidden md:block text-3xl font-bold text-text mb-6">Contact Us</h1>
           <p className="text-gray-500 mb-10">We'd love to hear from you. Get in touch with us.</p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
