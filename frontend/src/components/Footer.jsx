@@ -6,11 +6,50 @@ const Footer = () => {
   const navigate = useNavigate();
   const currentYear = new Date().getFullYear();
 
-  const footerLinks = {
-    Company: ['About Us', 'Careers', 'Press', 'Blog'],
-    Support: ['Help Center', 'Contact Us', 'FAQs', 'Returns'],
-    Legal: ['Privacy Policy', 'Terms of Service', 'Cookie Policy', 'Disclaimer'],
-    Social: ['Facebook', 'Instagram', 'Twitter', 'YouTube'],
+  const footerNav = [
+    {
+      title: 'Company',
+      links: [
+        { label: 'About Us', path: '/about' },
+        { label: 'Contact Us', path: '/contact' },
+        { label: 'FAQ', path: '/faq' },
+        { label: 'Shipping Policy', path: '/shipping-policy' },
+      ],
+    },
+    {
+      title: 'Customer Service',
+      links: [
+        { label: 'Return & Refund Policy', path: '/return-policy' },
+        { label: 'Privacy Policy', path: '/privacy-policy' },
+        { label: 'Terms & Conditions', path: '/terms' },
+      ],
+    },
+    {
+      title: 'Shop',
+      links: [
+        { label: 'All Products', path: '/products' },
+        { label: 'Categories', path: '/categories' },
+        { label: 'Best Sellers', path: '/bestsellers' },
+        { label: 'New Arrivals', path: '/new-arrivals' },
+      ],
+    },
+    {
+      title: 'Social',
+      links: [
+        { label: 'Instagram', path: 'https://instagram.com/nestinokids' },
+        { label: 'Facebook', path: 'https://facebook.com/nestinokids' },
+        { label: 'YouTube', path: 'https://youtube.com/@nestinokids' },
+      ],
+    },
+  ];
+
+  const handleNavigate = (path) => {
+    window.scrollTo(0, 0);
+    if (path.startsWith('http')) {
+      window.open(path, '_blank', 'noopener,noreferrer');
+    } else {
+      navigate(path);
+    }
   };
 
   return (
@@ -39,22 +78,22 @@ const Footer = () => {
 
         {/* Links */}
         <div className="py-12 grid grid-cols-1 md:grid-cols-4 gap-8">
-          {Object.entries(footerLinks).map(([category, links]) => (
+          {footerNav.map((group) => (
             <motion.div
-              key={category}
+              key={group.title}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
             >
-              <h4 className="text-lg font-bold mb-4 text-gold">{category}</h4>
+              <h4 className="text-lg font-bold mb-4 text-gold">{group.title}</h4>
               <ul className="space-y-2">
-                {links.map((link) => (
-                  <li key={link}>
+                {group.links.map((link) => (
+                  <li key={link.label}>
                     <button
                       className="text-sm text-gray-300 hover:text-gold transition"
-                      onClick={() => window.scrollTo(0, 0)}
+                      onClick={() => handleNavigate(link.path)}
                     >
-                      {link}
+                      {link.label}
                     </button>
                   </li>
                 ))}

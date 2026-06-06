@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { productsAPI, shoppingAPI } from '../api/endpoints';
 import { addToCart } from '../store/slices/cartSlice';
+import { addWishlistItem, removeWishlistItem } from '../store/slices/wishlistSlice';
 import { motion } from 'framer-motion';
+import { Heart } from 'lucide-react';
 
 const PLACEHOLDER = '/images/placeholder-product.svg';
 
@@ -18,9 +20,12 @@ const ProductDetailPage = () => {
   const [quantity, setQuantity] = useState(1);
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState(false);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
+  const { isAuthenticated } = useSelector((state) => state.auth);
+  const wishlistIds = useSelector((state) => state.wishlist.ids);
+  const isInWishlist = product ? wishlistIds.includes(product.id) : false;
 
   useEffect(() => {
-    window.scrollTo(0, 0);
     if (!slug) return;
     fetchProduct();
   }, [slug]);
@@ -35,6 +40,24 @@ const ProductDetailPage = () => {
       setError('Product not found');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleToggleWishlist = async () => {
+    if (!isAuthenticated || wishlistLoading) return;
+    setWishlistLoading(true);
+    try {
+      if (isInWishlist) {
+        await shoppingAPI.removeFromWishlist(product.id);
+        dispatch(removeWishlistItem(product.id));
+      } else {
+        await shoppingAPI.addToWishlist(product.id);
+        dispatch(addWishlistItem(product));
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setWishlistLoading(false);
     }
   };
 
@@ -204,18 +227,34 @@ const ProductDetailPage = () => {
             </div>
           </div>
 
-          {/* Add to Cart */}
-          <motion.button
-            whileHover={adding ? {} : { scale: 1.02 }}
-            whileTap={adding ? {} : { scale: 0.98 }}
-            onClick={handleAddToCart}
-            disabled={adding}
-            className={`w-full py-3 rounded-lg font-bold text-lg transition ${
-              added ? 'bg-green-500 text-white' : adding ? 'bg-gold bg-opacity-60 text-white cursor-not-allowed' : 'bg-gold text-white hover:bg-opacity-90'
-            }`}
-          >
-            {added ? 'Added to Cart!' : adding ? 'Adding...' : `Add to Cart - ₹${(product.discount_price || product.price) * quantity}`}
-          </motion.button>
+          {/* Add to Cart + Wishlist */}
+          <div className="flex gap-3">
+            <motion.button
+              whileHover={adding ? {} : { scale: 1.02 }}
+              whileTap={adding ? {} : { scale: 0.98 }}
+              onClick={handleAddToCart}
+              disabled={adding}
+              className={`flex-1 py-3 rounded-lg font-bold text-lg transition ${
+                added ? 'bg-green-500 text-white' : adding ? 'bg-gold bg-opacity-60 text-white cursor-not-allowed' : 'bg-gold text-white hover:bg-opacity-90'
+              }`}
+            >
+              {added ? 'Added to Cart!' : adding ? 'Adding...' : `Add to Cart - ₹${(product.discount_price || product.price) * quantity}`}
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={handleToggleWishlist}
+              disabled={wishlistLoading}
+              className={`px-4 py-3 rounded-lg border-2 font-semibold text-sm transition flex items-center justify-center ${
+                isInWishlist
+                  ? 'border-red-200 bg-red-50 text-red-500'
+                  : 'border-gray-200 text-gray-400 hover:border-red-200 hover:text-red-400'
+              }`}
+              title={isInWishlist ? 'Remove from Wishlist' : 'Add to Wishlist'}
+            >
+              <Heart className={`w-5 h-5 ${isInWishlist ? 'fill-current' : ''}`} />
+            </motion.button>
+          </div>
 
           {/* SKU */}
           <p className="text-xs text-gray-400 mt-4">SKU: {product.sku}</p>

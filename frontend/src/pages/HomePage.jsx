@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { productsAPI } from '../api/endpoints';
 import ProductCard from '../components/ProductCard';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -114,6 +115,7 @@ const HeroBanner = ({ banners }) => {
 };
 
 const HomePage = () => {
+  const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [banners, setBanners] = useState([]);
@@ -182,6 +184,32 @@ const HomePage = () => {
           </div>
         </div>
       </section>
+
+      {/* Categories */}
+      {!loading && categories.length > 0 && (
+        <section className="py-16">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 className="text-3xl font-bold text-text mb-12">Shop by Category</h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              {categories.filter((c) => c.is_active !== false).map((cat, i) => (
+                <motion.button
+                  key={cat.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                  onClick={() => navigate(`/products?category=${cat.id}`)}
+                  className="bg-ivory rounded-xl p-4 text-center hover:shadow-md hover:bg-gold/10 transition-all duration-200 group min-h-[100px] flex flex-col items-center justify-center"
+                >
+                  <span className="text-2xl mb-1">{(cat.name || '').charAt(0)}</span>
+                  <span className="text-sm font-semibold text-text group-hover:text-gold transition-colors">
+                    {cat.name}
+                  </span>
+                </motion.button>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Featured Products */}
       <section className="py-16">

@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { shoppingAPI } from '../api/endpoints';
 import { addToCart } from '../store/slices/cartSlice';
+import { addWishlistItem, removeWishlistItem } from '../store/slices/wishlistSlice';
 import { motion } from 'framer-motion';
+import { Heart } from 'lucide-react';
 
 const PLACEHOLDER = '/images/placeholder-product.svg';
 
@@ -13,7 +15,10 @@ const ProductCard = ({ product }) => {
   const [imgError, setImgError] = useState(false);
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState(false);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
   const { isAuthenticated } = useSelector((state) => state.auth);
+  const wishlistIds = useSelector((state) => state.wishlist.ids);
+  const isInWishlist = wishlistIds.includes(product.id);
 
   useEffect(() => {
     setImgError(false);
@@ -49,10 +54,40 @@ const ProductCard = ({ product }) => {
           </div>
         )}
         {product.is_featured && (
-          <div className="absolute top-4 left-4 bg-gold text-white px-2 py-1 rounded-lg text-xs font-bold">
+          <div className="absolute top-4 left-12 bg-gold text-white px-2 py-1 rounded-lg text-xs font-bold">
             Featured
           </div>
         )}
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={async (e) => {
+            e.stopPropagation();
+            if (!isAuthenticated || wishlistLoading) return;
+            setWishlistLoading(true);
+            try {
+              if (isInWishlist) {
+                await shoppingAPI.removeFromWishlist(product.id);
+                dispatch(removeWishlistItem(product.id));
+              } else {
+                await shoppingAPI.addToWishlist(product.id);
+                dispatch(addWishlistItem(product));
+              }
+            } catch {
+              // silently fail
+            } finally {
+              setWishlistLoading(false);
+            }
+          }}
+          className={`absolute top-4 left-4 p-1.5 rounded-full transition-colors z-10 ${
+            isInWishlist
+              ? 'bg-red-50 text-red-500'
+              : 'bg-white/80 text-gray-400 hover:text-red-400'
+          }`}
+          title={isInWishlist ? 'Remove from Wishlist' : 'Add to Wishlist'}
+        >
+          <Heart className={`w-5 h-5 ${isInWishlist ? 'fill-current' : ''}`} />
+        </motion.button>
       </div>
 
       {/* Content */}

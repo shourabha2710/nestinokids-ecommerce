@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { shoppingAPI } from '../api/endpoints';
 import { addToCart } from '../store/slices/cartSlice';
+import { removeWishlistItem, setWishlist } from '../store/slices/wishlistSlice';
 import { motion } from 'framer-motion';
 
 const PLACEHOLDER = '/images/placeholder-product.svg';
@@ -25,6 +26,7 @@ const WishlistPage = () => {
       setLoading(true);
       const res = await shoppingAPI.getWishlist();
       setItems(res.data);
+      dispatch(setWishlist(res.data));
     } catch {
       // handled
     } finally {
@@ -36,6 +38,7 @@ const WishlistPage = () => {
     try {
       await shoppingAPI.removeFromWishlist(productId);
       setItems((prev) => prev.filter((item) => item.id !== productId));
+      dispatch(removeWishlistItem(productId));
     } catch {
       fetchWishlist();
     }

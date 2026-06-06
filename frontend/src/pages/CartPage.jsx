@@ -39,24 +39,28 @@ const CartPage = () => {
 
   const handleQuantityChange = async (item, newQty) => {
     if (newQty < 1) return;
+    const prevItems = items;
     try {
       await shoppingAPI.updateCartItem(getProductId(item), newQty);
-      setItems((prev) =>
-        prev.map((i) =>
-          i.id === item.id
-            ? { ...i, quantity: newQty, total: i.price * newQty }
-            : i
-        )
+      const updated = prevItems.map((i) =>
+        i.id === item.id
+          ? { ...i, quantity: newQty, total: i.price * newQty }
+          : i
       );
+      setItems(updated);
+      dispatch(setCartItems(updated));
     } catch {
       fetchCart();
     }
   };
 
   const handleRemove = async (item) => {
+    const prevItems = items;
     try {
       await shoppingAPI.removeFromCart(getProductId(item));
-      setItems((prev) => prev.filter((i) => i.id !== item.id));
+      const updated = prevItems.filter((i) => i.id !== item.id);
+      setItems(updated);
+      dispatch(setCartItems(updated));
     } catch {
       fetchCart();
     }

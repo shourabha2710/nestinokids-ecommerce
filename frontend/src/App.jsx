@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { Provider, useDispatch, useSelector } from "react-redux";
 import store from "./store/store";
+import ScrollToTop from "./components/ScrollToTop";
 import StorefrontLayout from "./components/StorefrontLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import HomePage from "./pages/HomePage";
@@ -15,6 +16,15 @@ import AddressListPage from "./pages/AddressListPage";
 import WishlistPage from "./pages/WishlistPage";
 import ProfilePage from "./pages/ProfilePage";
 import ProductDetailPage from "./pages/ProductDetailPage";
+import ProductsListingPage from "./pages/ProductsListingPage";
+import CategoryListPage from "./pages/CategoryListPage";
+import AboutUsPage from "./pages/AboutUsPage";
+import ContactUsPage from "./pages/ContactUsPage";
+import FAQPage from "./pages/FAQPage";
+import ShippingPolicyPage from "./pages/ShippingPolicyPage";
+import ReturnPolicyPage from "./pages/ReturnPolicyPage";
+import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
+import TermsPage from "./pages/TermsPage";
 import ProtectedAdminRoute from "./components/admin/ProtectedAdminRoute";
 import AdminLayout from "./components/admin/AdminLayout";
 import AdminLoginPage from "./pages/admin/AdminLoginPage";
@@ -28,6 +38,7 @@ import AdminBannerList from "./pages/admin/AdminBannerList";
 import AdminOrderList from "./pages/admin/AdminOrderList";
 import { setUser, logout } from "./store/slices/authSlice";
 import { setCartItems } from "./store/slices/cartSlice";
+import { setWishlist } from "./store/slices/wishlistSlice";
 import { authAPI, shoppingAPI } from "./api/endpoints";
 import "./styles/globals.css";
 
@@ -42,8 +53,12 @@ const AuthProvider = ({ children }) => {
         try {
           const res = await authAPI.getCurrentUser();
           dispatch(setUser(res.data));
-          const cartRes = await shoppingAPI.getCart();
+          const [cartRes, wishlistRes] = await Promise.all([
+            shoppingAPI.getCart(),
+            shoppingAPI.getWishlist(),
+          ]);
           dispatch(setCartItems(cartRes.data));
+          dispatch(setWishlist(wishlistRes.data));
         } catch {
           dispatch(logout());
         }
@@ -72,13 +87,25 @@ function App() {
   return (
     <Provider store={store}>
       <Router>
+        <ScrollToTop />
         <AuthProvider>
           <Routes>
             <Route element={<StorefrontLayout />}>
               <Route path="/" element={<HomePage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
+              <Route path="/products" element={<ProductsListingPage />} />
               <Route path="/products/:slug" element={<ProductDetailPage />} />
+              <Route path="/categories" element={<CategoryListPage />} />
+              <Route path="/bestsellers" element={<ProductsListingPage filter="featured" />} />
+              <Route path="/new-arrivals" element={<ProductsListingPage sort="newest" />} />
+              <Route path="/about" element={<AboutUsPage />} />
+              <Route path="/contact" element={<ContactUsPage />} />
+              <Route path="/faq" element={<FAQPage />} />
+              <Route path="/shipping-policy" element={<ShippingPolicyPage />} />
+              <Route path="/return-policy" element={<ReturnPolicyPage />} />
+              <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+              <Route path="/terms" element={<TermsPage />} />
               <Route path="/cart" element={<CartPage />} />
               <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
               <Route path="/orders" element={<ProtectedRoute><OrderListPage /></ProtectedRoute>} />
