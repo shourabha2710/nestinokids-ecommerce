@@ -2,54 +2,40 @@
 @tailwind components;
 @tailwind utilities;
 
-* {
-  @apply scroll-smooth;
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-[#FFFCF7] text-text font-sans antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display;
+  }
 }
 
-html {
-  scroll-behavior: smooth;
-}
-
-body {
-  @apply bg-white text-text font-sans;
-}
-
-/* Animations */
 @layer components {
-  .fade-in {
-    @apply animate-fade-in;
+  .gradient-bg {
+    background: radial-gradient(circle at top right, rgba(212,175,55,.08), transparent 40%);
   }
 
-  .slide-up {
-    @apply animate-slide-up;
+  .glass {
+    @apply bg-white/80 backdrop-blur-md border-b border-white/20;
+  }
+
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-gold to-gold-light;
   }
 }
 
-@keyframes fade-in {
-  from {
-    opacity: 0;
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
-  to {
-    opacity: 1;
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
-}
-
-@keyframes slide-up {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Utility animations */
-.animate-fade-in {
-  animation: fade-in 0.5s ease-in-out;
-}
-
-.animate-slide-up {
-  animation: slide-up 0.5s ease-in-out;
 }
