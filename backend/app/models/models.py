@@ -366,3 +366,19 @@ class Banner(Base):
     __table_args__ = (
         Index('idx_banner_active', 'is_active'),
     )
+
+
+class InstagramPost(Base):
+    __tablename__ = "instagram_posts"
+
+    id = Column(Integer, primary_key=True)
+    post_url = Column(String(500), nullable=False)
+    thumbnail_image = Column(String(255), nullable=True)
+    display_order = Column(Integer, default=0)
+    is_active = Column(Boolean, default=True, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    __table_args__ = (
+        Index('idx_instagram_active_order', 'is_active', 'display_order'),
+    )

@@ -36,6 +36,7 @@ import AdminCategoryList from "./pages/admin/AdminCategoryList";
 import AdminCategoryForm from "./pages/admin/AdminCategoryForm";
 import AdminInventoryList from "./pages/admin/AdminInventoryList";
 import AdminBannerList from "./pages/admin/AdminBannerList";
+import AdminInstagramFeed from "./pages/admin/AdminInstagramFeed";
 import AdminOrderList from "./pages/admin/AdminOrderList";
 import { setUser, logout } from "./store/slices/authSlice";
 import { setCartItems } from "./store/slices/cartSlice";
@@ -130,6 +131,7 @@ function App() {
                 <Route path="/admin/categories/:id/edit" element={<AdminCategoryForm />} />
                 <Route path="/admin/inventory" element={<AdminInventoryList />} />
                 <Route path="/admin/banners" element={<AdminBannerList />} />
+                <Route path="/admin/instagram" element={<AdminInstagramFeed />} />
                 <Route path="/admin/orders" element={<AdminOrderList />} />
               </Route>
             </Route>

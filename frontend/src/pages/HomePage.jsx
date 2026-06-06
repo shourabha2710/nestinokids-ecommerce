@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { productsAPI } from '../api/endpoints';
+import { productsAPI, instagramAPI } from '../api/endpoints';
 import ProductCard from '../components/ProductCard';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -433,58 +433,82 @@ const ReviewsSection = () => {
 };
 
 /* ─── INSTAGRAM GALLERY ─── */
-const instagramPosts = [
-  { id: 1, label: 'Styled by you' },
-  { id: 2, label: 'Little fashionista' },
-  { id: 3, label: 'Tiny toes, big style' },
-  { id: 4, label: 'Cozy mornings' },
-  { id: 5, label: 'Playtime favorites' },
-  { id: 6, label: 'Sweet dreams collection' },
-];
+const InstagramSection = () => {
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-const InstagramSection = () => (
-  <section className="py-14 lg:py-20 bg-[#FFFCF7]">
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <SectionHeader
-        title="Follow Us @nestinokids"
-        subtitle="Tag us for a chance to be featured"
-        linkTo="https://instagram.com/nestinokids"
-        linkLabel="Follow on Instagram"
-      />
-      <motion.div
-        variants={container}
-        initial="initial"
-        whileInView="animate"
-        viewport={{ once: true, margin: '-50px' }}
-        className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4"
-      >
-        {instagramPosts.map((post, i) => (
-          <motion.a
-            key={post.id}
-            variants={fadeUp}
-            href="https://instagram.com/nestinokids"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`group relative overflow-hidden rounded-xl aspect-square bg-gradient-to-br ${
-              ['from-gold/10 to-amber-50', 'from-rose-100 to-pink-50', 'from-sky-100 to-blue-50', 'from-green-100 to-emerald-50', 'from-purple-100 to-violet-50', 'from-amber-100 to-yellow-50'][i]
-            } border border-white/50`}
-          >
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Camera className="w-8 h-8 text-text/20" />
-            </div>
-            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            <div className="absolute bottom-0 left-0 right-0 p-3 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0">
-              <p className="text-xs text-white font-medium truncate">{post.label}</p>
-            </div>
-            <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-              <Camera className="w-4 h-4 text-white" />
-            </div>
-          </motion.a>
-        ))}
-      </motion.div>
-    </div>
-  </section>
-);
+  useEffect(() => {
+    instagramAPI.getPosts()
+      .then((res) => setPosts(res.data))
+      .catch(() => setPosts([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const gradients = [
+    'from-gold/10 to-amber-50',
+    'from-rose-100 to-pink-50',
+    'from-sky-100 to-blue-50',
+    'from-green-100 to-emerald-50',
+    'from-purple-100 to-violet-50',
+    'from-amber-100 to-yellow-50',
+  ];
+
+  return (
+    <section className="py-14 lg:py-20 bg-[#FFFCF7]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <SectionHeader
+          title="Follow Us @nestinokids"
+          subtitle="Tag us for a chance to be featured"
+          linkTo="https://instagram.com/nestinokids"
+          linkLabel="Follow on Instagram"
+        />
+        <motion.div
+          variants={container}
+          initial="initial"
+          whileInView="animate"
+          viewport={{ once: true, margin: '-50px' }}
+          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4"
+        >
+          {loading
+            ? Array.from({ length: 6 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="aspect-square rounded-xl bg-gray-100 animate-pulse"
+                />
+              ))
+            : posts.map((post, i) => (
+                <motion.a
+                  key={post.id}
+                  variants={fadeUp}
+                  href={post.post_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`group relative overflow-hidden rounded-xl aspect-square bg-gradient-to-br ${
+                    gradients[i % gradients.length]
+                  } border border-white/50`}
+                >
+                  {post.thumbnail_image ? (
+                    <img
+                      src={post.thumbnail_image}
+                      alt=""
+                      className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Camera className="w-8 h-8 text-text/20" />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <Camera className="w-4 h-4 text-white" />
+                  </div>
+                </motion.a>
+              ))}
+        </motion.div>
+      </div>
+    </section>
+  );
+};
 
 /* ─── NEWSLETTER ─── */
 const NewsletterSection = () => (

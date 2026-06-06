@@ -74,3 +74,20 @@ export const shoppingAPI = {
   
   validateCoupon: (code, params) => api.get(`/coupons/${code}`, { params }),
 };
+
+// Instagram APIs
+export const instagramAPI = {
+  getPosts: () => api.get('/instagram-posts'),
+};
+
+export const adminInstagramAPI = {
+  getPosts: () => api.get('/admin/instagram-posts'),
+  getPost: (id) => api.get(`/admin/instagram-posts/${id}`),
+  createPost: (formData) => api.post('/admin/instagram-posts', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  updatePost: (id, formData) => api.put(`/admin/instagram-posts/${id}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  deletePost: (id) => api.delete(`/admin/instagram-posts/${id}`),
+};

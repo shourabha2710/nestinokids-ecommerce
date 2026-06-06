@@ -14,6 +14,9 @@ from app.schemas.schemas import (
     CategoryCreate,
     CategoryResponse,
     CategoryUpdate,
+    InstagramPostCreate,
+    InstagramPostResponse,
+    InstagramPostUpdate,
     InventoryUpdate,
     InventoryResponse,
     OrderItemResponse,
@@ -24,7 +27,7 @@ from app.schemas.schemas import (
     ProductUpdate,
 )
 from sqlalchemy.orm import joinedload
-from app.models.models import Product, Category, Order, OrderItem, User, ProductImage, Inventory, Banner, OrderStatusEnum, PaymentStatusEnum
+from app.models.models import Product, Category, Order, OrderItem, User, ProductImage, Inventory, Banner, InstagramPost, OrderStatusEnum, PaymentStatusEnum
 from app.api.v1.endpoints.auth import require_admin
 from app.utils.helpers import generate_slug, generate_sku
 from app.core.config import settings
@@ -717,3 +720,158 @@ def admin_delete_category(
     db.delete(category)
     db.commit()
     return {"message": "Category deleted successfully"}
+
+
+@router.get("/instagram-posts", response_model=List[InstagramPostResponse])
+def admin_list_instagram_posts(
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    posts = db.query(InstagramPost).order_by(InstagramPost.display_order).all()
+    return posts
+
+
+@router.get("/instagram-posts/{post_id}", response_model=InstagramPostResponse)
+def admin_get_instagram_post(
+    post_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    post = db.query(InstagramPost).filter(InstagramPost.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Instagram post not found")
+    return post
+
+
+@router.post("/instagram-posts", response_model=InstagramPostResponse, status_code=status.HTTP_201_CREATED)
+def admin_create_instagram_post(
+    request: Request,
+    post_url: str = Form(...),
+    thumbnail_url: Optional[str] = Form(None),
+    display_order: int = Form(0),
+    is_active: bool = Form(True),
+    image: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    if not thumbnail_url and not image:
+        raise HTTPException(
+            status_code=400,
+            detail="Either Thumbnail URL or an uploaded image is required",
+        )
+
+    final_thumbnail = thumbnail_url
+
+    if image:
+        ext = Path(image.filename).suffix.lower()
+        if ext not in ALLOWED_IMAGE_EXTENSIONS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"File type '{ext}' not allowed. Allowed: {', '.join(ALLOWED_IMAGE_EXTENSIONS)}",
+            )
+
+        contents = image.file.read()
+        if len(contents) > settings.MAX_UPLOAD_SIZE:
+            raise HTTPException(
+                status_code=400,
+                detail=f"File too large. Maximum size is {settings.MAX_UPLOAD_SIZE // (1024 * 1024)}MB",
+            )
+
+        unique_name = f"{uuid.uuid4().hex}{ext}"
+        upload_dir = Path(settings.UPLOAD_DIR) / "instagram"
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        with open(upload_dir / unique_name, "wb") as f:
+            f.write(contents)
+
+        final_thumbnail = f"{str(request.base_url).rstrip('/')}/{settings.UPLOAD_DIR}/instagram/{unique_name}"
+
+    post = InstagramPost(
+        post_url=post_url,
+        thumbnail_image=final_thumbnail,
+        display_order=display_order,
+        is_active=is_active,
+    )
+    db.add(post)
+    db.commit()
+    db.refresh(post)
+    return post
+
+
+@router.put("/instagram-posts/{post_id}", response_model=InstagramPostResponse)
+def admin_update_instagram_post(
+    post_id: int,
+    request: Request,
+    post_url: Optional[str] = Form(None),
+    thumbnail_url: Optional[str] = Form(None),
+    display_order: Optional[int] = Form(None),
+    is_active: Optional[bool] = Form(None),
+    image: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    post = db.query(InstagramPost).filter(InstagramPost.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Instagram post not found")
+
+    if post_url is not None:
+        post.post_url = post_url
+    if display_order is not None:
+        post.display_order = display_order
+    if is_active is not None:
+        post.is_active = is_active
+    if thumbnail_url is not None:
+        post.thumbnail_image = thumbnail_url if thumbnail_url else None
+
+    if image:
+        ext = Path(image.filename).suffix.lower()
+        if ext not in ALLOWED_IMAGE_EXTENSIONS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"File type '{ext}' not allowed. Allowed: {', '.join(ALLOWED_IMAGE_EXTENSIONS)}",
+            )
+
+        contents = image.file.read()
+        if len(contents) > settings.MAX_UPLOAD_SIZE:
+            raise HTTPException(
+                status_code=400,
+                detail=f"File too large. Maximum size is {settings.MAX_UPLOAD_SIZE // (1024 * 1024)}MB",
+            )
+
+        unique_name = f"{uuid.uuid4().hex}{ext}"
+        upload_dir = Path(settings.UPLOAD_DIR) / "instagram"
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        with open(upload_dir / unique_name, "wb") as f:
+            f.write(contents)
+
+        post.thumbnail_image = f"{str(request.base_url).rstrip('/')}/{settings.UPLOAD_DIR}/instagram/{unique_name}"
+
+    db.commit()
+    db.refresh(post)
+    return post
+
+
+@router.delete("/instagram-posts/{post_id}")
+def admin_delete_instagram_post(
+    post_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    post = db.query(InstagramPost).filter(InstagramPost.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Instagram post not found")
+
+    if post.thumbnail_image:
+        try:
+            fpath = post.thumbnail_image
+            if fpath.startswith(("http://", "https://")):
+                from urllib.parse import urlparse
+                fpath = urlparse(fpath).path.lstrip("/")
+            file_path = Path(fpath)
+            if file_path.exists():
+                file_path.unlink()
+        except Exception:
+            pass
+
+    db.delete(post)
+    db.commit()
+    return {"message": "Instagram post deleted successfully"}

@@ -412,3 +412,31 @@ class BannerResponse(BannerBase):
     
     class Config:
         from_attributes = True
+
+
+# Instagram Post Schemas
+class InstagramPostBase(BaseModel):
+    post_url: str
+    thumbnail_image: Optional[str] = None
+    display_order: int = 0
+    is_active: bool = True
+
+
+class InstagramPostCreate(InstagramPostBase):
+    pass
+
+
+class InstagramPostUpdate(BaseModel):
+    post_url: Optional[str] = None
+    thumbnail_image: Optional[str] = None
+    display_order: Optional[int] = None
+    is_active: Optional[bool] = None
+
+
+class InstagramPostResponse(InstagramPostBase):
+    id: int
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True

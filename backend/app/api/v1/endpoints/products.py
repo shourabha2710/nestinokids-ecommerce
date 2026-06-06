@@ -3,10 +3,10 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from app.db.database import get_db
 from app.schemas.schemas import (
-    BannerResponse, CategoryCreate, CategoryResponse, ProductCreate, ProductResponse,
+    BannerResponse, CategoryCreate, CategoryResponse, InstagramPostResponse, ProductCreate, ProductResponse,
     ProductUpdate, ProductImageResponse, ReviewCreate, ReviewResponse
 )
-from app.models.models import Category, Product, ProductImage, Review, User, Inventory, ProductVariant, Banner
+from app.models.models import Category, Product, ProductImage, Review, User, Inventory, ProductVariant, Banner, InstagramPost
 from app.utils.helpers import generate_slug
 from app.api.v1.endpoints.auth import get_current_user
 from typing import List, Optional
@@ -236,3 +236,18 @@ def search_products(
         "total": len(products),
         "results": products
     }
+
+
+# Instagram Posts Endpoint
+@router.get("/instagram-posts", response_model=List[InstagramPostResponse])
+def get_active_instagram_posts(
+    db: Session = Depends(get_db)
+):
+    """Get all active Instagram posts sorted by display_order"""
+    posts = (
+        db.query(InstagramPost)
+        .filter(InstagramPost.is_active == True)
+        .order_by(InstagramPost.display_order)
+        .all()
+    )
+    return posts
