@@ -105,10 +105,15 @@ const Footer = () => {
         {/* Brand Info */}
         <div className="py-8 border-t border-gray-700">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div>
-              <h3 className="text-lg font-bold text-gold mb-2">NestinoKids</h3>
-              <p className="text-sm text-gray-300">Softness You Can Trust</p>
-              <p className="text-xs text-gray-400 mt-2">Premium Kids Apparel & Essentials</p>
+            <div className="text-center md:text-left">
+              <img
+                src="/images/logo.png"
+                alt="NestinoKids"
+                className="object-contain h-[60px] md:h-20 mx-auto md:mx-0 mb-3"
+              />
+              <h3 className="text-lg font-bold text-gold mb-0.5">NestinoKids</h3>
+              <p className="text-sm text-gray-300 mb-2">Softness You Can Trust</p>
+              <p className="text-xs text-gray-400">Premium Kids Apparel &amp; Essentials</p>
             </div>
             <div>
               <h4 className="font-semibold text-gold mb-2">Contact Us</h4>

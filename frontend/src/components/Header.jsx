@@ -39,8 +39,6 @@ const Header = () => {
     navigate('/');
   };
 
-  const isHome = location.pathname === '/';
-
   return (
     <header className="sticky top-0 z-50 bg-white shadow-md">
       <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
@@ -56,14 +54,21 @@ const Header = () => {
             <Menu className="w-6 h-6 text-text" />
           </button>
 
-          {/* Logo — flex-1 on mobile to center */}
+          {/* Logo + Brand — hidden on mobile (shown in MobileDrawer) */}
           <motion.div
-            whileHover={{ scale: 1.05 }}
-            className="flex items-center cursor-pointer md:flex-none flex-1 justify-center md:justify-start"
+            whileHover={{ opacity: 0.9 }}
+            className="hidden md:flex items-center cursor-pointer md:flex-none justify-start gap-3"
             onClick={() => navigate('/')}
           >
-            <h1 className="text-xl sm:text-2xl font-bold text-gold whitespace-nowrap">NestinoKids</h1>
-            <p className="hidden sm:block text-xs text-blush ml-2">Softness You Can Trust</p>
+            <img
+              src="/images/logo.png"
+              alt="NestinoKids"
+              className="object-contain h-12"
+            />
+            <div className="leading-tight">
+              <h1 className="text-2xl font-bold text-gold">NestinoKids</h1>
+              <p className="text-xs tracking-wide text-gray-500">Softness You Can Trust</p>
+            </div>
           </motion.div>
 
           {/* Search Bar — desktop only */}

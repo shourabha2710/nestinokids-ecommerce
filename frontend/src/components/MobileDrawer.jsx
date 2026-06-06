@@ -89,7 +89,17 @@ const MobileDrawer = ({ open, onClose }) => {
             className="fixed top-0 left-0 bottom-0 w-72 bg-white z-[70] shadow-2xl flex flex-col"
           >
             <div className="flex items-center justify-between px-4 h-16 border-b border-gray-100">
-              <span className="font-bold text-lg text-gold">Menu</span>
+              <div className="flex items-center gap-3">
+                <img
+                  src="/images/logo.png"
+                  alt="NestinoKids"
+                  className="h-10 w-auto object-contain"
+                />
+                <div>
+                  <h2 className="font-bold text-base text-gold leading-tight">NestinoKids</h2>
+                  <p className="text-[10px] text-gray-400 leading-tight">Softness You Can Trust</p>
+                </div>
+              </div>
               <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
                 <X className="w-5 h-5 text-text" />
               </button>

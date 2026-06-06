@@ -78,29 +78,37 @@ const AdminLayout = () => {
         } ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
       >
         {/* Logo area - fixed top */}
-        <div className="flex items-center h-16 px-4 border-b border-gray-800 flex-shrink-0">
-          <div className="flex items-center space-x-3 flex-1 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-gold flex items-center justify-center flex-shrink-0">
-              <span className="text-gray-900 font-bold text-sm">N</span>
-            </div>
-            {!sidebarCollapsed && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="min-w-0"
+        <div className={`
+          flex items-center flex-shrink-0 border-b border-white/10
+          ${sidebarCollapsed ? 'justify-center h-16 px-2' : 'px-4 py-4'}
+        `}>
+          {sidebarCollapsed ? (
+            <img
+              src="/images/logo.png"
+              alt="NestinoKids"
+              className="h-12 w-auto object-contain flex-shrink-0"
+            />
+          ) : (
+            <>
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <img
+                  src="/images/logo.png"
+                  alt="NestinoKids"
+                  className="h-12 w-auto object-contain flex-shrink-0"
+                />
+                <div className="min-w-0">
+                  <h2 className="text-lg font-bold text-white truncate">NestinoKids</h2>
+                  <p className="text-xs text-gray-400 truncate">Admin Panel</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setMobileSidebarOpen(false)}
+                className="lg:hidden text-gray-400 hover:text-white p-1 flex-shrink-0"
               >
-                <h1 className="text-sm font-bold text-gold truncate">NestinoKids</h1>
-                <p className="text-[10px] text-gray-500 truncate">Admin Panel</p>
-              </motion.div>
-            )}
-          </div>
-          <button
-            onClick={() => setMobileSidebarOpen(false)}
-            className="lg:hidden text-gray-400 hover:text-white p-1 flex-shrink-0"
-          >
-            <X className="w-5 h-5" />
-          </button>
+                <X className="w-5 h-5" />
+              </button>
+            </>
+          )}
         </div>
 
         {/* Navigation - scrollable */}
