@@ -17,6 +17,7 @@ import WishlistPage from "./pages/WishlistPage";
 import ProfilePage from "./pages/ProfilePage";
 import ProductDetailPage from "./pages/ProductDetailPage";
 import ProductsListingPage from "./pages/ProductsListingPage";
+import SearchResultsPage from "./pages/SearchResultsPage";
 import CategoryListPage from "./pages/CategoryListPage";
 import AboutUsPage from "./pages/AboutUsPage";
 import ContactUsPage from "./pages/ContactUsPage";
@@ -96,6 +97,7 @@ function App() {
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/products" element={<ProductsListingPage />} />
               <Route path="/products/:slug" element={<ProductDetailPage />} />
+              <Route path="/search" element={<SearchResultsPage />} />
               <Route path="/categories" element={<CategoryListPage />} />
               <Route path="/bestsellers" element={<ProductsListingPage filter="featured" />} />
               <Route path="/new-arrivals" element={<ProductsListingPage sort="newest" />} />

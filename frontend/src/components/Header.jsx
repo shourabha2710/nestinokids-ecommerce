@@ -4,7 +4,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { toggleSidebar } from '../store/slices/uiSlice';
 import { logout } from '../store/slices/authSlice';
 import { motion } from 'framer-motion';
-import { Menu, Search } from 'lucide-react';
+import { Menu, Search, X, Loader2 } from 'lucide-react';
+import { productsAPI } from '../api/endpoints';
 import MobileDrawer from './MobileDrawer';
 
 const Header = () => {
@@ -16,7 +17,14 @@ const Header = () => {
   const wishlistCount = useSelector(state => state.wishlist.count);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
   const dropdownRef = useRef(null);
+  const searchRef = useRef(null);
+  const debounceRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -32,7 +40,70 @@ const Header = () => {
 
   useEffect(() => {
     setDrawerOpen(false);
+    setShowSuggestions(false);
+    setSearchQuery('');
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!searchQuery.trim()) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+    debounceRef.current = setTimeout(async () => {
+      setSearchLoading(true);
+      try {
+        const res = await productsAPI.getProducts({ search: searchQuery, limit: 5 });
+        const data = Array.isArray(res.data) ? res.data : [];
+        setSuggestions(data);
+        setShowSuggestions(true);
+      } catch {
+        setSuggestions([]);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(debounceRef.current);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (searchRef.current && !searchRef.current.contains(e.target)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSearchKeyDown = (e) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedIndex((i) => Math.min(i + 1, suggestions.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedIndex((i) => Math.max(i - 1, -1));
+    } else if (e.key === 'Enter') {
+      if (selectedIndex >= 0 && suggestions[selectedIndex]) {
+        navigate(`/products/${suggestions[selectedIndex].slug}`);
+      } else {
+        navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
+      }
+      setShowSuggestions(false);
+      setSearchQuery('');
+    } else if (e.key === 'Escape') {
+      setShowSuggestions(false);
+    }
+  };
+
+  const handleSuggestionClick = (product) => {
+    navigate(`/products/${product.slug}`);
+    setShowSuggestions(false);
+    setSearchQuery('');
+  };
+
+  const IMG_PLACEHOLDER = '/images/placeholder-product.svg';
 
   const handleLogout = () => {
     dispatch(logout());
@@ -71,17 +142,60 @@ const Header = () => {
             </div>
           </motion.div>
 
-          {/* Search Bar — desktop only */}
-          <div className="hidden md:flex flex-1 max-w-lg mx-8">
+          {/* Live Search — desktop only */}
+          <div className="hidden md:flex flex-1 max-w-lg mx-8 relative" ref={searchRef}>
             <div className="relative w-full">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
                 placeholder="Search products..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gold text-sm"
-                onFocus={() => navigate('/search')}
+                value={searchQuery}
+                onChange={(e) => { setSearchQuery(e.target.value); setSelectedIndex(-1); }}
+                onKeyDown={handleSearchKeyDown}
+                onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
+                className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-gold text-sm"
               />
+              {searchQuery && (
+                <button
+                  onClick={() => { setSearchQuery(''); setSuggestions([]); setShowSuggestions(false); }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
             </div>
+
+            {showSuggestions && (
+              <div className="absolute top-full left-0 right-0 mt-1.5 bg-white border border-gray-200 rounded-lg shadow-xl z-50 max-h-80 overflow-y-auto">
+                {searchLoading ? (
+                  <div className="flex items-center justify-center py-6">
+                    <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+                  </div>
+                ) : suggestions.length === 0 ? (
+                  <div className="px-4 py-6 text-center text-sm text-gray-400">
+                    No products found for &ldquo;{searchQuery}&rdquo;
+                  </div>
+                ) : (
+                  suggestions.map((product, index) => {
+                    const imgUrl = product.images?.find((i) => i.is_primary)?.image_url || product.images?.[0]?.image_url || IMG_PLACEHOLDER;
+                    return (
+                      <button
+                        key={product.id}
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => handleSuggestionClick(product)}
+                        className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${index === selectedIndex ? 'bg-gray-50' : ''}`}
+                      >
+                        <img src={imgUrl} alt="" className="w-10 h-10 rounded-lg object-cover bg-gray-100 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">{product.name}</p>
+                          <p className="text-xs text-gray-500">₹{product.discount_price || product.price}</p>
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            )}
           </div>
 
           {/* Actions */}
