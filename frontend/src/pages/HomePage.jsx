@@ -436,13 +436,61 @@ const ReviewsSection = () => {
 const InstagramSection = () => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const scrollRef = useRef(null);
 
   useEffect(() => {
+    if (!loading) {
+      console.log('[Instagram] Render state — posts.length:', posts.length, 'loading:', loading);
+    }
+  }, [posts, loading]);
+
+  useEffect(() => {
+    console.log('[Instagram] Fetching posts...');
     instagramAPI.getPosts()
-      .then((res) => setPosts(res.data))
-      .catch(() => setPosts([]))
+      .then((res) => {
+        console.log('[Instagram] Raw axios response:', res);
+        console.log('[Instagram] res.status:', res?.status);
+        console.log('[Instagram] res.data (response body):', res?.data);
+        console.log('[Instagram] typeof res.data:', typeof res?.data);
+        console.log('[Instagram] Array.isArray(res.data):', Array.isArray(res?.data));
+
+        // Extract posts array from the response body.
+        // Backend returns List[InstagramPostResponse] = plain JSON array.
+        // Handle any extra wrapping like { data: [...] }, { posts: [...] }, { items: [...] }.
+        let postsArray = [];
+        if (Array.isArray(res?.data)) {
+          postsArray = res.data;
+        } else if (res?.data?.data && Array.isArray(res.data.data)) {
+          console.log('[Instagram] Using res.data.data (wrapped in { data } envelope)');
+          postsArray = res.data.data;
+        } else if (res?.data?.posts && Array.isArray(res.data.posts)) {
+          console.log('[Instagram] Using res.data.posts');
+          postsArray = res.data.posts;
+        } else if (res?.data?.items && Array.isArray(res.data.items)) {
+          console.log('[Instagram] Using res.data.items');
+          postsArray = res.data.items;
+        } else {
+          console.warn('[Instagram] Could not find array in response — postsArray stays []');
+        }
+
+        console.log('[Instagram] Final posts array:', postsArray);
+        console.log('[Instagram] Final posts count:', postsArray.length);
+        console.log('[Instagram] First post sample:', postsArray[0]);
+
+        setPosts(postsArray);
+      })
+      .catch((err) => {
+        console.error('[Instagram] Fetch error:', err);
+        console.error('[Instagram] Error response:', err.response);
+        console.error('[Instagram] Error data:', err.response?.data);
+        setPosts([]);
+      })
       .finally(() => setLoading(false));
   }, []);
+
+  const handleClick = (postId) => {
+    instagramAPI.trackClick(postId).catch(() => {});
+  };
 
   const gradients = [
     'from-gold/10 to-amber-50',
@@ -453,8 +501,18 @@ const InstagramSection = () => {
     'from-amber-100 to-yellow-50',
   ];
 
+  const renderCard = (post, i) => (
+    <a href={post.post_url} target="_blank" rel="noopener noreferrer">
+      <img
+        src={post.thumbnail_image}
+        alt=""
+        className="w-[250px] h-[250px] object-cover"
+      />
+    </a>
+  );
+
   return (
-    <section className="py-14 lg:py-20 bg-[#FFFCF7]">
+    <section className="py-14 lg:py-20 bg-[#FFFCF7] overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <SectionHeader
           title="Follow Us @nestinokids"
@@ -462,49 +520,72 @@ const InstagramSection = () => {
           linkTo="https://instagram.com/nestinokids"
           linkLabel="Follow on Instagram"
         />
-        <motion.div
-          variants={container}
-          initial="initial"
-          whileInView="animate"
-          viewport={{ once: true, margin: '-50px' }}
-          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4"
-        >
-          {loading
-            ? Array.from({ length: 6 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="aspect-square rounded-xl bg-gray-100 animate-pulse"
-                />
-              ))
-            : posts.map((post, i) => (
-                <motion.a
-                  key={post.id}
-                  variants={fadeUp}
-                  href={post.post_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`group relative overflow-hidden rounded-xl aspect-square bg-gradient-to-br ${
-                    gradients[i % gradients.length]
-                  } border border-white/50`}
-                >
-                  {post.thumbnail_image ? (
-                    <img
-                      src={post.thumbnail_image}
-                      alt=""
-                      className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                    />
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <Camera className="w-8 h-8 text-text/20" />
-                    </div>
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <Camera className="w-4 h-4 text-white" />
-                  </div>
-                </motion.a>
+
+        {loading ? (
+          <motion.div
+            variants={container}
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true }}
+            className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4"
+          >
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="aspect-square rounded-xl bg-gray-100 animate-pulse"
+              />
+            ))}
+          </motion.div>
+        ) : posts.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="flex flex-col items-center justify-center py-12 text-center"
+          >
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-gold/10 to-amber-50 flex items-center justify-center mb-4">
+              <Camera size={32} className="text-gold/40" />
+            </div>
+            <p className="text-lg font-semibold text-text mb-1">
+              Instagram feed coming soon
+            </p>
+            <p className="text-sm text-text-muted">
+              Follow @nestinokids for latest updates
+            </p>
+          </motion.div>
+        ) : (
+          <>
+            {console.log('[Instagram] RENDER PATH: posts branch (loading:', loading, ', posts.length:', posts.length, ')')}
+            {/* Mobile: horizontal swipe carousel */}
+            <div
+              ref={scrollRef}
+              className="flex md:hidden gap-3 overflow-x-auto snap-x snap-mandatory -mx-4 px-4 pb-2"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
+              {posts.map((post) => (
+                <React.Fragment key={post.id}>
+                  {renderCard(post)}
+                </React.Fragment>
               ))}
-        </motion.div>
+            </div>
+
+            {/* Desktop: grid layout */}
+            <div className="hidden md:block">
+              <div className="grid grid-cols-3 lg:grid-cols-6 gap-4">
+                {posts.map((post, i) => (
+                  <motion.div
+                    key={post.id}
+                    initial={{ opacity: 0, y: 24 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: i * 0.07 }}
+                  >
+                    {renderCard(post, i)}
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </section>
   );

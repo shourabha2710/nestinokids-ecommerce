@@ -78,6 +78,7 @@ export const shoppingAPI = {
 // Instagram APIs
 export const instagramAPI = {
   getPosts: () => api.get('/instagram-posts'),
+  trackClick: (id) => api.post(`/instagram-posts/${id}/click`),
 };
 
 export const adminInstagramAPI = {
@@ -90,4 +91,12 @@ export const adminInstagramAPI = {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
   deletePost: (id) => api.delete(`/admin/instagram-posts/${id}`),
+  reorder: (data) => api.post('/admin/instagram-posts/reorder', data),
+  toggleActive: (id, isActive) => {
+    const formData = new FormData();
+    formData.append('is_active', String(isActive));
+    return api.put(`/admin/instagram-posts/${id}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
 };

@@ -435,6 +435,7 @@ class InstagramPostUpdate(BaseModel):
 
 class InstagramPostResponse(InstagramPostBase):
     id: int
+    click_count: int = 0
     created_at: datetime
     updated_at: Optional[datetime] = None
 

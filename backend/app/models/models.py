@@ -379,6 +379,24 @@ class InstagramPost(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
+    clicks = relationship("InstagramPostClick", back_populates="instagram_post",
+                          cascade="all, delete-orphan")
+
     __table_args__ = (
         Index('idx_instagram_active_order', 'is_active', 'display_order'),
+    )
+
+
+class InstagramPostClick(Base):
+    __tablename__ = "instagram_post_clicks"
+
+    id = Column(Integer, primary_key=True)
+    instagram_post_id = Column(Integer, ForeignKey('instagram_posts.id'), nullable=False)
+    clicked_at = Column(DateTime(timezone=True), server_default=func.now())
+    ip_address = Column(String(45), nullable=True)
+
+    instagram_post = relationship("InstagramPost", back_populates="clicks")
+
+    __table_args__ = (
+        Index('idx_instagram_click_post', 'instagram_post_id'),
     )

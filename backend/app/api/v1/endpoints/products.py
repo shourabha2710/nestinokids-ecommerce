@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, Request, status, Query
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from app.db.database import get_db
@@ -6,7 +6,7 @@ from app.schemas.schemas import (
     BannerResponse, CategoryCreate, CategoryResponse, InstagramPostResponse, ProductCreate, ProductResponse,
     ProductUpdate, ProductImageResponse, ReviewCreate, ReviewResponse
 )
-from app.models.models import Category, Product, ProductImage, Review, User, Inventory, ProductVariant, Banner, InstagramPost
+from app.models.models import Category, Product, ProductImage, Review, User, Inventory, ProductVariant, Banner, InstagramPost, InstagramPostClick
 from app.utils.helpers import generate_slug
 from app.api.v1.endpoints.auth import get_current_user
 from typing import List, Optional
@@ -246,8 +246,30 @@ def get_active_instagram_posts(
     """Get all active Instagram posts sorted by display_order"""
     posts = (
         db.query(InstagramPost)
+        .options(joinedload(InstagramPost.clicks))
         .filter(InstagramPost.is_active == True)
         .order_by(InstagramPost.display_order)
         .all()
     )
+    for p in posts:
+        p.click_count = len(p.clicks) if p.clicks else 0
     return posts
+
+
+@router.post("/instagram-posts/{post_id}/click")
+def track_instagram_click(
+    post_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    post = db.query(InstagramPost).filter(InstagramPost.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Instagram post not found")
+
+    click = InstagramPostClick(
+        instagram_post_id=post_id,
+        ip_address=request.client.host if request.client else None,
+    )
+    db.add(click)
+    db.commit()
+    return {"message": "Click tracked"}

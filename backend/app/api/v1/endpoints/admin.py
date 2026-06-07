@@ -27,7 +27,7 @@ from app.schemas.schemas import (
     ProductUpdate,
 )
 from sqlalchemy.orm import joinedload
-from app.models.models import Product, Category, Order, OrderItem, User, ProductImage, Inventory, Banner, InstagramPost, OrderStatusEnum, PaymentStatusEnum
+from app.models.models import Product, Category, Order, OrderItem, User, ProductImage, Inventory, Banner, InstagramPost, InstagramPostClick, OrderStatusEnum, PaymentStatusEnum
 from app.api.v1.endpoints.auth import require_admin
 from app.utils.helpers import generate_slug, generate_sku
 from app.core.config import settings
@@ -727,7 +727,14 @@ def admin_list_instagram_posts(
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    posts = db.query(InstagramPost).order_by(InstagramPost.display_order).all()
+    posts = (
+        db.query(InstagramPost)
+        .options(joinedload(InstagramPost.clicks))
+        .order_by(InstagramPost.display_order)
+        .all()
+    )
+    for p in posts:
+        p.click_count = len(p.clicks) if p.clicks else 0
     return posts
 
 
@@ -737,10 +744,33 @@ def admin_get_instagram_post(
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    post = db.query(InstagramPost).filter(InstagramPost.id == post_id).first()
+    post = (
+        db.query(InstagramPost)
+        .options(joinedload(InstagramPost.clicks))
+        .filter(InstagramPost.id == post_id)
+        .first()
+    )
     if not post:
         raise HTTPException(status_code=404, detail="Instagram post not found")
+    post.click_count = len(post.clicks) if post.clicks else 0
     return post
+
+
+@router.post("/instagram-posts/reorder")
+def admin_reorder_instagram_posts(
+    data: List[dict],
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    for item in data:
+        post_id = item.get("id")
+        order = item.get("display_order")
+        if post_id is not None and order is not None:
+            db.query(InstagramPost).filter(InstagramPost.id == post_id).update(
+                {"display_order": order}
+            )
+    db.commit()
+    return {"message": "Reordered successfully"}
 
 
 @router.post("/instagram-posts", response_model=InstagramPostResponse, status_code=status.HTTP_201_CREATED)
