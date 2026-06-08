@@ -4,8 +4,16 @@ import { useSelector, useDispatch } from 'react-redux';
 import { shoppingAPI } from '../api/endpoints';
 import { clearCart } from '../store/slices/cartSlice';
 import { motion } from 'framer-motion';
+import { ShieldCheck, Truck, RotateCcw, Sparkles, Check } from 'lucide-react';
 
 const PLACEHOLDER = '/images/placeholder-product.svg';
+
+const steps = [
+  { label: 'Cart', icon: Check },
+  { label: 'Address', icon: Check },
+  { label: 'Payment', icon: Check },
+  { label: 'Review', icon: Check },
+];
 
 const CheckoutPage = () => {
   const navigate = useNavigate();
@@ -122,7 +130,29 @@ const CheckoutPage = () => {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold text-text mb-8">Checkout</h1>
+      <h1 className="text-2xl font-bold text-text mb-6">Checkout</h1>
+
+      {/* Step Indicator */}
+      <div className="flex items-center justify-center gap-2 mb-8">
+        {steps.map((step, i) => {
+          const active = i <= 2;
+          return (
+            <div key={step.label} className="flex items-center gap-2">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                active ? 'bg-gold text-white' : 'bg-gray-100 text-gray-300'
+              }`}>
+                {i + 1}
+              </div>
+              <span className={`text-xs font-medium ${active ? 'text-text' : 'text-gray-300'}`}>
+                {step.label}
+              </span>
+              {i < steps.length - 1 && (
+                <div className={`w-8 h-0.5 ${active ? 'bg-gold' : 'bg-gray-100'}`} />
+              )}
+            </div>
+          );
+        })}
+      </div>
 
       {error && (
         <div className="bg-red-50 text-red-600 p-4 rounded-lg mb-6">{error}</div>
@@ -290,6 +320,29 @@ const CheckoutPage = () => {
             >
               {placing ? 'Placing Order...' : 'Place Order'}
             </motion.button>
+
+            {/* Trust Signals */}
+            <div className="mt-6 pt-4 border-t border-gray-100">
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { icon: ShieldCheck, label: 'Secure Checkout', sub: '100% safe payment' },
+                  { icon: Truck, label: 'Fast Shipping', sub: 'Free on orders ₹499+' },
+                  { icon: RotateCcw, label: '7-Day Returns', sub: 'Easy & hassle-free' },
+                  { icon: Sparkles, label: 'Premium Quality', sub: 'Handpicked fabrics' },
+                ].map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <div key={item.label} className="flex items-start gap-2">
+                      <Icon className="w-4 h-4 text-gold mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-xs font-semibold text-text">{item.label}</p>
+                        <p className="text-[10px] text-text-muted">{item.sub}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
       </div>

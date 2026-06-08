@@ -3,6 +3,7 @@ import { createSlice } from '@reduxjs/toolkit';
 const initialState = {
   isSidebarOpen: false,
   isSearchOpen: false,
+  cartDrawerOpen: false,
   notification: null,
   loading: false,
 };
@@ -20,6 +21,15 @@ const uiSlice = createSlice({
     toggleSearch: (state) => {
       state.isSearchOpen = !state.isSearchOpen;
     },
+    openCartDrawer: (state) => {
+      state.cartDrawerOpen = true;
+    },
+    closeCartDrawer: (state) => {
+      state.cartDrawerOpen = false;
+    },
+    toggleCartDrawer: (state) => {
+      state.cartDrawerOpen = !state.cartDrawerOpen;
+    },
     setNotification: (state, action) => {
       state.notification = action.payload;
     },
@@ -36,6 +46,9 @@ export const {
   toggleSidebar,
   closeSidebar,
   toggleSearch,
+  openCartDrawer,
+  closeCartDrawer,
+  toggleCartDrawer,
   setNotification,
   clearNotification,
   setLoading,

@@ -414,6 +414,7 @@ class SiteSettings(Base):
     support_email = Column(String(255), default="support@nestinokids.com")
     support_phone = Column(String(20), default="9015957377")
     address = Column(Text, default="F-3/339 Street No., Sangam Vihar, New Delhi 110080")
+    free_shipping_threshold = Column(Float, default=999.0)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
 

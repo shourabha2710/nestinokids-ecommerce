@@ -142,3 +142,12 @@ export const adminHeroAPI = {
   deleteSlide: (id) => api.delete(`/admin/hero-slides/${id}`),
   reorder: (data) => api.post('/admin/hero-slides/reorder', data),
 };
+
+// Coupon APIs
+export const adminCouponAPI = {
+  getCoupons: () => api.get('/admin/coupons'),
+  getCoupon: (id) => api.get(`/admin/coupons/${id}`),
+  createCoupon: (data) => api.post('/admin/coupons', data),
+  updateCoupon: (id, data) => api.put(`/admin/coupons/${id}`, data),
+  deleteCoupon: (id) => api.delete(`/admin/coupons/${id}`),
+};

@@ -46,6 +46,16 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
+**Database Migrations (Alembic):**
+```bash
+cd backend
+alembic revision --autogenerate -m "description_of_change"  # Generate new migration
+alembic upgrade head                                          # Apply pending migrations
+alembic downgrade -1                                          # Rollback one step
+alembic history                                                # View migration history
+alembic current                                                # Show current version
+```
+
 **Frontend Setup:**
 ```bash
 cd frontend
@@ -74,7 +84,7 @@ nestinokids-ecommerce/
 │   │   ├── services/          # Business Logic
 │   │   ├── middleware/        # Custom Middleware
 │   │   └── utils/             # Utility Functions
-│   ├── migrations/            # Alembic Migrations
+│   ├── alembic/                # Alembic Migrations
 │   ├── requirements.txt       # Python Dependencies
 │   └── .env.example          # Environment Template
 ├── frontend/                   # React Frontend
@@ -113,6 +123,11 @@ nestinokids-ecommerce/
 - **banners** - Marketing banners
 - **wishlist** - User wishlist (Many-to-Many)
 - **cart** - Shopping cart (Many-to-Many)
+- **instagram_posts** - Instagram feed posts
+- **instagram_post_clicks** - Instagram click tracking
+- **site_settings** - Centralized business settings
+- **customer_reviews** - Customer testimonials
+- **hero_slides** - Homepage hero carousel slides
 
 ## 🔌 API Endpoints
 
@@ -136,6 +151,35 @@ nestinokids-ecommerce/
 - `POST /api/v1/wishlist/{product_id}` - Add to wishlist
 - `POST /api/v1/orders` - Create order
 - `GET /api/v1/orders` - Get user orders
+
+### Reviews
+- `GET /api/v1/reviews` - Public customer reviews
+- `GET /api/v1/admin/reviews` - Admin list reviews
+- `POST /api/v1/admin/reviews` - Create review with image
+- `PUT /api/v1/admin/reviews/{id}` - Update review
+- `DELETE /api/v1/admin/reviews/{id}` - Delete review
+
+### Hero Slides
+- `GET /api/v1/hero-slides` - Public active hero slides
+- `GET /api/v1/admin/hero-slides` - Admin list all slides
+- `POST /api/v1/admin/hero-slides` - Create hero slide (image/video)
+- `PUT /api/v1/admin/hero-slides/{id}` - Update hero slide
+- `DELETE /api/v1/admin/hero-slides/{id}` - Delete hero slide
+- `POST /api/v1/admin/hero-slides/reorder` - Reorder slides
+- `POST /api/v1/hero-slides/{id}/view` - Track view
+- `POST /api/v1/hero-slides/{id}/click` - Track click
+
+### Settings
+- `GET /api/v1/settings` - Public site settings
+- `GET /api/v1/admin/settings` - Admin get settings
+- `PUT /api/v1/admin/settings` - Update settings
+
+### Coupons
+- `GET /api/v1/admin/coupons` - List all coupons
+- `GET /api/v1/admin/coupons/{id}` - Get coupon details
+- `POST /api/v1/admin/coupons` - Create coupon
+- `PUT /api/v1/admin/coupons/{id}` - Update coupon
+- `DELETE /api/v1/admin/coupons/{id}` - Delete coupon
 
 ## 🎨 Design System
 
@@ -182,6 +226,10 @@ nestinokids-ecommerce/
 - **Banner Management** - Marketing banners
 - **Inventory Management** - Stock tracking
 - **Analytics** - Sales reports and insights
+- **Reviews Management** - Customer testimonials with ratings
+- **Hero Slides Management** - CMS-driven hero carousel with reorder
+- **Website Settings** - Social links, contact info, free shipping threshold
+- **Instagram Feed** - Social proof integration
 
 ## 🚢 Deployment
 

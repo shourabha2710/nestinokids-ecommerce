@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { toggleSidebar } from '../store/slices/uiSlice';
+import { toggleSidebar, openCartDrawer } from '../store/slices/uiSlice';
 import { logout } from '../store/slices/authSlice';
 import { motion } from 'framer-motion';
 import { Menu, Search, X, Loader2 } from 'lucide-react';
@@ -229,7 +229,7 @@ const Header = () => {
             {/* Cart */}
             <motion.button
               whileHover={{ scale: 1.1 }}
-              onClick={() => navigate('/cart')}
+              onClick={() => dispatch(openCartDrawer())}
               className="relative p-1.5"
               aria-label="Cart"
             >

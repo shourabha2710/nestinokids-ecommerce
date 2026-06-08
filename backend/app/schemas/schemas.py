@@ -301,6 +301,19 @@ class CouponResponse(CouponBase):
         from_attributes = True
 
 
+class CouponUpdate(BaseModel):
+    code: Optional[str] = None
+    description: Optional[str] = None
+    discount_type: Optional[str] = None
+    discount_value: Optional[float] = None
+    minimum_order_value: Optional[float] = None
+    maximum_discount: Optional[float] = None
+    max_usage: Optional[int] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    is_active: Optional[bool] = None
+
+
 # Review Schemas
 class ReviewBase(BaseModel):
     rating: int = Field(..., ge=1, le=5)
@@ -424,6 +437,7 @@ class SiteSettingsResponse(BaseModel):
     support_email: str = "support@nestinokids.com"
     support_phone: str = "9015957377"
     address: str = "F-3/339 Street No., Sangam Vihar, New Delhi 110080"
+    free_shipping_threshold: float = 999.0
     updated_at: Optional[datetime] = None
 
     class Config:
@@ -439,6 +453,7 @@ class SiteSettingsUpdate(BaseModel):
     support_email: Optional[str] = None
     support_phone: Optional[str] = None
     address: Optional[str] = None
+    free_shipping_threshold: Optional[float] = None
 
 
 # Customer Review Schemas (homepage testimonials)

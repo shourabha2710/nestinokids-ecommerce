@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Save, Globe, Mail, Phone, MapPin, Camera, Play, MessageSquare } from 'lucide-react';
+import { Save, Globe, Mail, Phone, MapPin, Camera, Play, MessageSquare, Truck } from 'lucide-react';
 import { adminAPI, settingsAPI } from '../../api/endpoints';
 
 const URL_REGEX = /^https?:\/\/.+/i;
@@ -16,6 +16,7 @@ const WebsiteSettings = () => {
     support_email: '',
     support_phone: '',
     address: '',
+    free_shipping_threshold: 999,
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -95,6 +96,7 @@ const WebsiteSettings = () => {
     { key: 'support_email', label: 'Support Email', icon: Mail, placeholder: 'support@nestinokids.com', type: 'email', section: 'Business' },
     { key: 'support_phone', label: 'Support Phone', icon: Phone, placeholder: '9015957377', section: 'Business' },
     { key: 'address', label: 'Address', icon: MapPin, placeholder: 'F-3/339 Street No., Sangam Vihar, New Delhi 110080', section: 'Business', textarea: true },
+    { key: 'free_shipping_threshold', label: 'Free Shipping Threshold (₹)', icon: Truck, placeholder: '999', section: 'Business' },
     { key: 'instagram_url', label: 'Instagram URL', icon: Camera, placeholder: 'https://instagram.com/nestinokids', section: 'Social' },
     { key: 'facebook_url', label: 'Facebook URL', icon: Globe, placeholder: 'https://facebook.com/nestinokids', section: 'Social' },
     { key: 'youtube_url', label: 'YouTube URL', icon: Play, placeholder: 'https://youtube.com/@nestinokids', section: 'Social' },
