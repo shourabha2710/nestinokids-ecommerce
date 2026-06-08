@@ -11,6 +11,9 @@ import {
   ShoppingCart,
   Image,
   Camera,
+  Star,
+  Monitor,
+  Settings,
   ChevronLeft,
   ChevronRight,
   Menu,
@@ -27,7 +30,10 @@ const navItems = [
   { path: '/admin/inventory', label: 'Inventory', icon: ClipboardList },
   { path: '/admin/orders', label: 'Orders', icon: ShoppingCart },
   { path: '/admin/banners', label: 'Banners', icon: Image },
+  { path: '/admin/hero-slides', label: 'Hero Slides', icon: Monitor },
   { path: '/admin/instagram', label: 'Instagram', icon: Camera },
+  { path: '/admin/reviews', label: 'Reviews', icon: Star },
+  { path: '/admin/settings', label: 'Website Settings', icon: Settings },
 ];
 
 const AdminLayout = () => {

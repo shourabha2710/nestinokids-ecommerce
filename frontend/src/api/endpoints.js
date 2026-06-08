@@ -49,6 +49,8 @@ export const adminAPI = {
   getOrders: (params) => api.get('/admin/orders', { params }),
   getOrder: (id) => api.get(`/admin/orders/${id}`),
   updateOrderStatus: (id, data) => api.put(`/admin/orders/${id}/status`, data),
+  getSettings: () => api.get('/admin/settings'),
+  updateSettings: (data) => api.put('/admin/settings', data),
 };
 
 // Shopping APIs
@@ -75,10 +77,31 @@ export const shoppingAPI = {
   validateCoupon: (code, params) => api.get(`/coupons/${code}`, { params }),
 };
 
-// Instagram APIs
+// Instragram APIs
 export const instagramAPI = {
   getPosts: () => api.get('/instagram-posts'),
   trackClick: (id) => api.post(`/instagram-posts/${id}/click`),
+};
+
+// Settings APIs
+export const settingsAPI = {
+  getPublic: () => api.get('/settings'),
+};
+
+// Customer Reviews APIs
+export const customerReviewsAPI = {
+  getPublic: () => api.get('/reviews'),
+};
+
+export const adminReviewsAPI = {
+  getReviews: () => api.get('/admin/reviews'),
+  createReview: (formData) => api.post('/admin/reviews', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  updateReview: (id, formData) => api.put(`/admin/reviews/${id}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  deleteReview: (id) => api.delete(`/admin/reviews/${id}`),
 };
 
 export const adminInstagramAPI = {
@@ -99,4 +122,23 @@ export const adminInstagramAPI = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
+};
+
+// Hero Slides APIs
+export const heroAPI = {
+  getSlides: () => api.get('/hero-slides'),
+  trackView: (id) => api.post(`/hero-slides/${id}/view`),
+  trackClick: (id) => api.post(`/hero-slides/${id}/click`),
+};
+
+export const adminHeroAPI = {
+  getSlides: () => api.get('/admin/hero-slides'),
+  createSlide: (formData) => api.post('/admin/hero-slides', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  updateSlide: (id, formData) => api.put(`/admin/hero-slides/${id}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  deleteSlide: (id) => api.delete(`/admin/hero-slides/${id}`),
+  reorder: (data) => api.post('/admin/hero-slides/reorder', data),
 };

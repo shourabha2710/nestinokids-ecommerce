@@ -1,11 +1,28 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Phone, MapPin, Heart } from 'lucide-react';
+import { settingsAPI } from '../api/endpoints';
 
 const Footer = () => {
   const navigate = useNavigate();
   const currentYear = new Date().getFullYear();
+  const [settings, setSettings] = useState(null);
+
+  useEffect(() => {
+    settingsAPI.getPublic()
+      .then((res) => setSettings(res.data))
+      .catch(() => {});
+  }, []);
+
+  const s = {
+    instagram_url: settings?.instagram_url || 'https://instagram.com/nestinokids',
+    facebook_url: settings?.facebook_url || 'https://facebook.com/nestinokids',
+    youtube_url: settings?.youtube_url || 'https://youtube.com/@nestinokids',
+    support_phone: settings?.support_phone || '9015957377',
+    support_email: settings?.support_email || 'support@nestinokids.com',
+    address: settings?.address || 'F-3/339 Street No., Sangam Vihar, New Delhi 110080',
+  };
 
   const footerNav = [
     {
@@ -37,9 +54,9 @@ const Footer = () => {
     {
       title: 'Social',
       links: [
-        { label: 'Instagram', path: 'https://instagram.com/nestinokids' },
-        { label: 'Facebook', path: 'https://facebook.com/nestinokids' },
-        { label: 'YouTube', path: 'https://youtube.com/@nestinokids' },
+        { label: 'Instagram', path: s.instagram_url },
+        { label: 'Facebook', path: s.facebook_url },
+        { label: 'YouTube', path: s.youtube_url },
       ],
     },
   ];
@@ -156,15 +173,15 @@ const Footer = () => {
               <ul className="space-y-3">
                 <li className="flex items-center gap-2.5 text-sm text-gray-400">
                   <Phone className="w-4 h-4 text-gold flex-shrink-0" />
-                  <span>9015957377</span>
+                  <span>{s.support_phone}</span>
                 </li>
                 <li className="flex items-center gap-2.5 text-sm text-gray-400">
                   <Mail className="w-4 h-4 text-gold flex-shrink-0" />
-                  <span>support@nestinokids.com</span>
+                  <span>{s.support_email}</span>
                 </li>
                 <li className="flex items-start gap-2.5 text-sm text-gray-400">
                   <MapPin className="w-4 h-4 text-gold flex-shrink-0 mt-0.5" />
-                  <span>F-3/339 Street No., Sangam Vihar, New Delhi 110080</span>
+                  <span>{s.address}</span>
                 </li>
               </ul>
             </motion.div>

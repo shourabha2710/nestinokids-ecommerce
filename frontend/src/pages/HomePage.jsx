@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { productsAPI, instagramAPI } from '../api/endpoints';
+import { productsAPI, instagramAPI, settingsAPI, customerReviewsAPI, heroAPI } from '../api/endpoints';
 import ProductCard from '../components/ProductCard';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -15,6 +15,10 @@ import {
   CheckCircle,
   Camera,
   ChevronLeft,
+  Play,
+  ShieldCheck,
+  Banknote,
+  RotateCcw,
 } from 'lucide-react';
 
 /* ─── Animations ─── */
@@ -75,114 +79,82 @@ const SectionHeader = ({ title, subtitle, linkTo, linkLabel }) => {
   );
 };
 
-/* ─── HERO ─── */
-const HeroSection = ({ banners }) => {
+/* ─── HERO V3 ─── */
+const HeroSection = () => {
   const nav = useNavigate();
+  const [slides, setSlides] = useState([]);
   const [current, setCurrent] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const intervalRef = useRef(null);
+  const touchStartX = useRef(null);
 
   useEffect(() => {
-    if (banners.length <= 1) return;
-    const t = setInterval(() => setCurrent((p) => (p + 1) % banners.length), 5000);
-    return () => clearInterval(t);
-  }, [banners.length]);
+    heroAPI.getSlides()
+      .then((res) => {
+        let arr = res.data;
+        if (!Array.isArray(arr) && arr?.slides) arr = arr.slides;
+        if (!Array.isArray(arr)) arr = [];
+        setSlides(arr);
+      })
+      .catch(() => setSlides([]))
+      .finally(() => setLoading(false));
+  }, []);
 
-  const hasBanners = banners.length > 0;
+  // Auto-rotate
+  useEffect(() => {
+    if (slides.length <= 1 || isPaused) return;
+    intervalRef.current = setInterval(() => {
+      setCurrent((p) => (p + 1) % slides.length);
+    }, 5000);
+    return () => clearInterval(intervalRef.current);
+  }, [slides.length, isPaused]);
 
-  return (
-    <section className="relative overflow-hidden bg-gradient-hero min-h-[80vh] lg:min-h-[85vh] flex items-center">
-      {/* Floating decoratives */}
-      <FloatIcon icon={Star} className="top-12 left-[8%]" />
-      <FloatIcon icon={Heart} className="top-1/3 right-[10%]" />
-      <FloatIcon icon={Sparkles} className="bottom-20 left-[15%]" />
-      <FloatIcon icon={Star} className="bottom-1/4 right-[5%]" />
+  // Track view on slide change
+  useEffect(() => {
+    if (slides[current]?.id) {
+      heroAPI.trackView(slides[current].id).catch(() => {});
+    }
+  }, [current, slides]);
 
-      {/* Background gradient orbs */}
-      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gold/5 rounded-full blur-3xl" />
-      <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-blush/30 rounded-full blur-3xl" />
+  const handlePrev = () => setCurrent((p) => (p - 1 + slides.length) % slides.length);
+  const handleNext = () => setCurrent((p) => (p + 1) % slides.length);
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-        {hasBanners ? (
-          <>
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={current}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.5 }}
-                className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center"
-              >
-                {/* Text */}
-                <div>
-                  <span className="inline-block text-xs font-semibold text-gold uppercase tracking-[0.2em] mb-4">
-                    Premium Kids Apparel
-                  </span>
-                  <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-text leading-[1.1] mb-5">
-                    {banners[current].title || 'Softness You Can Trust'}
-                  </h1>
-                  <p className="text-text-muted text-lg md:text-xl leading-relaxed mb-8 max-w-lg">
-                    {banners[current].description || 'Premium clothing crafted for newborns, toddlers and growing kids.'}
-                  </p>
-                  <div className="flex flex-wrap gap-4">
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => nav('/products?category=' + (banners[current].button_link || ''))}
-                      className="h-12 px-8 bg-gold text-white rounded-xl font-semibold text-sm shadow-premium hover:bg-gold-dark transition-colors flex items-center gap-2"
-                    >
-                      {banners[current].button_text || 'Shop Now'}
-                      <ArrowRight className="w-4 h-4" />
-                    </motion.button>
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => nav('/products')}
-                      className="h-12 px-8 border-2 border-gray-200 text-text rounded-xl font-semibold text-sm hover:border-gold hover:text-gold transition-colors"
-                    >
-                      Explore Collection
-                    </motion.button>
-                  </div>
-                </div>
+  const handleTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; };
+  const handleTouchEnd = (e) => {
+    if (touchStartX.current === null) return;
+    const diff = e.changedTouches[0].clientX - touchStartX.current;
+    if (Math.abs(diff) > 50) {
+      if (diff > 0) handlePrev();
+      else handleNext();
+    }
+    touchStartX.current = null;
+  };
 
-                {/* Image */}
-                {banners[current].image_url && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.6, delay: 0.1 }}
-                    className="relative"
-                  >
-                    <div className="aspect-[4/3] lg:aspect-square rounded-2xl overflow-hidden shadow-premium-lg">
-                      <img
-                        src={banners[current].image_url}
-                        alt={banners[current].title}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    {/* Decorative frame */}
-                    <div className="absolute -top-3 -right-3 w-full h-full border-2 border-gold/20 rounded-2xl -z-10" />
-                  </motion.div>
-                )}
-              </motion.div>
-            </AnimatePresence>
+  const handleCtaClick = (slideId, url) => {
+    heroAPI.trackClick(slideId).catch(() => {});
+    if (url?.startsWith('http')) window.open(url, '_blank', 'noopener,noreferrer');
+    else nav(url || '/products');
+  };
 
-            {/* Dots */}
-            {banners.length > 1 && (
-              <div className="flex justify-center gap-2 mt-8 lg:mt-10">
-                {banners.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setCurrent(i)}
-                    className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
-                      i === current ? 'bg-gold w-8' : 'bg-gray-300'
-                    }`}
-                  />
-                ))}
-              </div>
-            )}
-          </>
-        ) : (
-          /* Fallback hero */
+  if (loading) {
+    return (
+      <section className="relative overflow-hidden bg-gradient-hero min-h-[80vh] lg:min-h-[85vh] flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+      </section>
+    );
+  }
+
+  if (slides.length === 0) {
+    return (
+      <section className="relative overflow-hidden bg-gradient-hero min-h-[80vh] lg:min-h-[85vh] flex items-center">
+        <FloatIcon icon={Star} className="top-12 left-[8%]" />
+        <FloatIcon icon={Heart} className="top-1/3 right-[10%]" />
+        <FloatIcon icon={Sparkles} className="bottom-20 left-[15%]" />
+        <FloatIcon icon={Star} className="bottom-1/4 right-[5%]" />
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gold/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-blush/30 rounded-full blur-3xl" />
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
           <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
             <div>
               <span className="inline-block text-xs font-semibold text-gold uppercase tracking-[0.2em] mb-4">
@@ -216,12 +188,197 @@ const HeroSection = ({ banners }) => {
             </div>
             <div className="relative">
               <div className="aspect-square rounded-2xl bg-gradient-to-br from-gold/10 to-blush/30 flex items-center justify-center">
-                <img
-                  src="/images/logo.png"
-                  alt="NestinoKids"
-                  className="object-contain w-2/3 opacity-20"
+                <img src="/images/logo.png" alt="NestinoKids" className="object-contain w-2/3 opacity-20" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  const slide = slides[current];
+  const progress = ((current + 1) / slides.length) * 100;
+
+  return (
+    <section
+      className="relative overflow-hidden bg-gradient-hero min-h-[80vh] lg:min-h-[85vh] flex items-center"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* Floating decoratives */}
+      <FloatIcon icon={Star} className="top-12 left-[8%]" />
+      <FloatIcon icon={Heart} className="top-1/3 right-[10%]" />
+      <FloatIcon icon={Sparkles} className="bottom-20 left-[15%]" />
+      <FloatIcon icon={Star} className="bottom-1/4 right-[5%]" />
+
+      {/* Background orbs */}
+      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gold/5 rounded-full blur-3xl" />
+      <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-blush/30 rounded-full blur-3xl" />
+
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={current}
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -30 }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
+            className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center"
+          >
+            {/* Text */}
+            <div>
+              {slide.badge_text && (
+                <motion.span
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.15 }}
+                  className="inline-block text-xs font-semibold text-gold uppercase tracking-[0.2em] mb-4 bg-gold/5 px-3 py-1.5 rounded-full"
+                >
+                  {slide.badge_text}
+                </motion.span>
+              )}
+              {slide.title && (
+                <motion.h1
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-text leading-[1.1] mb-4"
+                >
+                  {slide.title}
+                </motion.h1>
+              )}
+              {slide.subtitle && (
+                <motion.p
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="text-gold/80 text-base md:text-lg font-medium mb-2"
+                >
+                  {slide.subtitle}
+                </motion.p>
+              )}
+              {slide.description && (
+                <motion.p
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.35 }}
+                  className="text-text-muted text-lg md:text-xl leading-relaxed mb-8 max-w-lg"
+                >
+                  {slide.description}
+                </motion.p>
+              )}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className="flex flex-wrap gap-4"
+              >
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => handleCtaClick(slide.id, slide.primary_button_link)}
+                  className="h-12 px-8 bg-gold text-white rounded-xl font-semibold text-sm shadow-premium hover:bg-gold-dark transition-colors flex items-center gap-2"
+                >
+                  {slide.primary_button_text || 'Shop Now'}
+                  <ArrowRight className="w-4 h-4" />
+                </motion.button>
+                {(slide.secondary_button_text || slide.secondary_button_link) && (
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => handleCtaClick(slide.id, slide.secondary_button_link)}
+                    className="h-12 px-8 border-2 border-gray-200 text-text rounded-xl font-semibold text-sm hover:border-gold hover:text-gold transition-colors"
+                  >
+                    {slide.secondary_button_text || 'Explore'}
+                  </motion.button>
+                )}
+              </motion.div>
+            </div>
+
+            {/* Media */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              className="relative"
+            >
+              <div className="aspect-[4/3] lg:aspect-square rounded-2xl overflow-hidden shadow-premium-lg bg-gradient-to-br from-gold/10 to-amber-50">
+                {slide.media_type === 'video' ? (
+                  <video
+                    src={slide.mobile_media_url || slide.media_url}
+                    className="w-full h-full object-cover"
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    preload={current === 0 ? 'auto' : 'metadata'}
+                  />
+                ) : (
+                  <img
+                    src={slide.mobile_media_url || slide.media_url}
+                    alt={slide.title || ''}
+                    className="w-full h-full object-cover"
+                    loading={current === 0 ? 'eager' : 'lazy'}
+                    fetchpriority={current === 0 ? 'high' : 'auto'}
+                  />
+                )}
+                {/* Gradient overlay for text readability */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/10 via-transparent to-transparent" />
+              </div>
+              <div className="absolute -top-3 -right-3 w-full h-full border-2 border-gold/20 rounded-2xl -z-10" />
+            </motion.div>
+          </motion.div>
+        </AnimatePresence>
+
+        {/* Controls & Progress */}
+        {slides.length > 1 && (
+          <div className="mt-8 lg:mt-10">
+            {/* Progress bar */}
+            <div className="flex items-center gap-4 mb-4">
+              <div className="flex-1 h-1 bg-gray-200 rounded-full overflow-hidden">
+                <motion.div
+                  key={current}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${progress}%` }}
+                  transition={{ duration: slides.length > 1 ? 0.5 : 0 }}
+                  className="h-full bg-gold rounded-full"
                 />
               </div>
+              <span className="text-xs font-medium text-text-muted tabular-nums">
+                {String(current + 1).padStart(2, '0')}/{String(slides.length).padStart(2, '0')}
+              </span>
+            </div>
+            {/* Dots */}
+            <div className="flex items-center justify-center gap-2">
+              <button
+                onClick={handlePrev}
+                className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center hover:border-gold hover:text-gold transition-colors"
+                aria-label="Previous slide"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <div className="flex gap-2 mx-2">
+                {slides.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setCurrent(i)}
+                    className={`h-2 rounded-full transition-all duration-300 ${
+                      i === current ? 'bg-gold w-8' : 'bg-gray-300 w-2 hover:bg-gray-400'
+                    }`}
+                    aria-label={`Go to slide ${i + 1}`}
+                  />
+                ))}
+              </div>
+              <button
+                onClick={handleNext}
+                className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center hover:border-gold hover:text-gold transition-colors"
+                aria-label="Next slide"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
             </div>
           </div>
         )}
@@ -229,6 +386,38 @@ const HeroSection = ({ banners }) => {
     </section>
   );
 };
+
+/* ─── CONVERSION TRUST STRIP ─── */
+const conversionItems = [
+  { icon: Truck, label: 'Free Shipping', sub: 'on orders ₹999+' },
+  { icon: Banknote, label: 'COD Available', sub: 'pay on delivery' },
+  { icon: ShieldCheck, label: 'Secure Checkout', sub: '100% safe payment' },
+  { icon: RotateCcw, label: '7-Day Returns', sub: 'easy & hassle-free' },
+  { icon: Sparkles, label: 'Premium Quality', sub: 'handpicked fabrics' },
+];
+
+const ConversionStrip = () => (
+  <div className="bg-white border-b border-gray-100">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="flex items-center justify-between gap-4 py-3 overflow-x-auto scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
+        {conversionItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <div key={item.label} className="flex items-center gap-2 flex-shrink-0">
+              <div className="w-8 h-8 rounded-full bg-gold/5 flex items-center justify-center">
+                <Icon className="w-4 h-4 text-gold" />
+              </div>
+              <div className="text-left">
+                <p className="text-xs font-semibold text-text whitespace-nowrap">{item.label}</p>
+                <p className="text-[10px] text-text-muted whitespace-nowrap">{item.sub}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  </div>
+);
 
 /* ─── AGE-BASED SHOPPING ─── */
 const ageGroups = [
@@ -365,16 +554,22 @@ const TrustSection = () => (
 );
 
 /* ─── CUSTOMER REVIEWS ─── */
-const reviews = [
-  { name: 'Priya S.', role: 'Mom of 2', rating: 5, text: 'The quality is absolutely incredible. My baby has sensitive skin and these clothes are the only ones that don\'t cause any irritation.' },
-  { name: 'Ananya R.', role: 'New Mom', rating: 5, text: 'I\'ve never seen such soft fabric! The designs are adorable and the colors stay bright even after many washes.' },
-  { name: 'Neha M.', role: 'Mom of a Toddler', rating: 4, text: 'Perfect fit for my active toddler. The clothes are durable, easy to clean, and my little one loves wearing them.' },
-  { name: 'Kavita D.', role: 'Mom of 3', rating: 5, text: 'Been buying from NestinoKids for years. The quality is consistent, the pricing is fair, and the delivery is always prompt.' },
-  { name: 'Ritu P.', role: 'First-time Mom', rating: 5, text: 'The baby shower gift set was gorgeous! Everyone complimented it. Already placing my second order.' },
-];
-
 const ReviewsSection = () => {
   const scrollRef = useRef(null);
+  const [reviews, setReviews] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    customerReviewsAPI.getPublic()
+      .then((res) => {
+        let arr = res.data;
+        if (Array.isArray(arr)) setReviews(arr);
+        else if (arr?.reviews && Array.isArray(arr.reviews)) setReviews(arr.reviews);
+        else setReviews([]);
+      })
+      .catch(() => setReviews([]))
+      .finally(() => setLoading(false));
+  }, []);
 
   const scroll = (dir) => {
     if (scrollRef.current) {
@@ -400,33 +595,48 @@ const ReviewsSection = () => {
           </div>
         </div>
 
-        <motion.div
-          ref={scrollRef}
-          variants={container}
-          initial="initial"
-          whileInView="animate"
-          viewport={{ once: true }}
-          className="flex gap-4 md:gap-6 overflow-x-auto pb-4 scrollbar-hide snap-x snap-mandatory"
-        >
-          {reviews.map((review, i) => (
-            <motion.div
-              key={i}
-              variants={fadeUp}
-              className="flex-shrink-0 w-[300px] md:w-[340px] bg-white rounded-2xl p-6 md:p-8 border border-gray-50 shadow-card snap-start"
-            >
-              <div className="flex gap-0.5 mb-3">
-                {[...Array(5)].map((_, j) => (
-                  <Star key={j} className={`w-3.5 h-3.5 ${j < review.rating ? 'text-gold fill-gold' : 'text-gray-200'}`} />
-                ))}
-              </div>
-              <p className="text-sm text-text-muted leading-relaxed mb-5 line-clamp-4">&ldquo;{review.text}&rdquo;</p>
-              <div>
-                <p className="text-sm font-semibold text-text">{review.name}</p>
-                <p className="text-xs text-text-muted">{review.role}</p>
-              </div>
-            </motion.div>
-          ))}
-        </motion.div>
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : reviews.length === 0 ? null : (
+          <motion.div
+            ref={scrollRef}
+            variants={container}
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true }}
+            className="flex gap-4 md:gap-6 overflow-x-auto pb-4 scrollbar-hide snap-x snap-mandatory"
+          >
+            {reviews.map((review, i) => (
+              <motion.div
+                key={review.id || i}
+                variants={fadeUp}
+                className="flex-shrink-0 w-[300px] md:w-[340px] bg-white rounded-2xl p-6 md:p-8 border border-gray-50 shadow-card snap-start"
+              >
+                <div className="flex gap-0.5 mb-3">
+                  {[...Array(5)].map((_, j) => (
+                    <Star key={j} className={`w-3.5 h-3.5 ${j < review.rating ? 'text-gold fill-gold' : 'text-gray-200'}`} />
+                  ))}
+                </div>
+                <p className="text-sm text-text-muted leading-relaxed mb-5 line-clamp-4">&ldquo;{review.review_text}&rdquo;</p>
+                <div className="flex items-center gap-3">
+                  {review.customer_image && (
+                    <img
+                      src={review.customer_image}
+                      alt=""
+                      className="w-8 h-8 rounded-full object-cover border border-white"
+                    />
+                  )}
+                  <div>
+                    <p className="text-sm font-semibold text-text">{review.customer_name}</p>
+                    {review.city && <p className="text-xs text-text-muted">{review.city}</p>}
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
       </div>
     </section>
   );
@@ -436,7 +646,18 @@ const ReviewsSection = () => {
 const InstagramSection = () => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [instagramUrl, setInstagramUrl] = useState('https://instagram.com/nestinokids');
   const scrollRef = useRef(null);
+
+  useEffect(() => {
+    settingsAPI.getPublic()
+      .then((res) => {
+        if (res.data?.instagram_url) {
+          setInstagramUrl(res.data.instagram_url);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!loading) {
@@ -502,12 +723,52 @@ const InstagramSection = () => {
   ];
 
   const renderCard = (post, i) => (
-    <a href={post.post_url} target="_blank" rel="noopener noreferrer">
-      <img
-        src={post.thumbnail_image}
-        alt=""
-        className="w-[250px] h-[250px] object-cover"
-      />
+    <a
+      href={post.post_url}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={() => handleClick(post.id)}
+      className={`group relative block rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-500 hover:-translate-y-2 flex-shrink-0 w-[65vw] sm:w-[45vw] md:w-auto snap-center bg-gradient-to-br ${
+        gradients[i % gradients.length]
+      }`}
+    >
+      {post.thumbnail_image ? (
+        <>
+          <div className="aspect-square overflow-hidden">
+            <img
+              src={post.thumbnail_image}
+              alt=""
+              loading="lazy"
+              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.08]"
+            />
+          </div>
+
+          {/* Gradient overlay at bottom */}
+          <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/60 via-black/20 to-transparent pointer-events-none" />
+
+          {/* Instagram badge top-right */}
+          <div className="absolute top-3 right-3">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-500 via-pink-500 to-orange-400 flex items-center justify-center shadow-md">
+              <svg viewBox="0 0 24 24" className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <rect x="2" y="2" width="20" height="20" rx="5" />
+                <circle cx="12" cy="12" r="5" />
+                <circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none" />
+              </svg>
+            </div>
+          </div>
+
+          {/* Play button overlay center */}
+          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+            <div className="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center backdrop-blur-sm shadow-lg">
+              <div className="w-0 h-0 border-t-[7px] border-b-[7px] border-l-[12px] border-t-transparent border-b-transparent border-l-gray-900 ml-1" />
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="aspect-square flex items-center justify-center">
+          <Camera className="w-10 h-10 text-text/20" />
+        </div>
+      )}
     </a>
   );
 
@@ -517,7 +778,7 @@ const InstagramSection = () => {
         <SectionHeader
           title="Follow Us @nestinokids"
           subtitle="Tag us for a chance to be featured"
-          linkTo="https://instagram.com/nestinokids"
+          linkTo={instagramUrl}
           linkLabel="Follow on Instagram"
         />
 
@@ -562,9 +823,9 @@ const InstagramSection = () => {
               className="flex md:hidden gap-3 overflow-x-auto snap-x snap-mandatory -mx-4 px-4 pb-2"
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
-              {posts.map((post) => (
+              {posts.map((post, i) => (
                 <React.Fragment key={post.id}>
-                  {renderCard(post)}
+                  {renderCard(post, i)}
                 </React.Fragment>
               ))}
             </div>
@@ -633,25 +894,13 @@ const NewsletterSection = () => (
 const HomePage = () => {
   const nav = useNavigate();
   const [products, setProducts] = useState([]);
-  const [banners, setBanners] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [productsRes, bannersRes] = await Promise.all([
-          productsAPI.getProducts({ limit: 12, sort: 'created_at' }),
-          productsAPI.getActiveBanners(),
-        ]);
-        setProducts(Array.isArray(productsRes.data) ? productsRes.data : []);
-        setBanners(Array.isArray(bannersRes.data) ? bannersRes.data : []);
-      } catch {
-        // silently fail
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
+    productsAPI.getProducts({ limit: 12, sort: 'created_at' })
+      .then((res) => setProducts(Array.isArray(res.data) ? res.data : []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   const bestSellers = products.slice(0, 4);
@@ -660,7 +909,10 @@ const HomePage = () => {
   return (
     <div className="min-h-screen bg-[#FFFCF7]">
       {/* 1. Hero */}
-      <HeroSection banners={banners} />
+      <HeroSection />
+
+      {/* 1b. Conversion Trust Strip */}
+      <ConversionStrip />
 
       {/* 2. Age-Based Shopping */}
       <AgeSection />

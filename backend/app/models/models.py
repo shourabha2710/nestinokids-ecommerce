@@ -400,3 +400,57 @@ class InstagramPostClick(Base):
     __table_args__ = (
         Index('idx_instagram_click_post', 'instagram_post_id'),
     )
+
+
+class SiteSettings(Base):
+    __tablename__ = "site_settings"
+
+    id = Column(Integer, primary_key=True)
+    site_name = Column(String(255), default="NestinoKids")
+    instagram_url = Column(String(500), default="https://instagram.com/nestinokids")
+    facebook_url = Column(String(500), default="https://facebook.com/nestinokids")
+    youtube_url = Column(String(500), default="https://youtube.com/@nestinokids")
+    whatsapp_number = Column(String(20), default="")
+    support_email = Column(String(255), default="support@nestinokids.com")
+    support_phone = Column(String(20), default="9015957377")
+    address = Column(Text, default="F-3/339 Street No., Sangam Vihar, New Delhi 110080")
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+
+class CustomerReview(Base):
+    __tablename__ = "customer_reviews"
+
+    id = Column(Integer, primary_key=True)
+    customer_name = Column(String(255), nullable=False)
+    customer_image = Column(String(255), nullable=True)
+    review_text = Column(Text, nullable=False)
+    rating = Column(Integer, nullable=False)
+    city = Column(String(100), nullable=True)
+    is_featured = Column(Boolean, default=False)
+    display_order = Column(Integer, default=0)
+    is_active = Column(Boolean, default=True, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+
+class HeroSlide(Base):
+    __tablename__ = "hero_slides"
+
+    id = Column(Integer, primary_key=True)
+    title = Column(String(255), nullable=True)
+    subtitle = Column(String(255), nullable=True)
+    description = Column(Text, nullable=True)
+    media_type = Column(String(10), default="image")
+    media_url = Column(String(500), nullable=False)
+    mobile_media_url = Column(String(500), nullable=True)
+    primary_button_text = Column(String(100), nullable=True)
+    primary_button_link = Column(String(500), nullable=True)
+    secondary_button_text = Column(String(100), nullable=True)
+    secondary_button_link = Column(String(500), nullable=True)
+    badge_text = Column(String(100), nullable=True)
+    display_order = Column(Integer, default=0)
+    is_active = Column(Boolean, default=True, index=True)
+    view_count = Column(Integer, default=0)
+    click_count = Column(Integer, default=0)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())

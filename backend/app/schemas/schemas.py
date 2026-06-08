@@ -414,6 +414,69 @@ class BannerResponse(BannerBase):
         from_attributes = True
 
 
+# Site Settings Schemas
+class SiteSettingsResponse(BaseModel):
+    site_name: str = "NestinoKids"
+    instagram_url: str = "https://instagram.com/nestinokids"
+    facebook_url: str = "https://facebook.com/nestinokids"
+    youtube_url: str = "https://youtube.com/@nestinokids"
+    whatsapp_number: str = ""
+    support_email: str = "support@nestinokids.com"
+    support_phone: str = "9015957377"
+    address: str = "F-3/339 Street No., Sangam Vihar, New Delhi 110080"
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class SiteSettingsUpdate(BaseModel):
+    site_name: Optional[str] = None
+    instagram_url: Optional[str] = None
+    facebook_url: Optional[str] = None
+    youtube_url: Optional[str] = None
+    whatsapp_number: Optional[str] = None
+    support_email: Optional[str] = None
+    support_phone: Optional[str] = None
+    address: Optional[str] = None
+
+
+# Customer Review Schemas (homepage testimonials)
+class CustomerReviewBase(BaseModel):
+    customer_name: str = Field(..., min_length=1, max_length=255)
+    review_text: str = Field(..., min_length=1)
+    rating: int = Field(..., ge=1, le=5)
+    city: Optional[str] = None
+    is_featured: bool = False
+    display_order: int = 0
+    is_active: bool = True
+
+
+class CustomerReviewCreate(CustomerReviewBase):
+    pass
+
+
+class CustomerReviewUpdate(BaseModel):
+    customer_name: Optional[str] = None
+    customer_image: Optional[str] = None
+    review_text: Optional[str] = None
+    rating: Optional[int] = Field(None, ge=1, le=5)
+    city: Optional[str] = None
+    is_featured: Optional[bool] = None
+    display_order: Optional[int] = None
+    is_active: Optional[bool] = None
+
+
+class CustomerReviewResponse(CustomerReviewBase):
+    id: int
+    customer_image: Optional[str] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
 # Instagram Post Schemas
 class InstagramPostBase(BaseModel):
     post_url: str
@@ -435,6 +498,54 @@ class InstagramPostUpdate(BaseModel):
 
 class InstagramPostResponse(InstagramPostBase):
     id: int
+    click_count: int = 0
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+# Hero Slide Schemas
+class HeroSlideBase(BaseModel):
+    title: Optional[str] = None
+    subtitle: Optional[str] = None
+    description: Optional[str] = None
+    media_type: str = "image"
+    media_url: str
+    mobile_media_url: Optional[str] = None
+    primary_button_text: Optional[str] = None
+    primary_button_link: Optional[str] = None
+    secondary_button_text: Optional[str] = None
+    secondary_button_link: Optional[str] = None
+    badge_text: Optional[str] = None
+    display_order: int = 0
+    is_active: bool = True
+
+
+class HeroSlideCreate(HeroSlideBase):
+    pass
+
+
+class HeroSlideUpdate(BaseModel):
+    title: Optional[str] = None
+    subtitle: Optional[str] = None
+    description: Optional[str] = None
+    media_type: Optional[str] = None
+    media_url: Optional[str] = None
+    mobile_media_url: Optional[str] = None
+    primary_button_text: Optional[str] = None
+    primary_button_link: Optional[str] = None
+    secondary_button_text: Optional[str] = None
+    secondary_button_link: Optional[str] = None
+    badge_text: Optional[str] = None
+    display_order: Optional[int] = None
+    is_active: Optional[bool] = None
+
+
+class HeroSlideResponse(HeroSlideBase):
+    id: int
+    view_count: int = 0
     click_count: int = 0
     created_at: datetime
     updated_at: Optional[datetime] = None

@@ -6,6 +6,9 @@ from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from app.core.config import settings
 from app.api.v1.endpoints import auth, products, shopping, admin
+from app.api.v1.endpoints import reviews as reviews_router
+from app.api.v1.endpoints import settings as site_settings_router
+from app.api.v1.endpoints import hero as hero_router
 from app.db.database import Base, engine
 
 # Create tables
@@ -14,6 +17,8 @@ Base.metadata.create_all(bind=engine)
 # Create upload directories
 upload_path = Path(settings.UPLOAD_DIR) / "products"
 upload_path.mkdir(parents=True, exist_ok=True)
+hero_upload_path = Path(settings.UPLOAD_DIR) / "hero"
+hero_upload_path.mkdir(parents=True, exist_ok=True)
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -39,6 +44,9 @@ app.include_router(auth.router)
 app.include_router(products.router)
 app.include_router(shopping.router)
 app.include_router(admin.router)
+app.include_router(site_settings_router.router)
+app.include_router(reviews_router.router)
+app.include_router(hero_router.router)
 
 # Serve uploaded files
 app.mount(f"/{settings.UPLOAD_DIR}", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
@@ -63,6 +71,20 @@ def root():
         "docs": "/docs",
         "redoc": "/redoc"
     }
+
+
+@app.on_event("startup")
+def create_default_settings():
+    """Auto-create default site settings on startup if none exist."""
+    from app.db.database import SessionLocal
+    from app.models.models import SiteSettings
+    db = SessionLocal()
+    try:
+        if not db.query(SiteSettings).first():
+            db.add(SiteSettings())
+            db.commit()
+    finally:
+        db.close()
 
 
 if __name__ == "__main__":

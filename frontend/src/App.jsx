@@ -38,6 +38,9 @@ import AdminInventoryList from "./pages/admin/AdminInventoryList";
 import AdminBannerList from "./pages/admin/AdminBannerList";
 import AdminInstagramFeed from "./pages/admin/AdminInstagramFeed";
 import AdminOrderList from "./pages/admin/AdminOrderList";
+import WebsiteSettings from "./pages/admin/WebsiteSettings";
+import Reviews from "./pages/admin/Reviews";
+import HeroSlides from "./pages/admin/HeroSlides";
 import { setUser, logout } from "./store/slices/authSlice";
 import { setCartItems } from "./store/slices/cartSlice";
 import { setWishlist } from "./store/slices/wishlistSlice";
@@ -133,6 +136,9 @@ function App() {
                 <Route path="/admin/banners" element={<AdminBannerList />} />
                 <Route path="/admin/instagram" element={<AdminInstagramFeed />} />
                 <Route path="/admin/orders" element={<AdminOrderList />} />
+                <Route path="/admin/settings" element={<WebsiteSettings />} />
+                <Route path="/admin/reviews" element={<Reviews />} />
+                <Route path="/admin/hero-slides" element={<HeroSlides />} />
               </Route>
             </Route>
 
