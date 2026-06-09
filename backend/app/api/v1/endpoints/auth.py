@@ -1,14 +1,47 @@
+import string
+import secrets
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.schemas.schemas import UserCreate, UserResponse, LoginRequest, TokenResponse, UserUpdate, RefreshTokenRequest
-from app.models.models import User, RoleEnum
+from app.models.models import User, RoleEnum, LoyaltyTransaction
 from app.core.security import hash_password, verify_password, create_access_token, create_refresh_token
 from datetime import timedelta
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 bearer_scheme = HTTPBearer(auto_error=False)
+
+
+def _generate_referral_code(db: Session) -> str:
+    """Generate a unique 8-char referral code."""
+    alphabet = string.ascii_uppercase + string.digits
+    while True:
+        code = ''.join(secrets.choice(alphabet) for _ in range(8))
+        if not db.query(User).filter(User.referral_code == code).first():
+            return code
+
+
+def _award_signup_bonus(user_id: int, db: Session):
+    """Award 25 signup bonus points."""
+    tx = LoyaltyTransaction(
+        user_id=user_id,
+        points=25,
+        transaction_type="signup_bonus",
+        description="Welcome! 25 signup bonus points credited.",
+    )
+    db.add(tx)
+
+
+def _award_referral_bonus(referrer_id: int, db: Session):
+    """Award 50 points to referrer when referred user signs up."""
+    tx = LoyaltyTransaction(
+        user_id=referrer_id,
+        points=50,
+        transaction_type="referral_bonus",
+        description="Referral bonus: 50 points for referring a new user.",
+    )
+    db.add(tx)
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -21,6 +54,15 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered"
         )
+
+    referred_by_user = None
+    if user.referral_code:
+        referred_by_user = db.query(User).filter(User.referral_code == user.referral_code).first()
+        if not referred_by_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid referral code"
+            )
     
     # Create new user
     db_user = User(
@@ -28,9 +70,20 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
         first_name=user.first_name,
         last_name=user.last_name,
         phone=user.phone,
-        hashed_password=hash_password(user.password)
+        hashed_password=hash_password(user.password),
+        referral_code=_generate_referral_code(db),
+        referred_by=referred_by_user.id if referred_by_user else None,
     )
     db.add(db_user)
+    db.flush()
+
+    # Award signup bonus
+    _award_signup_bonus(db_user.id, db)
+
+    # Award referral bonus to referrer
+    if referred_by_user:
+        _award_referral_bonus(referred_by_user.id, db)
+
     db.commit()
     db.refresh(db_user)
     return db_user

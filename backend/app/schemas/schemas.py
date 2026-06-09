@@ -13,6 +13,7 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str = Field(..., min_length=8, max_length=100)
+    referral_code: Optional[str] = Field(None, max_length=20)
     
     @field_validator('password')
     def validate_password(cls, v):
@@ -27,6 +28,8 @@ class UserResponse(UserBase):
     id: int
     is_active: bool
     role: str
+    referral_code: Optional[str] = None
+    referred_by: Optional[int] = None
     created_at: datetime
     
     class Config:
@@ -567,3 +570,75 @@ class HeroSlideResponse(HeroSlideBase):
 
     class Config:
         from_attributes = True
+
+
+# Recently Viewed Schemas
+class RecentlyViewedResponse(BaseModel):
+    id: int
+    product_id: int
+    viewed_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Recommendation Schemas
+class RecommendationResponse(BaseModel):
+    products: list
+    source: str = ""
+
+
+# Loyalty Schemas
+class LoyaltySummaryResponse(BaseModel):
+    current_points: int = 0
+    lifetime_earned: int = 0
+    lifetime_redeemed: int = 0
+
+
+class LoyaltyTransactionResponse(BaseModel):
+    id: int
+    points: int
+    transaction_type: str
+    description: Optional[str] = None
+    order_id: Optional[int] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class LoyaltyHistoryResponse(BaseModel):
+    summary: LoyaltySummaryResponse
+    transactions: list[LoyaltyTransactionResponse] = []
+
+
+class LoyaltyAdjustRequest(BaseModel):
+    user_id: int
+    points: int
+    description: str = "Admin adjustment"
+
+
+# Referral Schemas
+class ReferralApplyRequest(BaseModel):
+    code: str
+
+
+class ReferralResponse(BaseModel):
+    referral_code: str
+    referred_users_count: int = 0
+    referral_link: str = ""
+
+
+class ReferralAnalyticsResponse(BaseModel):
+    total_referrals: int = 0
+    successful_referrals: int = 0
+    points_awarded: int = 0
+
+
+# Admin Analytics Extension
+class LoyaltyAnalyticsResponse(BaseModel):
+    total_points_issued: int = 0
+    total_points_redeemed: int = 0
+    total_referrals: int = 0
+    repeat_customer_rate: float = 0.0
+    most_wishlisted_products: list = []

@@ -61,6 +61,8 @@ class User(Base):
     role = Column(Enum(RoleEnum), default=RoleEnum.USER)
     profile_image = Column(String(255), nullable=True)
     date_of_birth = Column(DateTime, nullable=True)
+    referral_code = Column(String(20), unique=True, nullable=True, index=True)
+    referred_by = Column(Integer, ForeignKey('users.id'), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
@@ -70,6 +72,9 @@ class User(Base):
     reviews = relationship("Review", back_populates="user", cascade="all, delete-orphan")
     wishlist = relationship("Product", secondary=wishlist_association, back_populates="wishlisted_by")
     cart_items = relationship("Product", secondary=cart_association, back_populates="in_carts")
+    referrer = relationship("User", remote_side=[id], backref="referred_users")
+    loyalty_transactions = relationship("LoyaltyTransaction", back_populates="user", cascade="all, delete-orphan")
+    recently_viewed = relationship("RecentlyViewed", back_populates="user", cascade="all, delete-orphan")
     
     __table_args__ = (
         Index('idx_user_email', 'email'),
@@ -432,6 +437,45 @@ class CustomerReview(Base):
     is_active = Column(Boolean, default=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+
+class RecentlyViewed(Base):
+    __tablename__ = "recently_viewed"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    product_id = Column(Integer, ForeignKey('products.id'), nullable=False)
+    session_id = Column(String(100), nullable=True)
+    viewed_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User", back_populates="recently_viewed")
+    product = relationship("Product")
+
+    __table_args__ = (
+        Index('idx_recently_viewed_user', 'user_id'),
+        Index('idx_recently_viewed_session', 'session_id'),
+        Index('idx_recently_viewed_product', 'product_id'),
+    )
+
+
+class LoyaltyTransaction(Base):
+    __tablename__ = "loyalty_transactions"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    points = Column(Integer, nullable=False)
+    transaction_type = Column(String(30), nullable=False)  # earned, redeemed, referral_bonus, signup_bonus, admin_adjustment
+    description = Column(String(500), nullable=True)
+    order_id = Column(Integer, ForeignKey('orders.id'), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User", back_populates="loyalty_transactions")
+    order = relationship("Order")
+
+    __table_args__ = (
+        Index('idx_loyalty_user', 'user_id'),
+        Index('idx_loyalty_order', 'order_id'),
+    )
 
 
 class HeroSlide(Base):

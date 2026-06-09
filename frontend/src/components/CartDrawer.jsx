@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ShoppingBag, Plus, Minus, Trash2, Truck, Loader2 } from 'lucide-react';
 import { closeCartDrawer } from '../store/slices/uiSlice';
-import { shoppingAPI, productsAPI, settingsAPI } from '../api/endpoints';
+import { shoppingAPI, productsAPI, settingsAPI, recommendationAPI } from '../api/endpoints';
 
 const PLACEHOLDER = '/images/placeholder-product.svg';
 
@@ -39,9 +39,21 @@ const CartDrawer = () => {
       settingsAPI.getPublic().then((res) => {
         if (res.data?.free_shipping_threshold) setFreeThreshold(res.data.free_shipping_threshold);
       }).catch(() => {});
-      productsAPI.getProducts({ limit: 4, sort: 'bestseller' })
-        .then((res) => setRecommendations(Array.isArray(res.data) ? res.data.slice(0, 4) : []))
-        .catch(() => {});
+      if (isAuthenticated) {
+        recommendationAPI.getRecommendations({ limit: 4 })
+          .then((res) => {
+            const data = res.data;
+            let arr = [];
+            if (data?.products && Array.isArray(data.products)) arr = data.products;
+            else if (Array.isArray(data)) arr = data;
+            setRecommendations(arr.slice(0, 4));
+          })
+          .catch(() => setRecommendations([]));
+      } else {
+        productsAPI.getProducts({ limit: 4, sort: 'bestseller' })
+          .then((res) => setRecommendations(Array.isArray(res.data) ? res.data.slice(0, 4) : []))
+          .catch(() => {});
+      }
     }
   }, [cartDrawerOpen, fetchCart]);
 
@@ -246,7 +258,7 @@ const CartDrawer = () => {
               {recommendations.length > 0 && items.length > 0 && (
                 <div className="mt-4 pt-4 border-t border-gray-100">
                   <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3">
-                    Frequently Bought Together
+                    Customers Also Bought
                   </p>
                   <div className="space-y-2">
                     {recommendations.map((rec) => {

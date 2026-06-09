@@ -2,6 +2,8 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { productsAPI, instagramAPI, settingsAPI, customerReviewsAPI, heroAPI } from '../api/endpoints';
 import ProductCard from '../components/ProductCard';
+import RecentlyViewedCarousel from '../components/RecentlyViewedCarousel';
+import RecommendedSection from '../components/RecommendedSection';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowRight,
@@ -914,13 +916,19 @@ const HomePage = () => {
       {/* 1b. Conversion Trust Strip */}
       <ConversionStrip />
 
-      {/* 2. Age-Based Shopping */}
+      {/* 2. Recently Viewed (logged-in only) */}
+      <RecentlyViewedCarousel />
+
+      {/* 3. Recommended For You (logged-in only) */}
+      <RecommendedSection />
+
+      {/* 5. Age-Based Shopping */}
       <AgeSection />
 
-      {/* 3. Featured Collections */}
+      {/* 6. Featured Collections */}
       <CollectionsSection />
 
-      {/* 4. Best Sellers */}
+      {/* 5. Best Sellers */}
       <section className="py-14 lg:py-20 bg-[#FFFCF7]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <SectionHeader title="Best Sellers" subtitle="Loved by parents across India" linkTo="/bestsellers" />
@@ -946,7 +954,7 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* 5. New Arrivals */}
+      {/* 6. New Arrivals */}
       <section className="py-14 lg:py-20 gradient-bg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <SectionHeader title="New Arrivals" subtitle="Fresh styles for the season" linkTo="/new-arrivals" />
@@ -972,16 +980,16 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* 6. Why Parents Trust */}
+      {/* 9. Why Parents Trust */}
       <TrustSection />
 
-      {/* 7. Customer Reviews */}
+      {/* 10. Customer Reviews */}
       <ReviewsSection />
 
-      {/* 8. Instagram Gallery */}
+      {/* 11. Instagram Gallery */}
       <InstagramSection />
 
-      {/* 9. Newsletter */}
+      {/* 12. Newsletter */}
       <NewsletterSection />
     </div>
   );

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
 import { authAPI } from '../api/endpoints';
@@ -8,7 +8,9 @@ import { setCredentials, setError as setAuthError } from '../store/slices/authSl
 const RegisterPage = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const [searchParams] = useSearchParams();
   const { isAuthenticated } = useSelector((state) => state.auth);
+  const refCode = searchParams.get('ref') || '';
 
   const [form, setForm] = useState({
     first_name: '',
@@ -17,6 +19,7 @@ const RegisterPage = () => {
     phone: '',
     password: '',
     confirmPassword: '',
+    referral_code: refCode,
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -70,6 +73,7 @@ const RegisterPage = () => {
         email: form.email,
         phone: form.phone || undefined,
         password: form.password,
+        referral_code: form.referral_code || undefined,
       });
 
       const loginRes = await authAPI.login({

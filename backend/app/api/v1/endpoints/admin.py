@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form, Request
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, desc
 from app.db.database import get_db
 from app.schemas.schemas import (
     AdminOrderResponse,
@@ -27,7 +27,11 @@ from app.schemas.schemas import (
     ProductUpdate,
 )
 from sqlalchemy.orm import joinedload
-from app.models.models import Product, Category, Order, OrderItem, User, ProductImage, Inventory, Banner, InstagramPost, InstagramPostClick, OrderStatusEnum, PaymentStatusEnum
+from app.models.models import (
+    Product, Category, Order, OrderItem, User, ProductImage, Inventory,
+    Banner, InstagramPost, InstagramPostClick, OrderStatusEnum, PaymentStatusEnum,
+    LoyaltyTransaction, wishlist_association,
+)
 from app.api.v1.endpoints.auth import require_admin
 from app.utils.helpers import generate_slug, generate_sku
 from app.core.config import settings
@@ -50,6 +54,11 @@ class DashboardResponse(BaseModel):
     pending_orders: int
     delivered_orders: int
     total_revenue: float
+    total_loyalty_points_issued: int = 0
+    total_loyalty_points_redeemed: int = 0
+    total_referrals: int = 0
+    repeat_customer_rate: float = 0.0
+    most_wishlisted_products: list = []
 
 
 @router.get("/dashboard", response_model=DashboardResponse)
@@ -74,6 +83,63 @@ def get_dashboard(
         .filter(Order.status == OrderStatusEnum.DELIVERED)
         .scalar()
     )
+
+    # Loyalty analytics
+    total_loyalty_points_issued = (
+        db.query(func.coalesce(func.sum(LoyaltyTransaction.points), 0))
+        .filter(LoyaltyTransaction.transaction_type.in_(["earned", "signup_bonus", "referral_bonus", "admin_adjustment"]), LoyaltyTransaction.points > 0)
+        .scalar() or 0
+    )
+    total_loyalty_points_redeemed = (
+        db.query(func.coalesce(func.sum(LoyaltyTransaction.points), 0))
+        .filter(LoyaltyTransaction.transaction_type == "redeemed")
+        .scalar() or 0
+    )
+
+    # Referral analytics
+    total_referrals = (
+        db.query(func.count(User.id))
+        .filter(User.referred_by.isnot(None))
+        .scalar() or 0
+    )
+
+    # Repeat customer rate (users with >1 delivered order)
+    total_users_with_orders = (
+        db.query(func.count(func.distinct(Order.user_id)))
+        .filter(Order.status == OrderStatusEnum.DELIVERED)
+        .scalar() or 0
+    )
+    repeat_customers = (
+        db.query(func.count(func.distinct(Order.user_id)))
+        .filter(Order.status == OrderStatusEnum.DELIVERED)
+        .group_by(Order.user_id)
+        .having(func.count(Order.id) > 1)
+        .subquery()
+    )
+    repeat_count = db.query(func.count()).select_from(repeat_customers).scalar() or 0
+    repeat_customer_rate = round((repeat_count / total_users_with_orders * 100), 1) if total_users_with_orders > 0 else 0.0
+
+    # Most wishlisted products
+    most_wishlisted = (
+        db.query(
+            wishlist_association.c.product_id,
+            func.count(wishlist_association.c.user_id).label("wishlist_count"),
+        )
+        .group_by(wishlist_association.c.product_id)
+        .order_by(desc("wishlist_count"))
+        .limit(5)
+        .all()
+    )
+    most_wishlisted_products = []
+    for product_id, count in most_wishlisted:
+        product = db.query(Product).filter(Product.id == product_id).first()
+        if product:
+            most_wishlisted_products.append({
+                "id": product.id,
+                "name": product.name,
+                "wishlist_count": count,
+            })
+
     return DashboardResponse(
         total_products=db.query(func.count(Product.id)).scalar() or 0,
         total_categories=db.query(func.count(Category.id)).scalar() or 0,
@@ -85,6 +151,11 @@ def get_dashboard(
         pending_orders=db.query(func.count(Order.id)).filter(Order.status == OrderStatusEnum.PENDING).scalar() or 0,
         delivered_orders=db.query(func.count(Order.id)).filter(Order.status == OrderStatusEnum.DELIVERED).scalar() or 0,
         total_revenue=total_revenue,
+        total_loyalty_points_issued=total_loyalty_points_issued,
+        total_loyalty_points_redeemed=total_loyalty_points_redeemed,
+        total_referrals=total_referrals,
+        repeat_customer_rate=repeat_customer_rate,
+        most_wishlisted_products=most_wishlisted_products,
     )
 
 
@@ -356,6 +427,13 @@ def admin_update_order_status(
         order.delivered_at = datetime.utcnow()
 
     db.add(order)
+    db.flush()
+
+    # Award loyalty points on delivery
+    if new_status == "delivered":
+        from app.api.v1.endpoints.engagement import award_loyalty_points_for_order
+        award_loyalty_points_for_order(order_id, db)
+
     db.commit()
     db.refresh(order)
     return _build_admin_order(order)

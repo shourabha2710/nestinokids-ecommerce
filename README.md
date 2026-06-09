@@ -109,7 +109,7 @@ nestinokids-ecommerce/
 ## 🗄️ Database Schema
 
 ### Core Tables
-- **users** - User accounts and profiles
+- **users** - User accounts and profiles (referral_code, referred_by)
 - **categories** - Product categories (supports hierarchy)
 - **products** - Product catalog
 - **product_images** - Multiple images per product
@@ -128,6 +128,8 @@ nestinokids-ecommerce/
 - **site_settings** - Centralized business settings
 - **customer_reviews** - Customer testimonials
 - **hero_slides** - Homepage hero carousel slides
+- **recently_viewed** - Tracked product views per user/session
+- **loyalty_transactions** - Points earned, redeemed, and bonuses
 
 ## 🔌 API Endpoints
 
@@ -181,6 +183,23 @@ nestinokids-ecommerce/
 - `PUT /api/v1/admin/coupons/{id}` - Update coupon
 - `DELETE /api/v1/admin/coupons/{id}` - Delete coupon
 
+### Recently Viewed
+- `POST /api/v1/products/{id}/view` - Track product view
+- `GET /api/v1/recently-viewed` - Get recently viewed products
+
+### Recommendations
+- `GET /api/v1/recommendations` - Personalized product recommendations
+
+### Loyalty
+- `GET /api/v1/loyalty` - Current points summary
+- `GET /api/v1/loyalty/history` - Points history with summary
+- `POST /api/v1/admin/loyalty/adjust` - Admin adjust points
+
+### Referrals
+- `GET /api/v1/referrals` - Get referral code & stats
+- `POST /api/v1/referrals/apply` - Apply a referral code
+- `GET /api/v1/admin/referrals` - Admin referral analytics
+
 ## 🎨 Design System
 
 ### Color Palette
@@ -230,6 +249,10 @@ nestinokids-ecommerce/
 - **Hero Slides Management** - CMS-driven hero carousel with reorder
 - **Website Settings** - Social links, contact info, free shipping threshold
 - **Instagram Feed** - Social proof integration
+- **Loyalty Program** - Points tracking, history, admin adjustments
+- **Referral System** - Referral codes, bonuses, admin analytics
+- **Recently Viewed** - Auto-tracked product browsing history
+- **Personalized Recommendations** - Category-based cross-sell engine
 
 ## 🚢 Deployment
 

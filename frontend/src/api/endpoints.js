@@ -151,3 +151,34 @@ export const adminCouponAPI = {
   updateCoupon: (id, data) => api.put(`/admin/coupons/${id}`, data),
   deleteCoupon: (id) => api.delete(`/admin/coupons/${id}`),
 };
+
+// Recently Viewed APIs
+export const recentlyViewedAPI = {
+  trackView: (productId) => api.post(`/products/${productId}/view`),
+  getRecent: (params) => api.get('/recently-viewed', { params }),
+};
+
+// Recommendation APIs
+export const recommendationAPI = {
+  getRecommendations: (params) => api.get('/recommendations', { params }),
+};
+
+// Loyalty APIs
+export const loyaltyAPI = {
+  getSummary: () => api.get('/loyalty'),
+  getHistory: (params) => api.get('/loyalty/history', { params }),
+};
+
+export const adminLoyaltyAPI = {
+  adjustPoints: (data) => api.post('/admin/loyalty/adjust', data),
+};
+
+// Referral APIs
+export const referralAPI = {
+  getInfo: () => api.get('/referrals'),
+  apply: (data) => api.post('/referrals/apply', data),
+};
+
+export const adminReferralAPI = {
+  getAnalytics: () => api.get('/admin/referrals'),
+};

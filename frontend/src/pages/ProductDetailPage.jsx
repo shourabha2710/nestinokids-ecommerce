@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { productsAPI, shoppingAPI } from '../api/endpoints';
+import { productsAPI, shoppingAPI, recentlyViewedAPI } from '../api/endpoints';
 import { addToCart } from '../store/slices/cartSlice';
 import { addWishlistItem, removeWishlistItem } from '../store/slices/wishlistSlice';
 import MobilePageHeader from '../components/MobilePageHeader';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, ShoppingBag, Star, Shield, Truck, RefreshCw, ChevronLeft, ChevronRight, Minus, Plus } from 'lucide-react';
 import RelatedProducts from '../components/RelatedProducts';
+import YouMayAlsoLike from '../components/YouMayAlsoLike';
 
 const PLACEHOLDER = '/images/placeholder-product.svg';
 
@@ -48,9 +49,14 @@ const ProductDetailPage = () => {
       setLoading(true);
       setError(null);
       const res = await productsAPI.getProduct(slug);
-      setProduct(res.data);
+      const prod = res.data;
+      setProduct(prod);
       setSelectedImage(0);
       setQuantity(1);
+      // Track product view for recently viewed
+      if (prod?.id) {
+        recentlyViewedAPI.trackView(prod.id).catch(() => {});
+      }
     } catch {
       setError('Product not found');
     } finally {
@@ -349,6 +355,13 @@ const ProductDetailPage = () => {
         {product.id && (
           <div className="mt-16 lg:mt-20">
             <RelatedProducts productId={product.id} />
+          </div>
+        )}
+
+        {/* You May Also Like */}
+        {product.id && (
+          <div className="mt-10 lg:mt-14">
+            <YouMayAlsoLike productId={product.id} />
           </div>
         )}
       </div>

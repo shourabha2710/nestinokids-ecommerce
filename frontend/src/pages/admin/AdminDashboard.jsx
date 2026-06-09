@@ -13,20 +13,28 @@ import {
   AlertTriangle,
   Ban,
   TrendingUp,
-  TrendingDown,
+  Award,
+  Gift,
+  Repeat,
+  Heart,
+  Sparkles,
 } from 'lucide-react';
 
 const statCards = [
-  { key: 'total_orders', label: 'Total Orders', icon: ShoppingCart, color: 'bg-blue-500', trend: '+12%' },
-  { key: 'pending_orders', label: 'Pending Orders', icon: Clock, color: 'bg-yellow-500', trend: null },
-  { key: 'delivered_orders', label: 'Delivered', icon: CheckCircle, color: 'bg-green-500', trend: '+8%' },
-  { key: 'total_revenue', label: 'Total Revenue', icon: IndianRupee, color: 'bg-emerald-500', trend: '+23%', prefix: '₹' },
-  { key: 'total_products', label: 'Products', icon: Package, color: 'bg-violet-500', trend: null },
-  { key: 'total_categories', label: 'Categories', icon: FolderTree, color: 'bg-indigo-500', trend: null },
-  { key: 'total_users', label: 'Users', icon: Users, color: 'bg-orange-500', trend: '+5%' },
-  { key: 'total_inventory_items', label: 'Inventory Items', icon: ClipboardList, color: 'bg-cyan-500', trend: null },
-  { key: 'low_stock_products', label: 'Low Stock', icon: AlertTriangle, color: 'bg-yellow-500', trend: null, danger: true },
-  { key: 'out_of_stock_products', label: 'Out of Stock', icon: Ban, color: 'bg-red-500', trend: null, danger: true },
+  { key: 'total_orders', label: 'Total Orders', icon: ShoppingCart, color: 'bg-blue-500' },
+  { key: 'pending_orders', label: 'Pending Orders', icon: Clock, color: 'bg-yellow-500' },
+  { key: 'delivered_orders', label: 'Delivered', icon: CheckCircle, color: 'bg-green-500' },
+  { key: 'total_revenue', label: 'Total Revenue', icon: IndianRupee, color: 'bg-emerald-500', prefix: '₹' },
+  { key: 'total_products', label: 'Products', icon: Package, color: 'bg-violet-500' },
+  { key: 'total_categories', label: 'Categories', icon: FolderTree, color: 'bg-indigo-500' },
+  { key: 'total_users', label: 'Users', icon: Users, color: 'bg-orange-500' },
+  { key: 'total_inventory_items', label: 'Inventory Items', icon: ClipboardList, color: 'bg-cyan-500' },
+  { key: 'low_stock_products', label: 'Low Stock', icon: AlertTriangle, color: 'bg-yellow-500', danger: true },
+  { key: 'out_of_stock_products', label: 'Out of Stock', icon: Ban, color: 'bg-red-500', danger: true },
+  { key: 'total_loyalty_points_issued', label: 'Points Issued', icon: Award, color: 'bg-amber-500', prefix: '±' },
+  { key: 'total_loyalty_points_redeemed', label: 'Points Redeemed', icon: Sparkles, color: 'bg-rose-500', prefix: '±' },
+  { key: 'total_referrals', label: 'Total Referrals', icon: Gift, color: 'bg-teal-500' },
+  { key: 'repeat_customer_rate', label: 'Repeat Customers', icon: Repeat, color: 'bg-sky-500', suffix: '%' },
 ];
 
 const containerVariants = {
@@ -105,7 +113,7 @@ const AdminDashboard = () => {
           animate="show"
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
         >
-          {Array.from({ length: 10 }).map((_, i) => (
+          {Array.from({ length: 14 }).map((_, i) => (
             <SkeletonCard key={i} />
           ))}
         </motion.div>
@@ -118,10 +126,13 @@ const AdminDashboard = () => {
         >
           {statCards.map((card) => {
             const Icon = card.icon;
-            const value = card.key === 'total_revenue'
-              ? stats?.[card.key]?.toLocaleString() ?? 0
-              : stats?.[card.key] ?? 0;
-            const isZero = value === 0 || value === '0';
+            const rawValue = stats?.[card.key];
+            const value = card.prefix
+              ? `${card.prefix}${rawValue?.toLocaleString() ?? 0}`
+              : card.suffix
+              ? `${rawValue ?? 0}${card.suffix}`
+              : rawValue ?? 0;
+            const isZero = rawValue === 0 || rawValue === '0';
 
             return (
               <motion.div
@@ -133,22 +144,48 @@ const AdminDashboard = () => {
                   <div className={`w-10 h-10 rounded-xl ${card.color} bg-opacity-10 flex items-center justify-center`}>
                     <Icon className={`w-5 h-5 ${card.color.replace('bg-', 'text-')}`} />
                   </div>
-                  {card.trend && !isZero && (
-                    <span className={`flex items-center space-x-1 text-xs font-medium ${
-                      card.danger ? 'text-red-500' : 'text-green-600'
-                    }`}>
+                  {!isZero && (
+                    <span className="flex items-center space-x-1 text-xs font-medium text-green-600">
                       <TrendingUp className="w-3 h-3" />
-                      <span>{card.trend}</span>
                     </span>
                   )}
                 </div>
-                <p className="text-2xl font-bold text-gray-900">
-                  {card.prefix || ''}{value}
-                </p>
+                <p className="text-2xl font-bold text-gray-900">{value}</p>
                 <p className="text-sm text-gray-500 mt-1">{card.label}</p>
               </motion.div>
             );
           })}
+
+          {/* Most Wishlisted Products card */}
+          {stats?.most_wishlisted_products?.length > 0 && (
+            <motion.div
+              variants={itemVariants}
+              className="bg-white rounded-2xl border border-gray-100 p-5 hover:shadow-lg hover:border-gray-200 transition-all duration-200 col-span-1 sm:col-span-2 lg:col-span-3 xl:col-span-2"
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-pink-500 bg-opacity-10 flex items-center justify-center">
+                  <Heart className="w-5 h-5 text-pink-500" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-gray-900">Most Wishlisted Products</p>
+                  <p className="text-xs text-gray-500">Top 5 most saved items</p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                {stats.most_wishlisted_products.map((item, i) => (
+                  <div key={item.id} className="flex items-center justify-between text-sm py-1.5 border-b border-gray-50 last:border-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-gray-400 w-5">{i + 1}.</span>
+                      <span className="font-medium text-gray-700 truncate max-w-[200px]">{item.name}</span>
+                    </div>
+                    <span className="text-xs font-semibold text-pink-500 bg-pink-50 px-2 py-0.5 rounded-full">
+                      {item.wishlist_count} saved
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
         </motion.div>
       )}
     </div>
