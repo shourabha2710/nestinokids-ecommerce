@@ -18,6 +18,8 @@ import {
   Repeat,
   Heart,
   Sparkles,
+  MessageSquare,
+  Bell,
 } from 'lucide-react';
 
 const statCards = [
@@ -35,6 +37,9 @@ const statCards = [
   { key: 'total_loyalty_points_redeemed', label: 'Points Redeemed', icon: Sparkles, color: 'bg-rose-500', prefix: '±' },
   { key: 'total_referrals', label: 'Total Referrals', icon: Gift, color: 'bg-teal-500' },
   { key: 'repeat_customer_rate', label: 'Repeat Customers', icon: Repeat, color: 'bg-sky-500', suffix: '%' },
+  { key: 'open_tickets', label: 'Open Tickets', icon: MessageSquare, color: 'bg-red-500', danger: true },
+  { key: 'resolved_tickets', label: 'Resolved Tickets', icon: CheckCircle, color: 'bg-green-500' },
+  { key: 'total_notifications_sent', label: 'Notifications Sent', icon: Bell, color: 'bg-blue-500' },
 ];
 
 const containerVariants = {
@@ -113,7 +118,7 @@ const AdminDashboard = () => {
           animate="show"
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
         >
-          {Array.from({ length: 14 }).map((_, i) => (
+          {Array.from({ length: 17 }).map((_, i) => (
             <SkeletonCard key={i} />
           ))}
         </motion.div>

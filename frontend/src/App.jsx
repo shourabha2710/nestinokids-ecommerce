@@ -42,6 +42,9 @@ import WebsiteSettings from "./pages/admin/WebsiteSettings";
 import Reviews from "./pages/admin/Reviews";
 import HeroSlides from "./pages/admin/HeroSlides";
 import Coupons from "./pages/admin/Coupons";
+import SupportTickets from "./pages/admin/SupportTickets";
+import FAQs from "./pages/admin/FAQs";
+import Announcements from "./pages/admin/Announcements";
 import { setUser, logout } from "./store/slices/authSlice";
 import { setCartItems } from "./store/slices/cartSlice";
 import { setWishlist } from "./store/slices/wishlistSlice";
@@ -73,7 +76,7 @@ const AuthProvider = ({ children }) => {
     };
 
     restoreSession();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   if (!authReady) {
     return (
@@ -141,6 +144,9 @@ function App() {
                 <Route path="/admin/reviews" element={<Reviews />} />
                 <Route path="/admin/hero-slides" element={<HeroSlides />} />
                 <Route path="/admin/coupons" element={<Coupons />} />
+                <Route path="/admin/support-tickets" element={<SupportTickets />} />
+                <Route path="/admin/faqs" element={<FAQs />} />
+                <Route path="/admin/announcements" element={<Announcements />} />
               </Route>
             </Route>
 

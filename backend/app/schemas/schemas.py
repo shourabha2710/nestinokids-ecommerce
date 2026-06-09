@@ -275,6 +275,7 @@ class AdminOrderResponse(BaseModel):
 
 class OrderStatusUpdate(BaseModel):
     status: str
+    note: Optional[str] = None
 
 
 # Coupon Schemas
@@ -642,3 +643,147 @@ class LoyaltyAnalyticsResponse(BaseModel):
     total_referrals: int = 0
     repeat_customer_rate: float = 0.0
     most_wishlisted_products: list = []
+
+
+# ─── Phase 8 Schemas ───
+
+# Order Tracking Schemas
+class OrderTrackingEventResponse(BaseModel):
+    id: int
+    order_id: int
+    status: str
+    note: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class OrderTrackingCreate(BaseModel):
+    status: str
+    note: Optional[str] = None
+
+
+# Support Ticket Schemas
+class SupportTicketCreate(BaseModel):
+    subject: str = Field(..., min_length=1, max_length=255)
+    message: str = Field(..., min_length=1)
+
+
+class SupportTicketUpdate(BaseModel):
+    status: Optional[str] = None
+    priority: Optional[str] = None
+
+
+class SupportTicketResponse(BaseModel):
+    id: int
+    user_id: int
+    subject: str
+    message: str
+    status: str
+    priority: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class SupportTicketAdminResponse(BaseModel):
+    id: int
+    user_id: int
+    subject: str
+    message: str
+    status: str
+    priority: str
+    created_at: datetime
+    user_name: str = ""
+    user_email: str = ""
+
+    class Config:
+        from_attributes = True
+
+
+# FAQ Schemas
+class FAQCreate(BaseModel):
+    question: str = Field(..., min_length=1)
+    answer: str = Field(..., min_length=1)
+    category: Optional[str] = None
+    display_order: int = 0
+    is_active: bool = True
+
+
+class FAQUpdate(BaseModel):
+    question: Optional[str] = None
+    answer: Optional[str] = None
+    category: Optional[str] = None
+    display_order: Optional[int] = None
+    is_active: Optional[bool] = None
+
+
+class FAQResponse(BaseModel):
+    id: int
+    question: str
+    answer: str
+    category: Optional[str] = None
+    display_order: int
+    is_active: bool
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+# Announcement Bar Schemas
+class AnnouncementCreate(BaseModel):
+    message: str = Field(..., min_length=1, max_length=500)
+    link: Optional[str] = None
+    is_active: bool = True
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+
+
+class AnnouncementUpdate(BaseModel):
+    message: Optional[str] = None
+    link: Optional[str] = None
+    is_active: Optional[bool] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+
+
+class AnnouncementResponse(BaseModel):
+    id: int
+    message: str
+    link: Optional[str] = None
+    is_active: bool
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Notification Schemas
+class NotificationCreate(BaseModel):
+    title: str = Field(..., min_length=1, max_length=255)
+    message: Optional[str] = None
+    type: str = "Promotion"
+    target_user_id: Optional[int] = None
+
+
+class NotificationResponse(BaseModel):
+    id: int
+    user_id: int
+    title: str
+    message: Optional[str] = None
+    type: str
+    is_read: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class UnreadCountResponse(BaseModel):
+    count: int = 0

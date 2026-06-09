@@ -11,6 +11,7 @@ from app.api.v1.endpoints import settings as site_settings_router
 from app.api.v1.endpoints import hero as hero_router
 from app.api.v1.endpoints import coupons as coupons_router
 from app.api.v1.endpoints import engagement as engagement_router
+from app.api.v1.endpoints import support as support_router
 from app.db.database import Base, engine
 
 # Create tables
@@ -51,6 +52,7 @@ app.include_router(reviews_router.router)
 app.include_router(hero_router.router)
 app.include_router(coupons_router.router)
 app.include_router(engagement_router.router)
+app.include_router(support_router.router)
 
 # Serve uploaded files
 app.mount(f"/{settings.UPLOAD_DIR}", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")

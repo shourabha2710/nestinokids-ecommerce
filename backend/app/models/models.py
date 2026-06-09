@@ -75,6 +75,8 @@ class User(Base):
     referrer = relationship("User", remote_side=[id], backref="referred_users")
     loyalty_transactions = relationship("LoyaltyTransaction", back_populates="user", cascade="all, delete-orphan")
     recently_viewed = relationship("RecentlyViewed", back_populates="user", cascade="all, delete-orphan")
+    support_tickets = relationship("SupportTicket", back_populates="user", cascade="all, delete-orphan")
+    notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
     
     __table_args__ = (
         Index('idx_user_email', 'email'),
@@ -437,6 +439,93 @@ class CustomerReview(Base):
     is_active = Column(Boolean, default=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+
+class OrderTrackingEvent(Base):
+    __tablename__ = "order_tracking_events"
+
+    id = Column(Integer, primary_key=True)
+    order_id = Column(Integer, ForeignKey('orders.id'), nullable=False)
+    status = Column(String(50), nullable=False)
+    note = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    order = relationship("Order")
+
+    __table_args__ = (
+        Index('idx_tracking_order', 'order_id'),
+    )
+
+
+class SupportTicket(Base):
+    __tablename__ = "support_tickets"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    subject = Column(String(255), nullable=False)
+    message = Column(Text, nullable=False)
+    status = Column(String(20), default="Open")
+    priority = Column(String(20), default="Medium")
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User", back_populates="support_tickets")
+
+    __table_args__ = (
+        Index('idx_ticket_user', 'user_id'),
+        Index('idx_ticket_status', 'status'),
+    )
+
+
+class FAQ(Base):
+    __tablename__ = "faqs"
+
+    id = Column(Integer, primary_key=True)
+    question = Column(Text, nullable=False)
+    answer = Column(Text, nullable=False)
+    category = Column(String(100), nullable=True)
+    display_order = Column(Integer, default=0)
+    is_active = Column(Boolean, default=True, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    __table_args__ = (
+        Index('idx_faq_category_active', 'category', 'is_active'),
+    )
+
+
+class AnnouncementBar(Base):
+    __tablename__ = "announcement_bars"
+
+    id = Column(Integer, primary_key=True)
+    message = Column(String(500), nullable=False)
+    link = Column(String(500), nullable=True)
+    is_active = Column(Boolean, default=True, index=True)
+    start_date = Column(DateTime(timezone=True), nullable=True)
+    end_date = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        Index('idx_announcement_active', 'is_active'),
+    )
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    title = Column(String(255), nullable=False)
+    message = Column(Text, nullable=True)
+    type = Column(String(30), default="Promotion")
+    is_read = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User", back_populates="notifications")
+
+    __table_args__ = (
+        Index('idx_notification_user', 'user_id'),
+        Index('idx_notification_read', 'user_id', 'is_read'),
+    )
 
 
 class RecentlyViewed(Base):

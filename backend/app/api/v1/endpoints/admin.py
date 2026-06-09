@@ -30,7 +30,7 @@ from sqlalchemy.orm import joinedload
 from app.models.models import (
     Product, Category, Order, OrderItem, User, ProductImage, Inventory,
     Banner, InstagramPost, InstagramPostClick, OrderStatusEnum, PaymentStatusEnum,
-    LoyaltyTransaction, wishlist_association,
+    LoyaltyTransaction, SupportTicket, Notification, wishlist_association,
 )
 from app.api.v1.endpoints.auth import require_admin
 from app.utils.helpers import generate_slug, generate_sku
@@ -59,6 +59,9 @@ class DashboardResponse(BaseModel):
     total_referrals: int = 0
     repeat_customer_rate: float = 0.0
     most_wishlisted_products: list = []
+    open_tickets: int = 0
+    resolved_tickets: int = 0
+    total_notifications_sent: int = 0
 
 
 @router.get("/dashboard", response_model=DashboardResponse)
@@ -140,6 +143,17 @@ def get_dashboard(
                 "wishlist_count": count,
             })
 
+    # Support ticket stats
+    open_tickets = db.query(func.count(SupportTicket.id)).filter(
+        SupportTicket.status.in_(["Open", "In Progress"])
+    ).scalar() or 0
+    resolved_tickets = db.query(func.count(SupportTicket.id)).filter(
+        SupportTicket.status == "Resolved"
+    ).scalar() or 0
+
+    # Notification stats
+    total_notifications_sent = db.query(func.count(Notification.id)).scalar() or 0
+
     return DashboardResponse(
         total_products=db.query(func.count(Product.id)).scalar() or 0,
         total_categories=db.query(func.count(Category.id)).scalar() or 0,
@@ -156,6 +170,9 @@ def get_dashboard(
         total_referrals=total_referrals,
         repeat_customer_rate=repeat_customer_rate,
         most_wishlisted_products=most_wishlisted_products,
+        open_tickets=open_tickets,
+        resolved_tickets=resolved_tickets,
+        total_notifications_sent=total_notifications_sent,
     )
 
 
@@ -428,6 +445,16 @@ def admin_update_order_status(
 
     db.add(order)
     db.flush()
+
+    # Create tracking event for status change
+    from app.models.models import OrderTrackingEvent
+    tracking_note = data.note if hasattr(data, 'note') and data.note else f"Order status updated to {new_status}"
+    tracking = OrderTrackingEvent(
+        order_id=order_id,
+        status=new_status.title(),
+        note=tracking_note,
+    )
+    db.add(tracking)
 
     # Award loyalty points on delivery
     if new_status == "delivered":

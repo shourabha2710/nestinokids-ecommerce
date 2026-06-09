@@ -182,3 +182,63 @@ export const referralAPI = {
 export const adminReferralAPI = {
   getAnalytics: () => api.get('/admin/referrals'),
 };
+
+// ─── Phase 8 APIs ───
+
+// Order Tracking APIs
+export const orderTrackingAPI = {
+  getTracking: (orderId) => api.get(`/orders/${orderId}/tracking`),
+};
+
+export const adminOrderTrackingAPI = {
+  addEvent: (orderId, data) => api.post(`/admin/orders/${orderId}/tracking`, data),
+};
+
+// Support Ticket APIs
+export const supportTicketAPI = {
+  getTickets: () => api.get('/support/tickets'),
+  createTicket: (data) => api.post('/support/tickets', data),
+  getTicket: (id) => api.get(`/support/tickets/${id}`),
+};
+
+export const adminSupportTicketAPI = {
+  getTickets: (params) => api.get('/admin/support/tickets', { params }),
+  updateTicket: (id, data) => api.put(`/admin/support/tickets/${id}`, data),
+  deleteTicket: (id) => api.delete(`/admin/support/tickets/${id}`),
+};
+
+// FAQ APIs
+export const faqAPI = {
+  getFAQs: () => api.get('/faqs'),
+};
+
+export const adminFAQAPI = {
+  getFAQs: () => api.get('/admin/faqs'),
+  createFAQ: (data) => api.post('/admin/faqs', data),
+  updateFAQ: (id, data) => api.put(`/admin/faqs/${id}`, data),
+  deleteFAQ: (id) => api.delete(`/admin/faqs/${id}`),
+};
+
+// Announcement APIs
+export const announcementAPI = {
+  getAnnouncements: () => api.get('/announcements'),
+};
+
+export const adminAnnouncementAPI = {
+  getAnnouncements: () => api.get('/admin/announcements'),
+  createAnnouncement: (data) => api.post('/admin/announcements', data),
+  updateAnnouncement: (id, data) => api.put(`/admin/announcements/${id}`, data),
+  deleteAnnouncement: (id) => api.delete(`/admin/announcements/${id}`),
+};
+
+// Notification APIs
+export const notificationAPI = {
+  getNotifications: (params) => api.get('/notifications', { params }),
+  getUnreadCount: () => api.get('/notifications/unread-count'),
+  markRead: (id) => api.put(`/notifications/${id}/read`),
+  markAllRead: () => api.put('/notifications/read-all'),
+};
+
+export const adminNotificationAPI = {
+  broadcast: (data) => api.post('/admin/notifications', data),
+};

@@ -4,9 +4,10 @@ import { useDispatch, useSelector } from 'react-redux';
 import { toggleSidebar, openCartDrawer } from '../store/slices/uiSlice';
 import { logout } from '../store/slices/authSlice';
 import { motion } from 'framer-motion';
-import { Menu, Search, X, Loader2 } from 'lucide-react';
-import { productsAPI } from '../api/endpoints';
+import { Menu, Search, X, Loader2, Bell } from 'lucide-react';
+import { productsAPI, notificationAPI } from '../api/endpoints';
 import MobileDrawer from './MobileDrawer';
+import NotificationCenter from './NotificationCenter';
 
 const Header = () => {
   const dispatch = useDispatch();
@@ -22,6 +23,8 @@ const Header = () => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifOpen, setNotifOpen] = useState(false);
   const dropdownRef = useRef(null);
   const searchRef = useRef(null);
   const debounceRef = useRef(null);
@@ -77,6 +80,19 @@ const Header = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Poll unread notification count
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const fetchCount = () => {
+      notificationAPI.getUnreadCount().then((res) => {
+        setUnreadCount(res.data?.count || 0);
+      }).catch(() => {});
+    };
+    fetchCount();
+    const interval = setInterval(fetchCount, 30000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated]);
+
   const handleSearchKeyDown = (e) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
@@ -112,6 +128,7 @@ const Header = () => {
 
   return (
     <header className="sticky top-0 z-50 glass shadow-sm">
+      <NotificationCenter isOpen={notifOpen} onClose={() => setNotifOpen(false)} />
       <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Top Bar */}
@@ -208,6 +225,23 @@ const Header = () => {
             >
               <Search className="w-6 h-6 text-text" />
             </button>
+
+            {/* Notification Bell */}
+            {isAuthenticated && (
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                onClick={() => setNotifOpen(true)}
+                className="relative p-1.5"
+                aria-label="Notifications"
+              >
+                <Bell className="w-6 h-6 text-text" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </motion.button>
+            )}
 
             {/* Wishlist */}
             <motion.button

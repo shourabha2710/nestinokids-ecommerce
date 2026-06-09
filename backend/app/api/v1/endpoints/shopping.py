@@ -445,6 +445,15 @@ def create_order(
             inventory.reserved_quantity += item["quantity"]
             db.add(inventory)
 
+    # Create initial tracking event
+    from app.models.models import OrderTrackingEvent
+    tracking = OrderTrackingEvent(
+        order_id=db_order.id,
+        status="Order Placed",
+        note="Order has been placed successfully.",
+    )
+    db.add(tracking)
+
     # Clear cart items associated with this order
     for item in order_items_list:
         stmt = delete(cart_association).where(
@@ -588,6 +597,15 @@ def checkout(
             inventory.available_quantity -= item["quantity"]
             inventory.reserved_quantity += item["quantity"]
             db.add(inventory)
+
+    # Create initial tracking event
+    from app.models.models import OrderTrackingEvent
+    tracking = OrderTrackingEvent(
+        order_id=db_order.id,
+        status="Order Placed",
+        note="Order has been placed successfully.",
+    )
+    db.add(tracking)
 
     # Clear entire cart
     stmt = delete(cart_association).where(

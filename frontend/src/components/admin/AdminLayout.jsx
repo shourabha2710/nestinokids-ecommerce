@@ -22,6 +22,9 @@ import {
   LogOut,
   User,
   Bell,
+  MessageSquare,
+  HelpCircle,
+  Megaphone,
 } from 'lucide-react';
 
 const navItems = [
@@ -35,6 +38,9 @@ const navItems = [
   { path: '/admin/hero-slides', label: 'Hero Slides', icon: Monitor },
   { path: '/admin/instagram', label: 'Instagram', icon: Camera },
   { path: '/admin/reviews', label: 'Reviews', icon: Star },
+  { path: '/admin/support-tickets', label: 'Support Tickets', icon: MessageSquare },
+  { path: '/admin/faqs', label: 'FAQs', icon: HelpCircle },
+  { path: '/admin/announcements', label: 'Announcements', icon: Megaphone },
   { path: '/admin/settings', label: 'Website Settings', icon: Settings },
 ];
 

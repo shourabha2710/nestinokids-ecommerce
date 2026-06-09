@@ -1,11 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { authAPI, loyaltyAPI, referralAPI } from '../api/endpoints';
+import { authAPI, loyaltyAPI, referralAPI, supportTicketAPI } from '../api/endpoints';
 import { setUser } from '../store/slices/authSlice';
 import MobilePageHeader from '../components/MobilePageHeader';
 import { motion } from 'framer-motion';
-import { Gift, Copy, Share2, ChevronDown, ChevronUp, Sparkles, Award } from 'lucide-react';
+import { Gift, Copy, Share2, ChevronDown, ChevronUp, Sparkles, Award, MessageSquare, Plus, X } from 'lucide-react';
+
+const TICKET_STATUS_COLORS = {
+  Open: 'bg-yellow-100 text-yellow-800',
+  'In Progress': 'bg-blue-100 text-blue-800',
+  Resolved: 'bg-green-100 text-green-800',
+  Closed: 'bg-gray-100 text-gray-800',
+};
 
 const ProfilePage = () => {
   const navigate = useNavigate();
@@ -21,6 +28,10 @@ const ProfilePage = () => {
   const [referral, setReferral] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [tickets, setTickets] = useState([]);
+  const [showTicketModal, setShowTicketModal] = useState(false);
+  const [ticketForm, setTicketForm] = useState({ subject: '', message: '' });
+  const [ticketError, setTicketError] = useState('');
 
   useEffect(() => {
     if (!isAuthenticated) { navigate('/login'); return; }
@@ -37,6 +48,7 @@ const ProfilePage = () => {
       if (res.data?.transactions) setLoyaltyHistory(res.data.transactions);
     }).catch(() => {});
     referralAPI.getInfo().then((res) => setReferral(res.data)).catch(() => {});
+    supportTicketAPI.getTickets().then((res) => setTickets(res.data || [])).catch(() => {});
   }, [isAuthenticated, user]);
 
   const handleSubmit = async (e) => {
@@ -74,6 +86,23 @@ const ProfilePage = () => {
       navigator.clipboard.writeText(link);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleCreateTicket = async () => {
+    if (!ticketForm.subject.trim() || !ticketForm.message.trim()) {
+      setTicketError('Please fill in both fields');
+      return;
+    }
+    try {
+      setTicketError('');
+      await supportTicketAPI.createTicket(ticketForm);
+      setShowTicketModal(false);
+      setTicketForm({ subject: '', message: '' });
+      const res = await supportTicketAPI.getTickets();
+      setTickets(res.data || []);
+    } catch {
+      setTicketError('Failed to create ticket');
     }
   };
 
@@ -118,8 +147,6 @@ const ProfilePage = () => {
             <span>Earned: {loyalty.lifetime_earned}</span>
             <span>Redeemed: {loyalty.lifetime_redeemed}</span>
           </div>
-
-          {/* History toggle */}
           {loyaltyHistory.length > 0 && (
             <div className="mt-4 pt-3 border-t border-gold/10">
               <button
@@ -197,6 +224,101 @@ const ProfilePage = () => {
             </p>
           )}
         </motion.div>
+      )}
+
+      {/* Support Tickets */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="bg-white rounded-2xl p-6 mb-6 border border-gray-100 shadow-card"
+      >
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <MessageSquare className="w-5 h-5 text-gold" />
+            <h3 className="font-display font-bold text-text text-lg">My Support Tickets</h3>
+          </div>
+          <button
+            onClick={() => setShowTicketModal(true)}
+            className="flex items-center gap-1 text-xs font-semibold text-gold hover:bg-amber-50 px-3 py-1.5 rounded-lg transition-colors"
+          >
+            <Plus size={14} />
+            New Ticket
+          </button>
+        </div>
+        {tickets.length === 0 ? (
+          <p className="text-sm text-text-muted text-center py-4">No support tickets yet</p>
+        ) : (
+          <div className="space-y-2">
+            {tickets.slice(0, 5).map((ticket) => (
+              <div key={ticket.id} className="flex items-center justify-between py-2 px-3 rounded-lg bg-gray-50">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-text truncate">{ticket.subject}</p>
+                  <p className="text-xs text-text-muted truncate">{ticket.message}</p>
+                </div>
+                <span className={`ml-2 px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 ${TICKET_STATUS_COLORS[ticket.status] || 'bg-gray-100 text-gray-600'}`}>
+                  {ticket.status}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </motion.div>
+
+      {/* Create Ticket Modal */}
+      {showTicketModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowTicketModal(false)} />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="relative bg-white rounded-2xl shadow-xl w-full max-w-md p-6"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-text text-lg">Create Support Ticket</h3>
+              <button onClick={() => setShowTicketModal(false)} className="p-1 hover:bg-gray-100 rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            {ticketError && <p className="text-red-500 text-sm mb-3">{ticketError}</p>}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+                <input
+                  type="text"
+                  value={ticketForm.subject}
+                  onChange={(e) => setTicketForm((p) => ({ ...p, subject: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gold"
+                  placeholder="Brief title for your issue"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
+                <textarea
+                  value={ticketForm.message}
+                  onChange={(e) => setTicketForm((p) => ({ ...p, message: e.target.value }))}
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gold resize-none"
+                  placeholder="Describe your issue in detail"
+                />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={() => setShowTicketModal(false)}
+                  className="flex-1 px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateTicket}
+                  className="flex-1 px-4 py-2 bg-gold text-white rounded-lg text-sm font-semibold hover:bg-opacity-90"
+                >
+                  Submit
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
       )}
 
       {/* Profile Form */}

@@ -1,45 +1,40 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import MobilePageHeader from '../components/MobilePageHeader';
 import { motion } from 'framer-motion';
-import { ChevronDown } from 'lucide-react';
-
-const faqs = [
-  {
-    q: 'What age groups do you cater to?',
-    a: 'We offer clothing for newborns up to age 14, with sizes ranging from 0-3 months to 14 years.',
-  },
-  {
-    q: 'How do I choose the right size?',
-    a: 'Please refer to our size guide available on each product page. We recommend measuring your child and comparing with our size chart for the best fit.',
-  },
-  {
-    q: 'What is your shipping policy?',
-    a: 'We offer free shipping on orders above ₹500. Standard delivery takes 3-7 business days across India. Express shipping is available at an additional cost.',
-  },
-  {
-    q: 'Do you accept returns?',
-    a: 'Yes, we offer easy returns within 7 days of delivery. Items must be unused with tags intact. Please visit our Return Policy page for detailed information.',
-  },
-  {
-    q: 'How can I track my order?',
-    a: 'Once your order is shipped, you will receive a tracking link via email and SMS. You can also track your order from the My Orders section in your account.',
-  },
-  {
-    q: 'What payment methods do you accept?',
-    a: 'We accept all major credit/debit cards, UPI, net banking, and digital wallets. All payments are processed securely.',
-  },
-  {
-    q: 'How do I care for the clothing?',
-    a: 'We recommend washing our garments in cold water and avoiding harsh detergents to maintain softness and color. Detailed care instructions are on each product tag.',
-  },
-  {
-    q: 'Can I cancel my order?',
-    a: 'Orders can be cancelled within 24 hours of placement. After that, the order may already be processed. Please contact our support team for assistance.',
-  },
-];
+import { ChevronDown, Search } from 'lucide-react';
+import { faqAPI } from '../api/endpoints';
 
 const FAQPage = () => {
+  const [faqs, setFaqs] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [openIndex, setOpenIndex] = useState(null);
+  const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    faqAPI.getFAQs().then((res) => {
+      setFaqs(res.data || []);
+    }).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+
+  const grouped = faqs.reduce((acc, faq) => {
+    const cat = faq.category || 'General';
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push(faq);
+    return acc;
+  }, {});
+
+  const filtered = {};
+  Object.keys(grouped).forEach((cat) => {
+    const items = grouped[cat].filter(
+      (f) =>
+        f.question.toLowerCase().includes(search.toLowerCase()) ||
+        f.answer.toLowerCase().includes(search.toLowerCase())
+    );
+    if (items.length > 0) filtered[cat] = items;
+  });
+
+  const categories = Object.keys(filtered);
+  let globalIndex = 0;
 
   return (
     <div className="min-h-screen bg-white">
@@ -50,33 +45,66 @@ const FAQPage = () => {
         >
           <MobilePageHeader title="FAQ" className="mb-4 -mx-4 -mt-2" />
           <h1 className="hidden md:block text-3xl font-bold text-text mb-2">Frequently Asked Questions</h1>
-          <p className="text-gray-500 mb-8">Find answers to common questions about our products and services.</p>
+          <p className="text-gray-500 mb-6">Find answers to common questions about our products and services.</p>
 
-          <div className="space-y-3">
-            {faqs.map((faq, index) => (
-              <div
-                key={index}
-                className="border border-gray-100 rounded-xl overflow-hidden"
-              >
-                <button
-                  onClick={() => setOpenIndex(openIndex === index ? null : index)}
-                  className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-gray-50 transition-colors"
-                >
-                  <span className="font-medium text-text pr-4">{faq.q}</span>
-                  <ChevronDown
-                    className={`w-5 h-5 text-gray-400 flex-shrink-0 transition-transform ${
-                      openIndex === index ? 'rotate-180' : ''
-                    }`}
-                  />
-                </button>
-                {openIndex === index && (
-                  <div className="px-5 pb-4 text-gray-600 text-sm leading-relaxed">
-                    {faq.a}
-                  </div>
-                )}
-              </div>
-            ))}
+          <div className="relative mb-8">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search FAQs..."
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setOpenIndex(null); }}
+              className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold/20"
+            />
           </div>
+
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="w-6 h-6 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : categories.length === 0 ? (
+            <div className="text-center py-12 text-gray-400">
+              <p className="text-lg font-medium">No FAQs found</p>
+              <p className="text-sm mt-1">Try a different search term</p>
+            </div>
+          ) : (
+            categories.map((category) => (
+              <div key={category} className="mb-8">
+                <h2 className="text-lg font-bold text-text mb-4 flex items-center gap-2">
+                  <span className="w-1 h-5 bg-gold rounded-full" />
+                  {category}
+                </h2>
+                <div className="space-y-3">
+                  {filtered[category].map((faq) => {
+                    const idx = globalIndex++;
+                    return (
+                      <div
+                        key={faq.id}
+                        className="border border-gray-100 rounded-xl overflow-hidden"
+                      >
+                        <button
+                          onClick={() => setOpenIndex(openIndex === idx ? null : idx)}
+                          className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-gray-50 transition-colors"
+                        >
+                          <span className="font-medium text-text pr-4">{faq.question}</span>
+                          <ChevronDown
+                            className={`w-5 h-5 text-gray-400 flex-shrink-0 transition-transform ${
+                              openIndex === idx ? 'rotate-180' : ''
+                            }`}
+                          />
+                        </button>
+                        {openIndex === idx && (
+                          <div className="px-5 pb-4 text-gray-600 text-sm leading-relaxed">
+                            {faq.answer}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))
+          )}
         </motion.div>
       </div>
     </div>
