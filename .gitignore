@@ -71,3 +71,4 @@ coverage/
 
 backend/.env
 backend/.env.production
+backend/alembic_backup/
