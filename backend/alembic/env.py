@@ -34,6 +34,15 @@ from app.models.models import (
     HeroSlide,
     wishlist_association,
     cart_association,
+    # Phase 7 models
+    RecentlyViewed,
+    LoyaltyTransaction,
+    # Phase 8 models
+    OrderTrackingEvent,
+    SupportTicket,
+    FAQ,
+    AnnouncementBar,
+    Notification,
 )
 
 # Import settings for database URL

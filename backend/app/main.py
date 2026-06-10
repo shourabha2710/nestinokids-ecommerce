@@ -14,8 +14,9 @@ from app.api.v1.endpoints import engagement as engagement_router
 from app.api.v1.endpoints import support as support_router
 from app.db.database import Base, engine
 
-# Create tables
-Base.metadata.create_all(bind=engine)
+# Create tables in development only; production relies on Alembic migrations
+if settings.DEBUG:
+    Base.metadata.create_all(bind=engine)
 
 # Create upload directories
 upload_path = Path(settings.UPLOAD_DIR) / "products"

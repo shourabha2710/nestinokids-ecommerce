@@ -68,3 +68,6 @@ coverage/
 # SQLite
 *.db
 *.sqlite3
+
+backend/.env
+backend/.env.production
