@@ -30,7 +30,7 @@ from sqlalchemy.orm import joinedload
 from app.models.models import (
     Product, Category, Order, OrderItem, User, ProductImage, Inventory,
     Banner, InstagramPost, InstagramPostClick, OrderStatusEnum, PaymentStatusEnum,
-    LoyaltyTransaction, SupportTicket, Notification, wishlist_association,
+    LoyaltyTransaction, SupportTicket, Notification, wishlist_association, cart_association,
 )
 from app.api.v1.endpoints.auth import require_admin
 from app.utils.helpers import generate_slug, generate_sku
@@ -470,11 +470,15 @@ def admin_update_order_status(
 def admin_get_products(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
+    include_inactive: bool = Query(False),
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
+    query = db.query(Product)
+    if not include_inactive:
+        query = query.filter(Product.is_active == True)
     products = (
-        db.query(Product)
+        query
         .order_by(Product.created_at.desc())
         .offset(skip)
         .limit(limit)
@@ -597,7 +601,20 @@ def admin_delete_product(
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
+    # Check if product has any order history
+    has_orders = db.query(OrderItem).filter(OrderItem.product_id == product_id).first() is not None
+
+    if has_orders:
+        product.is_active = False
+        db.add(product)
+        db.commit()
+        return {"message": "This product has existing order history and was archived instead of deleted."}
+
     _delete_image_files(product.images)
+
+    # Clean up wishlist and cart associations (many-to-many)
+    db.execute(wishlist_association.delete().where(wishlist_association.c.product_id == product_id))
+    db.execute(cart_association.delete().where(cart_association.c.product_id == product_id))
 
     db.delete(product)
     db.commit()
@@ -819,7 +836,7 @@ def admin_delete_category(
     if product_count > 0:
         raise HTTPException(
             status_code=400,
-            detail=f"Cannot delete category. {product_count} product(s) are assigned to this category. Reassign or delete them first.",
+            detail=f"Cannot delete category because it contains {product_count} products.",
         )
 
     db.delete(category)

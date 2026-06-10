@@ -210,8 +210,10 @@ const AdminCategoryList = () => {
               </p>
 
               {deleteError && (
-                <div className="bg-red-50 border border-red-200 text-red-600 px-3 py-2 rounded-xl mb-4 text-sm">
-                  {deleteError}
+                <div className="bg-amber-50 border border-amber-200 text-amber-800 px-3 py-2 rounded-xl mb-4 text-sm">
+                  {deleteError.includes('contains') 
+                    ? 'This category contains products. Move or delete the products first.'
+                    : deleteError}
                 </div>
               )}
 
