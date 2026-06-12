@@ -14,7 +14,7 @@ const AboutUsPage = () => {
           <h1 className="hidden md:block text-3xl font-bold text-text mb-6">About NestinoKids</h1>
           <div className="prose prose-gray max-w-none space-y-4">
             <p className="text-gray-600 leading-relaxed">
-              NestinoKids is the a premium kids' apparel brand dedicated to providing soft, comfortable, and stylish clothing for children. Based in New Delhi, we understand that your child's comfort is your top priority.
+              NestinoKids is a premium kids' apparel brand dedicated to providing soft, comfortable, and stylish clothing for children. Based in New Delhi, we understand that your child's comfort is your top priority.
             </p>
             <p className="text-gray-600 leading-relaxed">
               Our journey began with a simple mission: to create clothing that parents can trust and children love to wear. Every piece in our collection is carefully selected for its quality, comfort, and durability.
