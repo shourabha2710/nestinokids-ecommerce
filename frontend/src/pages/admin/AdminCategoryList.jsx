@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { adminAPI } from '../../api/endpoints';
@@ -8,6 +8,7 @@ import {
   Edit3,
   Trash2,
   AlertTriangle,
+  Minus,
 } from 'lucide-react';
 
 const AdminCategoryList = () => {
@@ -30,6 +31,40 @@ const AdminCategoryList = () => {
       setLoading(false);
     }
   };
+
+  const flatTree = useMemo(() => {
+    if (categories.length === 0) return [];
+
+    const map = {};
+    categories.forEach((cat) => {
+      map[cat.id] = { ...cat, children: [] };
+    });
+
+    const roots = [];
+    categories.forEach((cat) => {
+      if (cat.parent_id) {
+        const parent = map[cat.parent_id];
+        if (parent) {
+          parent.children.push(map[cat.id]);
+          return;
+        }
+      }
+      roots.push(map[cat.id]);
+    });
+
+    const flatten = (nodes, depth) => {
+      const result = [];
+      for (const node of nodes) {
+        result.push({ ...node, depth });
+        if (node.children.length > 0) {
+          result.push(...flatten(node.children, depth + 1));
+        }
+      }
+      return result;
+    };
+
+    return flatten(roots, 0);
+  }, [categories]);
 
   useEffect(() => {
     fetchCategories();
@@ -122,20 +157,30 @@ const AdminCategoryList = () => {
                   </td>
                 </tr>
               ) : (
-                categories.map((category, index) => (
+                flatTree.map((item, index) => (
                   <motion.tr
-                    key={category.id}
+                    key={item.id}
                     initial={{ opacity: 0, y: 4 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.03 }}
                     className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors"
                   >
-                    <td className="px-4 py-3 font-medium text-gray-900">{category.name}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-gray-500">{category.slug}</td>
+                    <td
+                      className="px-4 py-3 font-medium text-gray-900"
+                      style={{ paddingLeft: `${16 + item.depth * 28}px` }}
+                    >
+                      {item.depth > 0 && (
+                        <span className="text-gray-300 mr-1.5 inline-flex items-center">
+                          <Minus className="w-3 h-3" />
+                        </span>
+                      )}
+                      {item.name}
+                    </td>
+                    <td className="px-4 py-3 font-mono text-xs text-gray-500">{item.slug}</td>
                     <td className="px-4 py-3 text-gray-500">
-                      {category.parent_id ? (
+                      {item.parent_id ? (
                         <span className="text-gray-700">
-                          {categories.find((c) => c.id === category.parent_id)?.name || `#${category.parent_id}`}
+                          {categories.find((c) => c.id === item.parent_id)?.name || `#${item.parent_id}`}
                         </span>
                       ) : (
                         <span className="text-gray-300">—</span>
@@ -144,18 +189,18 @@ const AdminCategoryList = () => {
                     <td className="px-4 py-3">
                       <span
                         className={`inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-medium whitespace-nowrap ${
-                          category.is_active
+                          item.is_active
                             ? 'bg-green-50 text-green-600'
                             : 'bg-gray-50 text-gray-400'
                         }`}
                       >
-                        {category.is_active ? 'Active' : 'Inactive'}
+                        {item.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end space-x-1">
                         <button
-                          onClick={() => navigate(`/admin/categories/${category.id}/edit`)}
+                          onClick={() => navigate(`/admin/categories/${item.id}/edit`)}
                           className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
                           title="Edit"
                         >
@@ -163,7 +208,7 @@ const AdminCategoryList = () => {
                         </button>
                         <button
                           onClick={() => {
-                            setDeleteId(category.id);
+                            setDeleteId(item.id);
                             setDeleteError('');
                           }}
                           className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"

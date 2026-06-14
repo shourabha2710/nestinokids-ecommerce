@@ -11,14 +11,32 @@ const AdminCategoryForm = () => {
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(isEditing);
   const [error, setError] = useState('');
+  const [parentCategories, setParentCategories] = useState([]);
 
   const [form, setForm] = useState({
     name: '',
     description: '',
     is_active: true,
+    parent_id: null,
   });
 
   const [slug, setSlug] = useState('');
+
+  useEffect(() => {
+    const loadParents = async () => {
+      try {
+        const res = await adminAPI.getCategories({ limit: 200 });
+        let cats = res.data.filter((c) => !c.parent_id);
+        if (isEditing) {
+          cats = cats.filter((c) => String(c.id) !== id);
+        }
+        setParentCategories(cats);
+      } catch {
+        // silently fail
+      }
+    };
+    loadParents();
+  }, [id, isEditing]);
 
   useEffect(() => {
     if (isEditing) {
@@ -31,6 +49,7 @@ const AdminCategoryForm = () => {
               name: cat.name,
               description: cat.description || '',
               is_active: cat.is_active,
+              parent_id: cat.parent_id,
             });
             setSlug(cat.slug);
           } else {
@@ -68,11 +87,18 @@ const AdminCategoryForm = () => {
     setLoading(true);
 
     try {
+      if (String(form.parent_id) === id) {
+        setError('A category cannot be its own parent.');
+        setLoading(false);
+        return;
+      }
+
       const payload = {
         name: form.name,
         slug: slug || undefined,
         description: form.description || undefined,
         is_active: form.is_active,
+        parent_id: form.parent_id || undefined,
       };
 
       if (isEditing) {
@@ -182,6 +208,32 @@ const AdminCategoryForm = () => {
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold transition-all text-sm resize-y"
               placeholder="Brief description of this category"
             />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Parent Category
+            </label>
+            <select
+              name="parent_id"
+              value={form.parent_id != null ? String(form.parent_id) : ''}
+              onChange={(e) => {
+                const val = e.target.value;
+                setForm((prev) => ({
+                  ...prev,
+                  parent_id: val ? Number(val) : null,
+                }));
+                if (error) setError('');
+              }}
+              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold transition-all text-sm"
+            >
+              <option value="">None (Top Level)</option>
+              {parentCategories.map((cat) => (
+                <option key={cat.id} value={String(cat.id)}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>
