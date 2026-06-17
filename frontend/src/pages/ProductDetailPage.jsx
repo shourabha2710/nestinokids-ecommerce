@@ -5,6 +5,7 @@ import { productsAPI, shoppingAPI, recentlyViewedAPI } from '../api/endpoints';
 import { addToCart } from '../store/slices/cartSlice';
 import { addWishlistItem, removeWishlistItem } from '../store/slices/wishlistSlice';
 import MobilePageHeader from '../components/MobilePageHeader';
+import Breadcrumb from '../components/Breadcrumb';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, ShoppingBag, Star, Shield, Truck, RefreshCw, ChevronLeft, ChevronRight, Minus, Plus } from 'lucide-react';
 import RelatedProducts from '../components/RelatedProducts';
@@ -32,6 +33,7 @@ const ProductDetailPage = () => {
   const [error, setError] = useState(null);
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
+  const [selectedVariantId, setSelectedVariantId] = useState(null);
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState(false);
   const [wishlistLoading, setWishlistLoading] = useState(false);
@@ -82,12 +84,31 @@ const ProductDetailPage = () => {
     }
   };
 
+  const [variantError, setVariantError] = useState('');
+
   const handleAddToCart = async () => {
     if (adding || !product) return;
+    if (needsVariant) {
+      setVariantError('Please select a size before adding to cart.');
+      return;
+    }
+    setVariantError('');
+    const variantId = selectedVariant?.id || null;
     setAdding(true);
     try {
-      await shoppingAPI.addToCart(product.id, { quantity });
-      dispatch(addToCart({ ...product, quantity }));
+      await shoppingAPI.addToCart(product.id, { quantity, variant_id: variantId });
+      dispatch(addToCart({
+        ...product,
+        quantity,
+        price: effectivePrice,
+        variant_id: variantId,
+        variant_name: selectedVariant
+          ? `${selectedVariant.size || ''} ${selectedVariant.color || ''}`.trim() || null
+          : null,
+        variant_size: selectedVariant?.size || null,
+        variant_sku: selectedVariant?.sku || null,
+        product_id: product.id,
+      }));
       setAdded(true);
       setTimeout(() => setAdded(false), 2500);
     } catch {
@@ -139,6 +160,13 @@ const ProductDetailPage = () => {
   const images = product.images?.length > 0
     ? product.images
     : [{ image_url: PLACEHOLDER, is_primary: true, alt_text: product.name }];
+  const variants = product.variants || [];
+  const selectedVariant = variants.find(v => v.id === selectedVariantId) || null;
+  const needsVariant = variants.length > 0 && !selectedVariantId;
+  const basePrice = product.discount_price || product.price;
+  const effectivePrice = selectedVariant
+    ? basePrice + (selectedVariant.price_modifier || 0)
+    : basePrice;
   const discount = product.discount_price
     ? Math.round(((product.price - product.discount_price) / product.price) * 100)
     : 0;
@@ -155,20 +183,17 @@ const ProductDetailPage = () => {
       <MobilePageHeader title={product.name} className="mb-4 -mx-4 -mt-2" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-10">
-        {/* Breadcrumb */}
-        <nav className="hidden md:flex items-center text-sm text-text-muted mb-8">
-          <button onClick={() => navigate('/')} className="hover:text-gold transition-colors">Home</button>
-          <ChevronRight className="w-3.5 h-3.5 mx-2" />
-          {product.category && (
-            <>
-              <button onClick={() => navigate(`/products?category=${product.category.id}`)} className="hover:text-gold transition-colors">
-                {product.category.name}
-              </button>
-              <ChevronRight className="w-3.5 h-3.5 mx-2" />
-            </>
-          )}
-          <span className="text-text font-medium truncate max-w-[200px]">{product.name}</span>
-        </nav>
+        <Breadcrumb
+          items={[
+            ...(product.category && product.category.parent_id
+              ? [{ label: product.category.parent_name || product.category.name, path: `/products?category=${product.category.parent_id}` }]
+              : []),
+            ...(product.category
+              ? [{ label: product.category.name, path: `/products?category=${product.category.id}` }]
+              : []),
+          ]}
+          className="hidden md:flex mb-8"
+        />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-14">
           {/* LEFT — Image Gallery */}
@@ -258,16 +283,47 @@ const ProductDetailPage = () => {
             <motion.div variants={fadeUp} className="mb-6">
               {product.discount_price ? (
                 <div className="flex items-baseline gap-3">
-                  <span className="text-3xl lg:text-4xl font-bold text-gold">₹{product.discount_price}</span>
+                  <span className="text-3xl lg:text-4xl font-bold text-gold">₹{effectivePrice}</span>
                   <span className="text-lg text-text-muted line-through">₹{product.price}</span>
                   <span className="bg-red-500/10 text-red-500 text-xs font-bold px-2.5 py-1 rounded-full">
                     Save {discount}%
                   </span>
                 </div>
               ) : (
-                <span className="text-3xl lg:text-4xl font-bold text-gold">₹{product.price}</span>
+                <span className="text-3xl lg:text-4xl font-bold text-gold">₹{effectivePrice}</span>
               )}
+              {selectedVariant && selectedVariant.price_modifier ? (
+                <p className="text-xs text-text-muted mt-1">
+                  Base price ₹{basePrice} + size adjustment ₹{selectedVariant.price_modifier}
+                </p>
+              ) : null}
             </motion.div>
+
+            {/* Size Selector */}
+            {variants.length > 0 && (
+              <motion.div variants={fadeUp} className="mb-6">
+                <span className="text-sm font-semibold text-text block mb-2">Size</span>
+                {variantError && (
+                  <p className="text-red-500 text-xs mb-2">{variantError}</p>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  {variants.map((v) => (
+                    <button
+                      key={v.id}
+                      onClick={() => { setSelectedVariantId(v.id); setVariantError(''); }}
+                      disabled={v.quantity <= 0}
+                      className={`px-4 py-2 rounded-lg border text-sm font-medium transition-all ${
+                        selectedVariantId === v.id
+                          ? 'border-gold bg-gold/10 text-gold'
+                          : 'border-gray-200 text-text-muted hover:border-gray-300'
+                      } ${v.quantity <= 0 ? 'opacity-40 cursor-not-allowed line-through' : ''}`}
+                    >
+                      {v.size}
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
 
             {/* Description */}
             <motion.div variants={fadeUp} className="mb-6">
@@ -297,15 +353,17 @@ const ProductDetailPage = () => {
             {/* Action Buttons */}
             <motion.div variants={fadeUp} className="flex gap-3 mb-6">
               <motion.button
-                whileHover={adding ? {} : { scale: 1.01 }}
-                whileTap={adding ? {} : { scale: 0.99 }}
+                whileHover={adding ? {} : needsVariant ? {} : { scale: 1.01 }}
+                whileTap={adding ? {} : needsVariant ? {} : { scale: 0.99 }}
                 onClick={handleAddToCart}
-                disabled={adding}
+                disabled={adding || needsVariant}
                 className={`flex-1 h-12 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all ${
                   added
                     ? 'bg-green-500 text-white'
                     : adding
                     ? 'bg-gold/60 text-white cursor-not-allowed'
+                    : needsVariant
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     : 'bg-gold text-white hover:bg-gold-dark shadow-premium'
                 }`}
               >
@@ -313,8 +371,10 @@ const ProductDetailPage = () => {
                   <><ShoppingBag className="w-4 h-4" /> Added to Cart</>
                 ) : adding ? (
                   <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Adding...</>
+                ) : needsVariant ? (
+                  <><ShoppingBag className="w-4 h-4" /> Select Size</>
                 ) : (
-                  <><ShoppingBag className="w-4 h-4" /> Add to Cart — ₹{(product.discount_price || product.price) * quantity}</>
+                  <><ShoppingBag className="w-4 h-4" /> Add to Cart — ₹{effectivePrice * quantity}</>
                 )}
               </motion.button>
               <motion.button

@@ -96,39 +96,44 @@ const AdminLayout = () => {
         {/* Logo area - fixed top */}
         <div className={`
           flex items-center flex-shrink-0 border-b border-white/10
-          ${sidebarCollapsed ? 'justify-center h-16 px-2' : 'px-4 py-4'}
+          ${sidebarCollapsed ? 'justify-center h-16 px-2' : 'px-4 py-3'}
         `}>
-          {sidebarCollapsed ? (
+          <div className={`flex items-center ${sidebarCollapsed ? '' : 'flex-1 min-w-0'} gap-3`}>
             <img
               src="/images/logo.png"
               alt="NestinoKids"
-              className="h-12 w-auto object-contain flex-shrink-0"
+              className="h-10 w-auto object-contain flex-shrink-0"
             />
-          ) : (
-            <>
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <img
-                  src="/images/logo.png"
-                  alt="NestinoKids"
-                  className="h-12 w-auto object-contain flex-shrink-0"
-                />
-                <div className="min-w-0">
-                  <h2 className="text-lg font-bold text-white truncate">NestinoKids</h2>
-                  <p className="text-xs text-gray-400 truncate">Admin Panel</p>
-                </div>
+            {!sidebarCollapsed && (
+              <div className="min-w-0">
+                <h2 className="text-base font-bold text-white truncate">NestinoKids</h2>
+                <p className="text-[10px] text-gray-400 truncate">Admin Panel</p>
               </div>
-              <button
-                onClick={() => setMobileSidebarOpen(false)}
-                className="lg:hidden text-gray-400 hover:text-white p-1 flex-shrink-0"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </>
-          )}
+            )}
+          </div>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <button
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="hidden lg:flex text-gray-500 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-gray-800"
+              title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            >
+              {sidebarCollapsed ? (
+                <ChevronRight className="w-4 h-4" />
+              ) : (
+                <ChevronLeft className="w-4 h-4" />
+              )}
+            </button>
+            <button
+              onClick={() => setMobileSidebarOpen(false)}
+              className="lg:hidden text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-gray-800"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Navigation - scrollable */}
-        <nav className="flex-1 overflow-y-auto py-4 space-y-1 px-2 scrollbar-thin">
+        <nav className="flex-1 overflow-y-auto py-3 space-y-0.5 px-2 admin-sidebar-scroll">
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
@@ -198,17 +203,6 @@ const AdminLayout = () => {
           )}
         </div>
 
-        {/* Collapse toggle (desktop only) */}
-        <button
-          onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-          className="hidden lg:flex items-center justify-center h-8 border-t border-gray-800 text-gray-500 hover:text-white transition-colors flex-shrink-0"
-        >
-          {sidebarCollapsed ? (
-            <ChevronRight className="w-4 h-4" />
-          ) : (
-            <ChevronLeft className="w-4 h-4" />
-          )}
-        </button>
       </motion.aside>
 
       {/* Main content area - scrolls independently */}

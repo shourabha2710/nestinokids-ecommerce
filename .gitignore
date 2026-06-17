@@ -26,12 +26,16 @@ frontend/.env.*.local
 frontend/npm-debug.log*
 frontend/yarn-debug.log*
 frontend/yarn-error.log*
+frontend/.env.development
+frontend/.env.production
 
 # Admin
 admin/node_modules/
 admin/dist/
 admin/build/
 admin/.env.local
+admin/.env.development
+admin/.env.production
 
 # IDE
 .vscode/
@@ -72,3 +76,6 @@ coverage/
 backend/.env
 backend/.env.production
 backend/alembic_backup/
+
+backend/test_cart.ps1
+backend/test_cart.py

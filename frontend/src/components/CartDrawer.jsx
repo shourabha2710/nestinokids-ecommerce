@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ShoppingBag, Plus, Minus, Trash2, Truck, Loader2 } from 'lucide-react';
 import { closeCartDrawer } from '../store/slices/uiSlice';
+import { setCartItems } from '../store/slices/cartSlice';
 import { shoppingAPI, productsAPI, settingsAPI, recommendationAPI } from '../api/endpoints';
 
 const PLACEHOLDER = '/images/placeholder-product.svg';
@@ -20,18 +21,24 @@ const CartDrawer = () => {
   const [updatingId, setUpdatingId] = useState(null);
   const [addingRecId, setAddingRecId] = useState(null);
 
+  const syncToRedux = useCallback((cartItems) => {
+    dispatch(setCartItems(cartItems));
+  }, [dispatch]);
+
   const fetchCart = useCallback(async () => {
     if (!isAuthenticated) return;
     try {
       setLoading(true);
       const res = await shoppingAPI.getCart();
       setItems(res.data);
+      syncToRedux(res.data);
     } catch {
       setItems([]);
+      syncToRedux([]);
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, syncToRedux]);
 
   useEffect(() => {
     if (cartDrawerOpen) {
@@ -62,11 +69,14 @@ const CartDrawer = () => {
     if (newQty < 1) return;
     setUpdatingId(item.id);
     const prev = items;
-    setItems((prev) => prev.map((i) => i.id === item.id ? { ...i, quantity: newQty, total: i.price * newQty } : i));
+    const optimistically = prev.map((i) => i.id === item.id ? { ...i, quantity: newQty, total: i.price * newQty } : i);
+    setItems(optimistically);
+    syncToRedux(optimistically);
     try {
-      await shoppingAPI.updateCartItem(item.product_id || item.id, newQty);
+      await shoppingAPI.updateCartItem(item.product_id || item.id, newQty, item.variant_id);
     } catch {
       setItems(prev);
+      syncToRedux(prev);
       fetchCart();
     } finally {
       setUpdatingId(null);
@@ -76,11 +86,14 @@ const CartDrawer = () => {
   const handleRemove = async (item) => {
     setUpdatingId(item.id);
     const prev = items;
-    setItems((prev) => prev.filter((i) => i.id !== item.id));
+    const optimistically = prev.filter((i) => i.id !== item.id);
+    setItems(optimistically);
+    syncToRedux(optimistically);
     try {
-      await shoppingAPI.removeFromCart(item.product_id || item.id);
+      await shoppingAPI.removeFromCart(item.product_id || item.id, item.variant_id);
     } catch {
       setItems(prev);
+      syncToRedux(prev);
       fetchCart();
     } finally {
       setUpdatingId(null);
@@ -91,7 +104,9 @@ const CartDrawer = () => {
     setAddingRecId(product.id);
     try {
       await shoppingAPI.addToCart(product.id, { quantity: 1 });
-      fetchCart();
+      const res = await shoppingAPI.getCart();
+      setItems(res.data);
+      syncToRedux(res.data);
     } catch {
       // silently fail
     } finally {
@@ -214,6 +229,12 @@ const CartDrawer = () => {
                       />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-text truncate">{item.name}</p>
+                        {item.variant_size && (
+                          <p className="text-xs text-text-muted">Size: {item.variant_size}</p>
+                        )}
+                        {item.variant_sku && (
+                          <p className="text-xs text-text-muted">SKU: {item.variant_sku}</p>
+                        )}
                         <p className="text-xs text-text-muted mt-0.5">₹{item.price}</p>
                         {(item.stock_quantity !== undefined && item.stock_quantity <= 5) && (
                           <p className="text-[10px] text-red-500 font-medium mt-0.5">

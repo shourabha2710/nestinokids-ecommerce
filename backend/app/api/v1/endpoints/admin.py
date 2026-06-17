@@ -25,11 +25,13 @@ from app.schemas.schemas import (
     ProductImageResponse,
     ProductResponse,
     ProductUpdate,
+    ProductVariantBase,
+    ProductVariantResponse,
 )
 from sqlalchemy.orm import joinedload
 from app.models.models import (
     Product, Category, Order, OrderItem, User, ProductImage, Inventory,
-    Banner, InstagramPost, InstagramPostClick, OrderStatusEnum, PaymentStatusEnum,
+    ProductVariant, Banner, InstagramPost, InstagramPostClick, OrderStatusEnum, PaymentStatusEnum,
     LoyaltyTransaction, SupportTicket, Notification, wishlist_association, cart_association,
 )
 from app.api.v1.endpoints.auth import require_admin
@@ -349,6 +351,13 @@ def _build_admin_order(order: Order) -> dict:
                 "quantity": item.quantity,
                 "price": item.price,
                 "total": item.total,
+                "variant_id": item.variant_id,
+                "variant_name": (
+                    f"{item.variant.size or ''} {item.variant.color or ''}".strip()
+                    if item.variant else None
+                ) or None,
+                "variant_sku": item.variant.sku if item.variant else None,
+                "variant_size": item.variant.size if item.variant else None,
             }
             for item in order.items
         ],
@@ -379,7 +388,10 @@ def admin_get_orders(
         db.query(Order)
         .join(User)
         .outerjoin(OrderItem)
-        .options(joinedload(Order.items).joinedload(OrderItem.product))
+        .options(
+            joinedload(Order.items).joinedload(OrderItem.product),
+            joinedload(Order.items).joinedload(OrderItem.variant),
+        )
     )
     if search:
         query = query.filter(Order.order_number.ilike(f"%{search}%"))
@@ -403,7 +415,10 @@ def admin_get_order(
 ):
     order = (
         db.query(Order)
-        .options(joinedload(Order.items).joinedload(OrderItem.product))
+        .options(
+            joinedload(Order.items).joinedload(OrderItem.product),
+            joinedload(Order.items).joinedload(OrderItem.variant),
+        )
         .filter(Order.id == order_id)
         .first()
     )
@@ -474,7 +489,7 @@ def admin_get_products(
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    query = db.query(Product)
+    query = db.query(Product).options(joinedload(Product.variants))
     if not include_inactive:
         query = query.filter(Product.is_active == True)
     products = (
@@ -550,6 +565,17 @@ def admin_create_product(
         )
         db.add(image)
 
+    for variant_data in product_data.variants:
+        variant = ProductVariant(
+            product_id=product.id,
+            size=variant_data.size,
+            color=variant_data.color,
+            price_modifier=variant_data.price_modifier,
+            quantity=variant_data.quantity,
+            sku=variant_data.sku,
+        )
+        db.add(variant)
+
     db.commit()
     db.refresh(product)
     return product
@@ -619,6 +645,152 @@ def admin_delete_product(
     db.delete(product)
     db.commit()
     return {"message": "Product deleted successfully"}
+
+
+# ─── Variant CRUD ────────────────────────────────────────────────────────────
+
+
+@router.get("/products/{product_id}/variants", response_model=List[ProductVariantResponse])
+def admin_list_product_variants(
+    product_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return product.variants
+
+
+@router.post("/products/{product_id}/variants", response_model=ProductVariantResponse, status_code=status.HTTP_201_CREATED)
+def admin_create_product_variant(
+    product_id: int,
+    variant_data: ProductVariantBase,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    if not variant_data.sku or not variant_data.sku.strip():
+        raise HTTPException(status_code=400, detail="SKU is required")
+
+    if variant_data.quantity < 0:
+        raise HTTPException(status_code=400, detail="Quantity must be >= 0")
+
+    existing = db.query(ProductVariant).filter(
+        ProductVariant.product_id == product_id,
+        ProductVariant.size == variant_data.size,
+    ).first()
+    if existing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Variant with size '{variant_data.size}' already exists for this product",
+        )
+
+    existing_sku = db.query(ProductVariant).filter(
+        ProductVariant.sku == variant_data.sku,
+    ).first()
+    if existing_sku:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Variant with SKU '{variant_data.sku}' already exists",
+        )
+
+    variant = ProductVariant(
+        product_id=product_id,
+        size=variant_data.size,
+        color=variant_data.color,
+        price_modifier=variant_data.price_modifier,
+        quantity=variant_data.quantity,
+        sku=variant_data.sku,
+    )
+    db.add(variant)
+    db.commit()
+    db.refresh(variant)
+    return variant
+
+
+@router.put("/products/{product_id}/variants/{variant_id}", response_model=ProductVariantResponse)
+def admin_update_product_variant(
+    product_id: int,
+    variant_id: int,
+    variant_data: ProductVariantBase,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    variant = db.query(ProductVariant).filter(
+        ProductVariant.id == variant_id,
+        ProductVariant.product_id == product_id,
+    ).first()
+    if not variant:
+        raise HTTPException(status_code=404, detail="Variant not found")
+
+    if not variant_data.sku or not variant_data.sku.strip():
+        raise HTTPException(status_code=400, detail="SKU is required")
+
+    if variant_data.quantity < 0:
+        raise HTTPException(status_code=400, detail="Quantity must be >= 0")
+
+    existing = db.query(ProductVariant).filter(
+        ProductVariant.product_id == product_id,
+        ProductVariant.size == variant_data.size,
+        ProductVariant.id != variant_id,
+    ).first()
+    if existing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Variant with size '{variant_data.size}' already exists for this product",
+        )
+
+    existing_sku = db.query(ProductVariant).filter(
+        ProductVariant.sku == variant_data.sku,
+        ProductVariant.id != variant_id,
+    ).first()
+    if existing_sku:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Variant with SKU '{variant_data.sku}' already exists",
+        )
+
+    for field in ("size", "color", "price_modifier", "quantity", "sku"):
+        setattr(variant, field, getattr(variant_data, field))
+
+    db.add(variant)
+    db.commit()
+    db.refresh(variant)
+    return variant
+
+
+@router.delete("/products/{product_id}/variants/{variant_id}")
+def admin_delete_product_variant(
+    product_id: int,
+    variant_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    variant = db.query(ProductVariant).filter(
+        ProductVariant.id == variant_id,
+        ProductVariant.product_id == product_id,
+    ).first()
+    if not variant:
+        raise HTTPException(status_code=404, detail="Variant not found")
+
+    db.delete(variant)
+    db.commit()
+    return {"message": "Variant deleted successfully"}
+
+
+# ─── Images ──────────────────────────────────────────────────────────────────
 
 
 @router.post("/products/{product_id}/images", response_model=ProductImageResponse, status_code=status.HTTP_201_CREATED)

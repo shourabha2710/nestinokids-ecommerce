@@ -46,6 +46,11 @@ const WishlistPage = () => {
   };
 
   const handleAddToCart = async (item) => {
+    const hasVariants = item.variants?.length > 0;
+    if (hasVariants) {
+      navigate(`/products/${item.slug}`);
+      return;
+    }
     try {
       await shoppingAPI.addToCart(item.id, { quantity: 1 });
       dispatch(addToCart({ ...item, quantity: 1 }));

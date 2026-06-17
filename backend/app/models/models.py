@@ -18,8 +18,9 @@ wishlist_association = Table(
 cart_association = Table(
     'cart_association',
     Base.metadata,
-    Column('user_id', Integer, ForeignKey('users.id'), primary_key=True),
-    Column('product_id', Integer, ForeignKey('products.id'), primary_key=True),
+    Column('id', Integer, primary_key=True),
+    Column('user_id', Integer, ForeignKey('users.id'), nullable=False),
+    Column('product_id', Integer, ForeignKey('products.id'), nullable=False),
     Column('quantity', Integer, default=1),
     Column('variant_id', Integer, ForeignKey('product_variants.id'), nullable=True),
 )
@@ -299,6 +300,7 @@ class OrderItem(Base):
     # Relationships
     order = relationship("Order", back_populates="items")
     product = relationship("Product", back_populates="order_items")
+    variant = relationship("ProductVariant", foreign_keys=[variant_id])
     
     __table_args__ = (
         Index('idx_order_item_order', 'order_id'),

@@ -181,6 +181,8 @@ const OrderDetailPage = () => {
               />
               <div className="flex-1">
                 <p className="font-medium text-text">{item.product_name}</p>
+                {item.variant_size && <p className="text-xs text-text-muted">Size: {item.variant_size}</p>}
+                {item.variant_sku && <p className="text-xs text-text-muted">SKU: {item.variant_sku}</p>}
                 <p className="text-sm text-gray-500">Qty: {item.quantity} x ₹{item.price}</p>
               </div>
               <p className="font-semibold">₹{item.total}</p>

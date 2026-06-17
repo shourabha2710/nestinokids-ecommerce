@@ -38,13 +38,15 @@ const CartPage = () => {
 
   const getProductId = (item) => item.product_id || item.id;
 
+  const getItemKey = (item) => `${item.product_id || item.id}_${item.variant_id ?? 'null'}`;
+
   const handleQuantityChange = async (item, newQty) => {
     if (newQty < 1) return;
     const prevItems = items;
     try {
-      await shoppingAPI.updateCartItem(getProductId(item), newQty);
+      await shoppingAPI.updateCartItem(getProductId(item), newQty, item.variant_id);
       const updated = prevItems.map((i) =>
-        i.id === item.id
+        getItemKey(i) === getItemKey(item)
           ? { ...i, quantity: newQty, total: i.price * newQty }
           : i
       );
@@ -58,8 +60,8 @@ const CartPage = () => {
   const handleRemove = async (item) => {
     const prevItems = items;
     try {
-      await shoppingAPI.removeFromCart(getProductId(item));
-      const updated = prevItems.filter((i) => i.id !== item.id);
+      await shoppingAPI.removeFromCart(getProductId(item), item.variant_id);
+      const updated = prevItems.filter((i) => getItemKey(i) !== getItemKey(item));
       setItems(updated);
       dispatch(setCartItems(updated));
     } catch {
@@ -136,20 +138,26 @@ const CartPage = () => {
         <div className="space-y-4">
           {items.map((item) => (
             <motion.div
-              key={item.id}
+              key={getItemKey(item)}
               layout
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               className="flex gap-4 p-4 bg-white rounded-lg shadow"
             >
               <img
-                src={imgErrors[item.id] ? PLACEHOLDER : (item.images?.[0]?.image_url || PLACEHOLDER)}
+                src={imgErrors[getItemKey(item)] ? PLACEHOLDER : (item.images?.[0]?.image_url || PLACEHOLDER)}
                 alt={item.name}
                 className="w-24 h-24 object-cover rounded"
-                onError={() => setImgErrors((prev) => ({ ...prev, [item.id]: true }))}
+                onError={() => setImgErrors((prev) => ({ ...prev, [getItemKey(item)]: true }))}
               />
               <div className="flex-1">
                 <h3 className="font-semibold text-text">{item.name}</h3>
+                {item.variant_size && (
+                  <p className="text-sm text-text-muted">Size: {item.variant_size}</p>
+                )}
+                {item.variant_sku && (
+                  <p className="text-sm text-text-muted">SKU: {item.variant_sku}</p>
+                )}
                 <p className="text-gold font-bold mt-1">₹{item.price}</p>
                 <div className="flex items-center gap-3 mt-3">
                   <button

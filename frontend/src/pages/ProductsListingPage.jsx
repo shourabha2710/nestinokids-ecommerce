@@ -3,8 +3,9 @@ import { useSearchParams } from 'react-router-dom';
 import { productsAPI } from '../api/endpoints';
 import ProductCard from '../components/ProductCard';
 import MobilePageHeader from '../components/MobilePageHeader';
+import Breadcrumb from '../components/Breadcrumb';
 import { motion } from 'framer-motion';
-import { Search, SlidersHorizontal, X } from 'lucide-react';
+import { Search, SlidersHorizontal, X, ChevronDown } from 'lucide-react';
 
 const ProductsListingPage = ({ filter, sort: sortProp }) => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -12,6 +13,8 @@ const ProductsListingPage = ({ filter, sort: sortProp }) => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
+  const [catMap, setCatMap] = useState({});
+  const [expandedParents, setExpandedParents] = useState({});
 
   const search = searchParams.get('search') || '';
   const categoryId = searchParams.get('category') || '';
@@ -23,17 +26,42 @@ const ProductsListingPage = ({ filter, sort: sortProp }) => {
   }, [search, categoryId, activeSort, activeFilter]);
 
   useEffect(() => {
-    productsAPI.getCategories({ limit: 100 }).then((res) => {
-      if (res.data) setCategories(Array.isArray(res.data) ? res.data : []);
+    productsAPI.getCategories({ limit: 200 }).then((res) => {
+      if (res.data) {
+        const arr = Array.isArray(res.data) ? res.data : [];
+        setCategories(arr);
+        const map = {};
+        arr.forEach((c) => { map[c.id] = c; });
+        setCatMap(map);
+        // Auto-expand parent of selected category
+        if (categoryId) {
+          const selected = map[Number(categoryId)];
+          if (selected?.parent_id) {
+            setExpandedParents((prev) => ({ ...prev, [selected.parent_id]: true }));
+          }
+        }
+      }
     }).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (categoryId && Object.keys(catMap).length > 0) {
+      const selected = catMap[Number(categoryId)];
+      if (selected?.parent_id) {
+        setExpandedParents((prev) => ({ ...prev, [selected.parent_id]: true }));
+      }
+    }
+  }, [categoryId, catMap]);
 
   const fetchProducts = async () => {
     try {
       setLoading(true);
       const params = { limit: 50 };
       if (search) params.search = search;
-      if (categoryId) params.category_id = categoryId;
+      if (categoryId) {
+        params.category_id = categoryId;
+        params.include_subcategories = true;
+      }
       if (activeSort === 'newest') params.sort = 'created_at';
       else if (activeSort === 'price_asc') params.sort = 'price';
       else if (activeSort === 'price_desc') params.sort = '-price';
@@ -68,10 +96,33 @@ const ProductsListingPage = ({ filter, sort: sortProp }) => {
     : activeSort === 'newest' ? 'New Arrivals'
     : 'All Products';
 
+  // Build breadcrumb items
+  const breadcrumbItems = [];
+  if (categoryId && catMap[Number(categoryId)]) {
+    const selected = catMap[Number(categoryId)];
+    if (selected.parent_id && catMap[selected.parent_id]) {
+      const parent = catMap[selected.parent_id];
+      breadcrumbItems.push({ label: parent.name, path: `/products?category=${parent.id}` });
+    }
+    breadcrumbItems.push({ label: selected.name });
+  }
+
+  // Build hierarchical category list
+  const parentCats = categories.filter((c) => !c.parent_id);
+  const getChildren = (parentId) => categories.filter((c) => c.parent_id === parentId);
+
+  const toggleParent = (parentId) => {
+    setExpandedParents((prev) => ({ ...prev, [parentId]: !prev[parentId] }));
+  };
+
   return (
     <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <MobilePageHeader title={pageTitle} className="mb-4 -mx-4 -mt-2" />
+        {/* Breadcrumb */}
+        {breadcrumbItems.length > 0 && (
+          <Breadcrumb items={breadcrumbItems} className="hidden md:flex mb-4" />
+        )}
         {/* Header */}
         <div className="hidden md:flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
@@ -137,7 +188,7 @@ const ProductsListingPage = ({ filter, sort: sortProp }) => {
               </div>
               <div>
                 <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Category</h4>
-                <div className="space-y-1 max-h-56 overflow-y-auto">
+                <div className="space-y-0.5 max-h-80 overflow-y-auto">
                   <button
                     onClick={() => updateSearch('category', '')}
                     className={`block w-full text-left px-2 py-1.5 rounded-lg text-sm transition ${
@@ -146,17 +197,51 @@ const ProductsListingPage = ({ filter, sort: sortProp }) => {
                   >
                     All Categories
                   </button>
-                  {categories.map((cat) => (
-                    <button
-                      key={cat.id}
-                      onClick={() => updateSearch('category', String(cat.id))}
-                      className={`block w-full text-left px-2 py-1.5 rounded-lg text-sm transition ${
-                        categoryId === String(cat.id) ? 'bg-gold/10 text-gold font-medium' : 'text-gray-600 hover:bg-gray-50'
-                      }`}
-                    >
-                      {cat.name}
-                    </button>
-                  ))}
+                  {parentCats.map((parent) => {
+                    const children = getChildren(parent.id);
+                    const isSelected = categoryId === String(parent.id);
+                    const isExpanded = expandedParents[parent.id];
+                    return (
+                      <div key={parent.id}>
+                        <div className="flex items-center">
+                          <button
+                            onClick={() => {
+                              if (children.length > 0) toggleParent(parent.id);
+                              else updateSearch('category', String(parent.id));
+                            }}
+                            className={`flex-1 text-left px-2 py-1.5 rounded-lg text-sm transition ${
+                              isSelected ? 'bg-gold/10 text-gold font-medium' : 'text-gray-600 hover:bg-gray-50'
+                            }`}
+                          >
+                            {parent.name}
+                          </button>
+                          {children.length > 0 && (
+                            <button
+                              onClick={() => toggleParent(parent.id)}
+                              className="p-1 text-gray-400 hover:text-gray-600"
+                            >
+                              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                            </button>
+                          )}
+                        </div>
+                        {isExpanded && children.length > 0 && (
+                          <div className="ml-3 border-l border-gray-100 pl-2">
+                            {children.map((child) => (
+                              <button
+                                key={child.id}
+                                onClick={() => updateSearch('category', String(child.id))}
+                                className={`block w-full text-left px-2 py-1 rounded-lg text-xs transition ${
+                                  categoryId === String(child.id) ? 'bg-gold/10 text-gold font-medium' : 'text-gray-500 hover:bg-gray-50'
+                                }`}
+                              >
+                                {child.name}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>

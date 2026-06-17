@@ -86,7 +86,18 @@ class CategoryUpdate(BaseModel):
 
 class CategoryResponse(CategoryBase):
     id: int
+    parent_name: Optional[str] = None
     created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+class CategoryTreeResponse(CategoryBase):
+    id: int
+    parent_name: Optional[str] = None
+    created_at: datetime
+    children: List['CategoryTreeResponse'] = []
     
     class Config:
         from_attributes = True
@@ -166,6 +177,7 @@ class ProductResponse(ProductBase):
     review_count: int
     images: List[ProductImageResponse] = []
     variants: List[ProductVariantResponse] = []
+    category: Optional[CategoryResponse] = None
     created_at: datetime
     
     class Config:
@@ -213,6 +225,10 @@ class OrderItemResponse(BaseModel):
     quantity: int
     price: float
     total: float
+    variant_id: Optional[int] = None
+    variant_name: Optional[str] = None
+    variant_sku: Optional[str] = None
+    variant_size: Optional[str] = None
     
     class Config:
         from_attributes = True
@@ -346,9 +362,11 @@ class ReviewResponse(ReviewBase):
 class WishlistItemResponse(BaseModel):
     id: int
     name: str
+    slug: str
     price: float
-    discount_price: Optional[float]
+    discount_price: Optional[float] = None
     images: List[ProductImageResponse] = []
+    variants: List[ProductVariantResponse] = []
     
     class Config:
         from_attributes = True
@@ -357,11 +375,16 @@ class WishlistItemResponse(BaseModel):
 # Cart Schemas
 class CartItemResponse(BaseModel):
     id: int
+    product_id: int
     name: str
     price: float
     quantity: int
     total: float
     images: List[ProductImageResponse] = []
+    variant_id: Optional[int] = None
+    variant_name: Optional[str] = None
+    variant_sku: Optional[str] = None
+    variant_size: Optional[str] = None
     
     class Config:
         from_attributes = True
@@ -585,7 +608,7 @@ class RecentlyViewedResponse(BaseModel):
 
 # Recommendation Schemas
 class RecommendationResponse(BaseModel):
-    products: list
+    products: List[ProductResponse]
     source: str = ""
 
 

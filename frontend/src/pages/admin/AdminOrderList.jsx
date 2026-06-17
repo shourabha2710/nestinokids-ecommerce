@@ -369,26 +369,30 @@ const AdminOrderList = () => {
                       <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Order Items</h4>
                       <div className="bg-gray-50 rounded-xl overflow-hidden">
                         <div className="overflow-x-auto">
-                          <table className="w-full text-sm">
-                            <thead>
-                              <tr className="border-b border-gray-100">
-                                <th className="text-left px-4 py-3 font-semibold text-gray-600 text-xs whitespace-nowrap">Product</th>
-                                <th className="text-right px-4 py-3 font-semibold text-gray-600 text-xs whitespace-nowrap">Qty</th>
-                                <th className="text-right px-4 py-3 font-semibold text-gray-600 text-xs whitespace-nowrap">Price</th>
-                                <th className="text-right px-4 py-3 font-semibold text-gray-600 text-xs whitespace-nowrap">Total</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {detailOrder.items?.map((item) => (
-                                <tr key={item.id} className="border-b border-gray-100 last:border-0">
-                                  <td className="px-4 py-3 text-gray-900 break-words">
-                                    {item.product_name || `Product #${item.product_id}`}
-                                  </td>
-                                  <td className="px-4 py-3 text-right text-gray-600 whitespace-nowrap">{item.quantity}</td>
-                                  <td className="px-4 py-3 text-right text-gray-600 whitespace-nowrap">₹{item.price}</td>
-                                  <td className="px-4 py-3 text-right font-medium text-gray-900 whitespace-nowrap">₹{item.total}</td>
-                                </tr>
-                              ))}
+                              <table className="w-full text-sm">
+                                <thead>
+                                  <tr className="border-b border-gray-100">
+                                    <th className="text-left px-4 py-3 font-semibold text-gray-600 text-xs whitespace-nowrap">Product</th>
+                                    <th className="text-left px-4 py-3 font-semibold text-gray-600 text-xs whitespace-nowrap">Size</th>
+                                    <th className="text-left px-4 py-3 font-semibold text-gray-600 text-xs whitespace-nowrap">SKU</th>
+                                    <th className="text-right px-4 py-3 font-semibold text-gray-600 text-xs whitespace-nowrap">Qty</th>
+                                    <th className="text-right px-4 py-3 font-semibold text-gray-600 text-xs whitespace-nowrap">Price</th>
+                                    <th className="text-right px-4 py-3 font-semibold text-gray-600 text-xs whitespace-nowrap">Total</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {detailOrder.items?.map((item) => (
+                                    <tr key={item.id} className="border-b border-gray-100 last:border-0">
+                                      <td className="px-4 py-3 text-gray-900 break-words">
+                                        {item.product_name || `Product #${item.product_id}`}
+                                      </td>
+                                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{item.variant_size || '-'}</td>
+                                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap text-xs">{item.variant_sku || '-'}</td>
+                                      <td className="px-4 py-3 text-right text-gray-600 whitespace-nowrap">{item.quantity}</td>
+                                      <td className="px-4 py-3 text-right text-gray-600 whitespace-nowrap">₹{item.price}</td>
+                                      <td className="px-4 py-3 text-right font-medium text-gray-900 whitespace-nowrap">₹{item.total}</td>
+                                    </tr>
+                                  ))}
                             </tbody>
                           </table>
                         </div>
