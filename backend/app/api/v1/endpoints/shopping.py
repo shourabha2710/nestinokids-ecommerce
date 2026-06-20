@@ -418,10 +418,10 @@ def create_order(
         item_total = price * item_data.quantity
         total_amount += item_total
 
-        # Validate inventory
+        # Validate inventory (with row lock to prevent overselling)
         inventory = db.query(Inventory).filter(
             Inventory.product_id == item_data.product_id
-        ).first()
+        ).with_for_update().first()
         if inventory and inventory.available_quantity < item_data.quantity:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -501,7 +501,7 @@ def create_order(
 
         inventory = db.query(Inventory).filter(
             Inventory.product_id == item["product"].id
-        ).first()
+        ).with_for_update().first()
         if inventory:
             inventory.available_quantity -= item["quantity"]
             inventory.reserved_quantity += item["quantity"]
@@ -510,7 +510,7 @@ def create_order(
         if item["variant_id"]:
             variant = db.query(ProductVariant).filter(
                 ProductVariant.id == item["variant_id"]
-            ).first()
+            ).with_for_update().first()
             if variant:
                 if variant.quantity < item["quantity"]:
                     raise HTTPException(
@@ -600,7 +600,7 @@ def checkout(
 
         inventory = db.query(Inventory).filter(
             Inventory.product_id == row["product_id"]
-        ).first()
+        ).with_for_update().first()
         if inventory and inventory.available_quantity < qty:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -681,7 +681,7 @@ def checkout(
 
         inventory = db.query(Inventory).filter(
             Inventory.product_id == item["product"].id
-        ).first()
+        ).with_for_update().first()
         if inventory:
             inventory.available_quantity -= item["quantity"]
             inventory.reserved_quantity += item["quantity"]
@@ -690,7 +690,7 @@ def checkout(
         if item["variant_id"]:
             variant = db.query(ProductVariant).filter(
                 ProductVariant.id == item["variant_id"]
-            ).first()
+            ).with_for_update().first()
             if variant:
                 if variant.quantity < item["quantity"]:
                     raise HTTPException(

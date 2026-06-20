@@ -46,6 +46,7 @@ const AdminInventoryList = () => {
     setError('');
     setEditItem(item);
     setEditForm({
+      total_quantity: item.total_quantity,
       available_quantity: item.available_quantity,
       reserved_quantity: item.reserved_quantity,
       low_stock_threshold: item.low_stock_threshold,
@@ -56,6 +57,9 @@ const AdminInventoryList = () => {
     try {
       setSaving(true);
       const payload = {};
+      if (editForm.total_quantity !== editItem.total_quantity) {
+        payload.total_quantity = editForm.total_quantity;
+      }
       if (editForm.available_quantity !== editItem.available_quantity) {
         payload.available_quantity = editForm.available_quantity;
       }
@@ -213,13 +217,22 @@ const AdminInventoryList = () => {
                         : '-'}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => openEdit(item)}
-                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                        title="Edit"
-                      >
-                        <Edit3 className="w-4 h-4" />
-                      </button>
+                      {item.has_variants ? (
+                        <span
+                          className="inline-flex p-2 text-gray-300 cursor-not-allowed rounded-lg"
+                          title="Inventory is managed via variant CRUD for products with variants"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => openEdit(item)}
+                          className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                          title="Edit"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                      )}
                     </td>
                   </motion.tr>
                 ))
@@ -263,50 +276,70 @@ const AdminInventoryList = () => {
                 </div>
               )}
 
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Available Quantity
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={editForm.available_quantity}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, available_quantity: parseInt(e.target.value) || 0 })
-                    }
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold transition-all"
-                  />
+              {editItem?.has_variants ? (
+                <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-xl text-sm">
+                  This product has variants. Inventory is managed automatically through variant CRUD operations.
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Reserved Quantity
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={editForm.reserved_quantity}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, reserved_quantity: parseInt(e.target.value) || 0 })
-                    }
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold transition-all"
-                  />
+              ) : (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Total Quantity
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={editForm.total_quantity}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, total_quantity: parseInt(e.target.value) || 0 })
+                      }
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Available Quantity
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={editForm.available_quantity}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, available_quantity: parseInt(e.target.value) || 0 })
+                      }
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Reserved Quantity
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={editForm.reserved_quantity}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, reserved_quantity: parseInt(e.target.value) || 0 })
+                      }
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Low Stock Threshold
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={editForm.low_stock_threshold}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, low_stock_threshold: parseInt(e.target.value) || 0 })
+                      }
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold transition-all"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Low Stock Threshold
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={editForm.low_stock_threshold}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, low_stock_threshold: parseInt(e.target.value) || 0 })
-                    }
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold transition-all"
-                  />
-                </div>
-              </div>
+              )}
 
               <div className="flex flex-col-reverse sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 justify-end mt-6">
                 <button
@@ -315,14 +348,16 @@ const AdminInventoryList = () => {
                 >
                   Cancel
                 </button>
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-all text-sm w-full sm:w-auto disabled:opacity-50"
-                >
-                  <Save className="w-4 h-4" />
-                  <span>{saving ? 'Saving...' : 'Save Changes'}</span>
-                </button>
+                {!editItem?.has_variants && (
+                  <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-all text-sm w-full sm:w-auto disabled:opacity-50"
+                  >
+                    <Save className="w-4 h-4" />
+                    <span>{saving ? 'Saving...' : 'Save Changes'}</span>
+                  </button>
+                )}
               </div>
             </motion.div>
           </motion.div>

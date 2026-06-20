@@ -400,17 +400,19 @@ class InventoryResponse(BaseModel):
     low_stock_threshold: int
     last_restocked: Optional[datetime] = None
     low_stock: bool = False
+    has_variants: bool = False
 
     class Config:
         from_attributes = True
 
 
 class InventoryUpdate(BaseModel):
+    total_quantity: Optional[int] = None
     available_quantity: Optional[int] = None
     reserved_quantity: Optional[int] = None
     low_stock_threshold: Optional[int] = None
 
-    @field_validator('available_quantity', 'reserved_quantity', 'low_stock_threshold')
+    @field_validator('total_quantity', 'available_quantity', 'reserved_quantity', 'low_stock_threshold')
     def validate_non_negative(cls, v):
         if v is not None and v < 0:
             raise ValueError('Value cannot be negative')

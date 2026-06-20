@@ -32,7 +32,8 @@ from sqlalchemy.orm import joinedload
 from app.models.models import (
     Product, Category, Order, OrderItem, User, ProductImage, Inventory,
     ProductVariant, Banner, InstagramPost, InstagramPostClick, OrderStatusEnum, PaymentStatusEnum,
-    LoyaltyTransaction, SupportTicket, Notification, wishlist_association, cart_association,
+    LoyaltyTransaction, SupportTicket, Notification, RecentlyViewed,
+    wishlist_association, cart_association,
 )
 from app.api.v1.endpoints.auth import require_admin
 from app.utils.helpers import generate_slug, generate_sku
@@ -188,7 +189,22 @@ def _build_inventory_response(inventory: Inventory) -> dict:
         "low_stock_threshold": inventory.low_stock_threshold,
         "last_restocked": inventory.last_restocked,
         "low_stock": inventory.available_quantity <= inventory.low_stock_threshold,
+        "has_variants": len(inventory.product.variants) > 0 if inventory.product else False,
     }
+
+
+def _restore_order_stock(order: Order, db: Session):
+    for item in order.items:
+        inventory = db.query(Inventory).filter(Inventory.product_id == item.product_id).first()
+        if inventory:
+            inventory.available_quantity += item.quantity
+            inventory.reserved_quantity -= item.quantity
+            db.add(inventory)
+        if item.variant_id:
+            variant = db.query(ProductVariant).filter(ProductVariant.id == item.variant_id).first()
+            if variant:
+                variant.quantity += item.quantity
+                db.add(variant)
 
 
 @router.get("/inventory", response_model=List[InventoryResponse])
@@ -197,7 +213,9 @@ def admin_get_inventory(
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    query = db.query(Inventory).join(Product)
+    query = db.query(Inventory).options(
+        joinedload(Inventory.product).joinedload(Product.variants)
+    ).join(Product)
     if search:
         query = query.filter(Product.name.ilike(f"%{search}%"))
     inventory_list = query.order_by(Product.name.asc()).all()
@@ -227,26 +245,44 @@ def admin_update_inventory(
     if not inventory:
         raise HTTPException(status_code=404, detail="Inventory not found for this product")
 
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if product and product.variants:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot manually edit inventory for products with variants. Use variant CRUD operations instead."
+        )
+
     update_data = data.dict(exclude_unset=True)
 
-    if "available_quantity" in update_data:
-        if update_data["available_quantity"] > inventory.total_quantity:
+    if "total_quantity" in update_data:
+        inventory.total_quantity = update_data["total_quantity"]
+        if inventory.reserved_quantity > inventory.total_quantity:
             raise HTTPException(
                 status_code=400,
-                detail="available_quantity cannot exceed total_quantity",
+                detail="total_quantity cannot be less than reserved_quantity",
             )
+        if inventory.available_quantity > inventory.total_quantity:
+            inventory.available_quantity = inventory.total_quantity
+
+    if "available_quantity" in update_data:
         inventory.available_quantity = update_data["available_quantity"]
 
     if "reserved_quantity" in update_data:
-        if update_data["reserved_quantity"] > inventory.total_quantity:
-            raise HTTPException(
-                status_code=400,
-                detail="reserved_quantity cannot exceed total_quantity",
-            )
         inventory.reserved_quantity = update_data["reserved_quantity"]
 
     if "low_stock_threshold" in update_data:
         inventory.low_stock_threshold = update_data["low_stock_threshold"]
+
+    if inventory.available_quantity > inventory.total_quantity:
+        raise HTTPException(
+            status_code=400,
+            detail="available_quantity cannot exceed total_quantity",
+        )
+    if inventory.reserved_quantity > inventory.total_quantity:
+        raise HTTPException(
+            status_code=400,
+            detail="reserved_quantity cannot exceed total_quantity",
+        )
 
     db.add(inventory)
     db.commit()
@@ -434,7 +470,9 @@ def admin_update_order_status(
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    order = db.query(Order).filter(Order.id == order_id).first()
+    order = db.query(Order).options(
+        joinedload(Order.items).joinedload(OrderItem.variant),
+    ).filter(Order.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
 
@@ -470,6 +508,10 @@ def admin_update_order_status(
         note=tracking_note,
     )
     db.add(tracking)
+
+    # Restore inventory and variant stock on cancellation or return
+    if new_status in ("cancelled", "returned"):
+        _restore_order_stock(order, db)
 
     # Award loyalty points on delivery
     if new_status == "delivered":
@@ -576,6 +618,16 @@ def admin_create_product(
         )
         db.add(variant)
 
+    total_qty = sum(v.quantity for v in product_data.variants) if product_data.variants else product_data.quantity
+    inventory = Inventory(
+        product_id=product.id,
+        total_quantity=total_qty,
+        available_quantity=total_qty,
+        reserved_quantity=0,
+        low_stock_threshold=10,
+    )
+    db.add(inventory)
+
     db.commit()
     db.refresh(product)
     return product
@@ -596,6 +648,28 @@ def admin_update_product(
 
     for field, value in update_data.items():
         setattr(product, field, value)
+
+    if "quantity" in update_data and not product.variants:
+        inventory = db.query(Inventory).filter(Inventory.product_id == product_id).first()
+        if inventory:
+            delta = product.quantity - inventory.total_quantity
+            inventory.total_quantity = product.quantity
+            inventory.available_quantity = max(0, inventory.available_quantity + delta)
+            if inventory.reserved_quantity > inventory.total_quantity:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Cannot set quantity below reserved quantity ({inventory.reserved_quantity})"
+                )
+            db.add(inventory)
+        else:
+            inventory = Inventory(
+                product_id=product_id,
+                total_quantity=product.quantity,
+                available_quantity=product.quantity,
+                reserved_quantity=0,
+                low_stock_threshold=10,
+            )
+            db.add(inventory)
 
     db.add(product)
     db.commit()
@@ -638,7 +712,8 @@ def admin_delete_product(
 
     _delete_image_files(product.images)
 
-    # Clean up wishlist and cart associations (many-to-many)
+    # Clean up FK references before deletion
+    db.query(RecentlyViewed).filter(RecentlyViewed.product_id == product_id).delete()
     db.execute(wishlist_association.delete().where(wishlist_association.c.product_id == product_id))
     db.execute(cart_association.delete().where(cart_association.c.product_id == product_id))
 
@@ -707,6 +782,23 @@ def admin_create_product_variant(
         sku=variant_data.sku,
     )
     db.add(variant)
+    db.flush()
+
+    inventory = db.query(Inventory).filter(Inventory.product_id == product_id).first()
+    if inventory:
+        inventory.total_quantity += variant_data.quantity
+        inventory.available_quantity += variant_data.quantity
+        db.add(inventory)
+    else:
+        inventory = Inventory(
+            product_id=product_id,
+            total_quantity=variant_data.quantity,
+            available_quantity=variant_data.quantity,
+            reserved_quantity=0,
+            low_stock_threshold=10,
+        )
+        db.add(inventory)
+
     db.commit()
     db.refresh(variant)
     return variant
@@ -758,8 +850,25 @@ def admin_update_product_variant(
             detail=f"Variant with SKU '{variant_data.sku}' already exists",
         )
 
+    old_quantity = variant.quantity
+
     for field in ("size", "color", "price_modifier", "quantity", "sku"):
         setattr(variant, field, getattr(variant_data, field))
+
+    quantity_delta = variant_data.quantity - old_quantity
+    if quantity_delta != 0:
+        inventory = db.query(Inventory).filter(Inventory.product_id == product_id).first()
+        if inventory:
+            new_total = inventory.total_quantity + quantity_delta
+            new_available = inventory.available_quantity + quantity_delta
+            if new_total < 0 or new_available < 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Insufficient inventory to change variant quantity"
+                )
+            inventory.total_quantity = new_total
+            inventory.available_quantity = new_available
+            db.add(inventory)
 
     db.add(variant)
     db.commit()
@@ -784,6 +893,28 @@ def admin_delete_product_variant(
     ).first()
     if not variant:
         raise HTTPException(status_code=404, detail="Variant not found")
+
+    order_ref = db.query(OrderItem).filter(OrderItem.variant_id == variant_id).first()
+    if order_ref:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot delete variant because it is referenced by existing orders."
+        )
+
+    db.execute(cart_association.delete().where(cart_association.c.variant_id == variant_id))
+
+    inventory = db.query(Inventory).filter(Inventory.product_id == product_id).first()
+    if inventory:
+        new_total = inventory.total_quantity - variant.quantity
+        new_available = inventory.available_quantity - variant.quantity
+        if new_total < 0 or new_available < 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot delete variant: insufficient inventory"
+            )
+        inventory.total_quantity = new_total
+        inventory.available_quantity = new_available
+        db.add(inventory)
 
     db.delete(variant)
     db.commit()
