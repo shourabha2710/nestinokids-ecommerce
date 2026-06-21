@@ -26,25 +26,6 @@ import ShippingPolicyPage from "./pages/ShippingPolicyPage";
 import ReturnPolicyPage from "./pages/ReturnPolicyPage";
 import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
 import TermsPage from "./pages/TermsPage";
-import ProtectedAdminRoute from "./components/admin/ProtectedAdminRoute";
-import AdminLayout from "./components/admin/AdminLayout";
-import AdminLoginPage from "./pages/admin/AdminLoginPage";
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import AdminProductList from "./pages/admin/AdminProductList";
-import AdminProductForm from "./pages/admin/AdminProductForm";
-import AdminCategoryList from "./pages/admin/AdminCategoryList";
-import AdminCategoryForm from "./pages/admin/AdminCategoryForm";
-import AdminInventoryList from "./pages/admin/AdminInventoryList";
-import AdminBannerList from "./pages/admin/AdminBannerList";
-import AdminInstagramFeed from "./pages/admin/AdminInstagramFeed";
-import AdminOrderList from "./pages/admin/AdminOrderList";
-import WebsiteSettings from "./pages/admin/WebsiteSettings";
-import Reviews from "./pages/admin/Reviews";
-import HeroSlides from "./pages/admin/HeroSlides";
-import Coupons from "./pages/admin/Coupons";
-import SupportTickets from "./pages/admin/SupportTickets";
-import FAQs from "./pages/admin/FAQs";
-import Announcements from "./pages/admin/Announcements";
 import { setUser, logout } from "./store/slices/authSlice";
 import { setCartItems } from "./store/slices/cartSlice";
 import { setWishlist } from "./store/slices/wishlistSlice";
@@ -61,13 +42,6 @@ const AuthProvider = ({ children }) => {
       if (token) {
         try {
           const res = await authAPI.getCurrentUser();
-
-          // Reject admin tokens on storefront — no customer session
-          if (res.data.role === 'admin' && !window.location.pathname.startsWith('/admin')) {
-            dispatch(logout());
-            setAuthReady(true);
-            return;
-          }
 
           dispatch(setUser(res.data));
           const [cartRes, wishlistRes] = await Promise.all([
@@ -131,31 +105,6 @@ function App() {
               <Route path="/addresses" element={<ProtectedRoute><AddressListPage /></ProtectedRoute>} />
               <Route path="/wishlist" element={<ProtectedRoute><WishlistPage /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-            </Route>
-
-            <Route path="/admin/login" element={<AdminLoginPage />} />
-
-            <Route element={<ProtectedAdminRoute />}>
-              <Route element={<AdminLayout />}>
-                <Route path="/admin/dashboard" element={<AdminDashboard />} />
-                <Route path="/admin/products" element={<AdminProductList />} />
-                <Route path="/admin/products/new" element={<AdminProductForm />} />
-                <Route path="/admin/products/:id/edit" element={<AdminProductForm />} />
-                <Route path="/admin/categories" element={<AdminCategoryList />} />
-                <Route path="/admin/categories/new" element={<AdminCategoryForm />} />
-                <Route path="/admin/categories/:id/edit" element={<AdminCategoryForm />} />
-                <Route path="/admin/inventory" element={<AdminInventoryList />} />
-                <Route path="/admin/banners" element={<AdminBannerList />} />
-                <Route path="/admin/instagram" element={<AdminInstagramFeed />} />
-                <Route path="/admin/orders" element={<AdminOrderList />} />
-                <Route path="/admin/settings" element={<WebsiteSettings />} />
-                <Route path="/admin/reviews" element={<Reviews />} />
-                <Route path="/admin/hero-slides" element={<HeroSlides />} />
-                <Route path="/admin/coupons" element={<Coupons />} />
-                <Route path="/admin/support-tickets" element={<SupportTickets />} />
-                <Route path="/admin/faqs" element={<FAQs />} />
-                <Route path="/admin/announcements" element={<Announcements />} />
-              </Route>
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />

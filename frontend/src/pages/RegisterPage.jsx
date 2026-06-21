@@ -83,12 +83,6 @@ const RegisterPage = () => {
 
       const { access_token, refresh_token, user } = loginRes.data;
 
-      if (user.role === 'admin') {
-        setError('Administrator accounts cannot be created through registration.');
-        setLoading(false);
-        return;
-      }
-
       dispatch(setCredentials({ user, accessToken: access_token, refreshToken: refresh_token }));
       dispatch(setAuthError(null));
       navigate('/', { replace: true });
