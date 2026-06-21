@@ -9,6 +9,7 @@ import AdminProductList from './pages/admin/AdminProductList';
 import AdminProductForm from './pages/admin/AdminProductForm';
 import AdminCategoryList from './pages/admin/AdminCategoryList';
 import AdminCategoryForm from './pages/admin/AdminCategoryForm';
+import AdminInventoryList from './pages/admin/AdminInventoryList';
 
 function App() {
   return (
@@ -31,6 +32,7 @@ function App() {
           <Route path="categories" element={<AdminCategoryList />} />
           <Route path="categories/new" element={<AdminCategoryForm />} />
           <Route path="categories/:id/edit" element={<AdminCategoryForm />} />
+          <Route path="inventory" element={<AdminInventoryList />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
         <Route path="*" element={<Navigate to="/login" replace />} />
