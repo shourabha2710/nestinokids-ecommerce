@@ -19,7 +19,9 @@
     "react-hook-form": "^7.48.0",
     "framer-motion": "^10.16.16",
     "recharts": "^2.10.3",
-    "tailwindcss": "^3.4.1"
+    "tailwindcss": "^3.4.1",
+    "autoprefixer": "^10.4.16",
+    "postcss": "^8.4.32"
   },
   "devDependencies": {
     "@types/react": "^18.2.37",
