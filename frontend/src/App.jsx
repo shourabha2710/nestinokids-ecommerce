@@ -61,6 +61,14 @@ const AuthProvider = ({ children }) => {
       if (token) {
         try {
           const res = await authAPI.getCurrentUser();
+
+          // Reject admin tokens on storefront — no customer session
+          if (res.data.role === 'admin' && !window.location.pathname.startsWith('/admin')) {
+            dispatch(logout());
+            setAuthReady(true);
+            return;
+          }
+
           dispatch(setUser(res.data));
           const [cartRes, wishlistRes] = await Promise.all([
             shoppingAPI.getCart(),

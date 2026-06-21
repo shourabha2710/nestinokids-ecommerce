@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # CORS
-    ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
+    ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:5173,http://localhost:3001"
 
     # Uploads
     UPLOAD_DIR: str = "uploads"
@@ -65,7 +65,10 @@ class Settings(BaseSettings):
 
     @property
     def ALLOWED_ORIGINS_LIST(self) -> List[str]:
-        return [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",") if origin.strip()]
+        origins = [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",") if origin.strip()]
+        if self.ADMIN_URL and self.ADMIN_URL not in origins:
+            origins.append(self.ADMIN_URL)
+        return origins
 
     model_config = SettingsConfigDict(
         env_file=_env_file,

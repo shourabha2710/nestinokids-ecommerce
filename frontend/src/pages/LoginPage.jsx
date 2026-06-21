@@ -46,6 +46,12 @@ const LoginPage = () => {
 
       const { access_token, refresh_token, user } = res.data;
 
+      if (user.role === 'admin') {
+        setError('This login is for customer accounts only. Administrators should use the Admin Panel.');
+        setLoading(false);
+        return;
+      }
+
       dispatch(setCredentials({ user, accessToken: access_token, refreshToken: refresh_token }));
       dispatch(setAuthError(null));
       navigate(redirect, { replace: true });
