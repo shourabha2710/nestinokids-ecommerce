@@ -5,6 +5,8 @@ import ProtectedRoute from './components/ProtectedRoute';
 import AdminLayout from './layouts/AdminLayout';
 import LoginPage from './pages/LoginPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminProductList from './pages/admin/AdminProductList';
+import AdminProductForm from './pages/admin/AdminProductForm';
 
 function App() {
   return (
@@ -21,6 +23,9 @@ function App() {
           }
         >
           <Route path="dashboard" element={<AdminDashboard />} />
+          <Route path="products" element={<AdminProductList />} />
+          <Route path="products/new" element={<AdminProductForm />} />
+          <Route path="products/:id/edit" element={<AdminProductForm />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
         <Route path="*" element={<Navigate to="/login" replace />} />
