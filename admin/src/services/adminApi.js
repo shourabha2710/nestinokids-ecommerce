@@ -31,6 +31,19 @@ export const adminAPI = {
   getOrders: (params) => api.get('/admin/orders', { params }),
   getOrder: (id) => api.get(`/admin/orders/${id}`),
   updateOrderStatus: (id, data) => api.put(`/admin/orders/${id}/status`, data),
+  getCoupons: () => api.get('/admin/coupons'),
+  getCoupon: (id) => api.get(`/admin/coupons/${id}`),
+  createCoupon: (data) => api.post('/admin/coupons', data),
+  updateCoupon: (id, data) => api.put(`/admin/coupons/${id}`, data),
+  deleteCoupon: (id) => api.delete(`/admin/coupons/${id}`),
+  getReviews: () => api.get('/admin/reviews'),
+  createReview: (formData) => api.post('/admin/reviews', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  updateReview: (id, formData) => api.put(`/admin/reviews/${id}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  deleteReview: (id) => api.delete(`/admin/reviews/${id}`),
   getSettings: () => api.get('/admin/settings'),
   updateSettings: (data) => api.put('/admin/settings', data),
 };

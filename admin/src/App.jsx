@@ -11,6 +11,8 @@ import AdminCategoryList from './pages/admin/AdminCategoryList';
 import AdminCategoryForm from './pages/admin/AdminCategoryForm';
 import AdminInventoryList from './pages/admin/AdminInventoryList';
 import AdminOrderList from './pages/admin/AdminOrderList';
+import Coupons from './pages/admin/Coupons';
+import Reviews from './pages/admin/Reviews';
 
 function App() {
   return (
@@ -35,6 +37,8 @@ function App() {
           <Route path="categories/:id/edit" element={<AdminCategoryForm />} />
           <Route path="inventory" element={<AdminInventoryList />} />
           <Route path="orders" element={<AdminOrderList />} />
+          <Route path="coupons" element={<Coupons />} />
+          <Route path="reviews" element={<Reviews />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
         <Route path="*" element={<Navigate to="/login" replace />} />
