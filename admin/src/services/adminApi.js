@@ -37,6 +37,31 @@ export const adminAPI = {
   updateCoupon: (id, data) => api.put(`/admin/coupons/${id}`, data),
   deleteCoupon: (id) => api.delete(`/admin/coupons/${id}`),
   getReviews: () => api.get('/admin/reviews'),
+  getSlides: () => api.get('/admin/hero-slides'),
+  createSlide: (formData) => api.post('/admin/hero-slides', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  updateSlide: (id, formData) => api.put(`/admin/hero-slides/${id}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  deleteSlide: (id) => api.delete(`/admin/hero-slides/${id}`),
+  reorderSlides: (data) => api.post('/admin/hero-slides/reorder', data),
+  getInstagramPosts: () => api.get('/admin/instagram-posts'),
+  createInstagramPost: (formData) => api.post('/admin/instagram-posts', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  updateInstagramPost: (id, formData) => api.put(`/admin/instagram-posts/${id}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  deleteInstagramPost: (id) => api.delete(`/admin/instagram-posts/${id}`),
+  reorderInstagramPosts: (data) => api.post('/admin/instagram-posts/reorder', data),
+  toggleInstagramPost: (id, isActive) => {
+    const fd = new FormData();
+    fd.append('is_active', String(isActive));
+    return api.put(`/admin/instagram-posts/${id}`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
   createReview: (formData) => api.post('/admin/reviews', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
@@ -46,4 +71,15 @@ export const adminAPI = {
   deleteReview: (id) => api.delete(`/admin/reviews/${id}`),
   getSettings: () => api.get('/admin/settings'),
   updateSettings: (data) => api.put('/admin/settings', data),
+  getSupportTickets: (params) => api.get('/admin/support/tickets', { params }),
+  updateSupportTicket: (id, data) => api.put(`/admin/support/tickets/${id}`, data),
+  deleteSupportTicket: (id) => api.delete(`/admin/support/tickets/${id}`),
+  getFAQs: () => api.get('/admin/faqs'),
+  createFAQ: (data) => api.post('/admin/faqs', data),
+  updateFAQ: (id, data) => api.put(`/admin/faqs/${id}`, data),
+  deleteFAQ: (id) => api.delete(`/admin/faqs/${id}`),
+  getAnnouncements: () => api.get('/admin/announcements'),
+  createAnnouncement: (data) => api.post('/admin/announcements', data),
+  updateAnnouncement: (id, data) => api.put(`/admin/announcements/${id}`, data),
+  deleteAnnouncement: (id) => api.delete(`/admin/announcements/${id}`),
 };

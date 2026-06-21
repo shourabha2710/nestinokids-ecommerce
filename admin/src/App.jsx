@@ -13,6 +13,13 @@ import AdminInventoryList from './pages/admin/AdminInventoryList';
 import AdminOrderList from './pages/admin/AdminOrderList';
 import Coupons from './pages/admin/Coupons';
 import Reviews from './pages/admin/Reviews';
+import AdminBannerList from './pages/admin/AdminBannerList';
+import HeroSlides from './pages/admin/HeroSlides';
+import AdminInstagramFeed from './pages/admin/AdminInstagramFeed';
+import SupportTickets from './pages/admin/SupportTickets';
+import FAQs from './pages/admin/FAQs';
+import Announcements from './pages/admin/Announcements';
+import WebsiteSettings from './pages/admin/WebsiteSettings';
 
 function App() {
   return (
@@ -38,7 +45,14 @@ function App() {
           <Route path="inventory" element={<AdminInventoryList />} />
           <Route path="orders" element={<AdminOrderList />} />
           <Route path="coupons" element={<Coupons />} />
+          <Route path="banners" element={<AdminBannerList />} />
+          <Route path="hero-slides" element={<HeroSlides />} />
+          <Route path="instagram" element={<AdminInstagramFeed />} />
           <Route path="reviews" element={<Reviews />} />
+          <Route path="support-tickets" element={<SupportTickets />} />
+          <Route path="faqs" element={<FAQs />} />
+          <Route path="announcements" element={<Announcements />} />
+          <Route path="settings" element={<WebsiteSettings />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
         <Route path="*" element={<Navigate to="/login" replace />} />
