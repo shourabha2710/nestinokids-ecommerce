@@ -15,7 +15,7 @@ ALLOWED_IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp'}
 ALLOWED_VIDEO_EXTENSIONS = {'.mp4', '.webm'}
 
 
-def save_media(file: UploadFile, base_url: str) -> str:
+def save_media(file: UploadFile) -> str:
     ext = Path(file.filename).suffix.lower()
     allowed = ALLOWED_IMAGE_EXTENSIONS | ALLOWED_VIDEO_EXTENSIONS
     if ext not in allowed:
@@ -34,7 +34,7 @@ def save_media(file: UploadFile, base_url: str) -> str:
     upload_dir.mkdir(parents=True, exist_ok=True)
     with open(upload_dir / unique_name, "wb") as f:
         f.write(contents)
-    return f"{str(base_url).rstrip('/')}/{settings.UPLOAD_DIR}/hero/{unique_name}"
+    return f"/{settings.UPLOAD_DIR}/hero/{unique_name}"
 
 
 @router.get("/api/v1/hero-slides", response_model=List[HeroSlideResponse])
@@ -77,9 +77,9 @@ def create_slide(
     final_mobile_media_url = mobile_media_url
 
     if media_file:
-        final_media_url = save_media(media_file, str(request.base_url))
+        final_media_url = save_media(media_file)
     if mobile_media_file:
-        final_mobile_media_url = save_media(mobile_media_file, str(request.base_url))
+        final_mobile_media_url = save_media(mobile_media_file)
 
     if not final_media_url:
         raise HTTPException(status_code=400, detail="Either media_url or media_file is required")
@@ -159,12 +159,12 @@ def update_slide(
         slide.is_active = is_active
 
     if media_file:
-        slide.media_url = save_media(media_file, str(request.base_url))
+        slide.media_url = save_media(media_file)
         # Infer media_type from extension
         ext = Path(media_file.filename).suffix.lower()
         slide.media_type = "video" if ext in ALLOWED_VIDEO_EXTENSIONS else "image"
     if mobile_media_file:
-        slide.mobile_media_url = save_media(mobile_media_file, str(request.base_url))
+        slide.mobile_media_url = save_media(mobile_media_file)
 
     db.commit()
     db.refresh(slide)

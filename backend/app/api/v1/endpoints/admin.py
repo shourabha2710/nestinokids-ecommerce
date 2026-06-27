@@ -684,6 +684,7 @@ def _delete_image_files(images):
             if fpath.startswith(("http://", "https://")):
                 from urllib.parse import urlparse
                 fpath = urlparse(fpath).path.lstrip("/")
+            fpath = fpath.lstrip("/")
             file_path = Path(fpath)
             if file_path.exists():
                 file_path.unlink()
@@ -971,7 +972,7 @@ def admin_upload_product_image(
 
     image = ProductImage(
         product_id=product_id,
-        image_url=f"{str(request.base_url).rstrip('/')}/{settings.UPLOAD_DIR}/products/{unique_name}",
+        image_url=f"/{settings.UPLOAD_DIR}/products/{unique_name}",
         alt_text=alt_text,
         is_primary=is_primary,
         order=max_order + 1,
@@ -1238,7 +1239,7 @@ def admin_create_instagram_post(
         with open(upload_dir / unique_name, "wb") as f:
             f.write(contents)
 
-        final_thumbnail = f"{str(request.base_url).rstrip('/')}/{settings.UPLOAD_DIR}/instagram/{unique_name}"
+        final_thumbnail = f"/{settings.UPLOAD_DIR}/instagram/{unique_name}"
 
     post = InstagramPost(
         post_url=post_url,
@@ -1298,7 +1299,7 @@ def admin_update_instagram_post(
         with open(upload_dir / unique_name, "wb") as f:
             f.write(contents)
 
-        post.thumbnail_image = f"{str(request.base_url).rstrip('/')}/{settings.UPLOAD_DIR}/instagram/{unique_name}"
+        post.thumbnail_image = f"/{settings.UPLOAD_DIR}/instagram/{unique_name}"
 
     db.commit()
     db.refresh(post)
@@ -1321,6 +1322,7 @@ def admin_delete_instagram_post(
             if fpath.startswith(("http://", "https://")):
                 from urllib.parse import urlparse
                 fpath = urlparse(fpath).path.lstrip("/")
+            fpath = fpath.lstrip("/")
             file_path = Path(fpath)
             if file_path.exists():
                 file_path.unlink()
