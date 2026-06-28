@@ -163,9 +163,13 @@ class ProductCreate(ProductBase):
 
 class ProductUpdate(BaseModel):
     name: Optional[str] = None
+    slug: Optional[str] = None
     description: Optional[str] = None
+    short_description: Optional[str] = None
+    category_id: Optional[int] = None
     price: Optional[float] = None
     discount_price: Optional[float] = None
+    sku: Optional[str] = None
     quantity: Optional[int] = None
     is_featured: Optional[bool] = None
     is_active: Optional[bool] = None
