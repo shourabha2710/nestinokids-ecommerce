@@ -7,9 +7,26 @@ from pydantic import field_validator
 
 # Determine environment and corresponding env file path
 _app_env = os.environ.get("APP_ENV", "development").lower()
-_env_file_name = ".env.production" if _app_env == "production" else ".env.development"
-_env_file_candidate = Path(__file__).resolve().parent.parent.parent / _env_file_name
-_env_file = str(_env_file_candidate) if _env_file_candidate.is_file() else None
+
+if _app_env == "production":
+    _env_file_name = ".env.production"
+elif _app_env == "development":
+    _env_file_name = ".env.development"
+else:
+    # test / ci / staging etc.
+    _env_file_name = None
+
+if _env_file_name:
+    _env_file_candidate = (
+        Path(__file__).resolve().parent.parent.parent / _env_file_name
+    )
+    _env_file = (
+        str(_env_file_candidate)
+        if _env_file_candidate.is_file()
+        else None
+    )
+else:
+    _env_file = None
 
 
 class Settings(BaseSettings):
