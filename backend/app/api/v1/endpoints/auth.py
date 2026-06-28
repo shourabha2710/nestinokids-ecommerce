@@ -179,6 +179,25 @@ def get_current_user(
     return user
 
 
+def get_optional_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+    db: Session = Depends(get_db)
+):
+    """Return the current user when a valid token is present, otherwise None."""
+    from app.core.security import decode_token
+
+    if not credentials:
+        return None
+
+    token = credentials.credentials
+    payload = decode_token(token)
+    if not payload or payload.get("type") != "access":
+        return None
+
+    user_id = int(payload.get("sub"))
+    return db.query(User).filter(User.id == user_id).first()
+
+
 def require_admin(current_user: User = Depends(get_current_user)):
     """Dependency: require admin role"""
     if current_user.role != RoleEnum.ADMIN:

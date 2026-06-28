@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, desc
 from app.db.database import get_db
 from app.schemas.schemas import (
+    ProductResponse,
     RecentlyViewedResponse,
     RecommendationResponse,
     LoyaltySummaryResponse,
@@ -16,8 +17,8 @@ from app.models.models import (
     User, Product, RecentlyViewed, LoyaltyTransaction, Order, OrderItem,
     OrderStatusEnum, wishlist_association,
 )
-from app.api.v1.endpoints.auth import get_current_user, require_admin
-from typing import Optional
+from app.api.v1.endpoints.auth import get_current_user, get_optional_current_user, require_admin
+from typing import List, Optional
 import math
 
 router = APIRouter(prefix="/api/v1", tags=["engagement"])
@@ -34,7 +35,7 @@ def track_product_view(
     product_id: int,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ):
     """Track a product view for logged-in or guest users."""
     product = db.query(Product).filter(Product.id == product_id, Product.is_active == True).first()
@@ -87,15 +88,18 @@ def track_product_view(
     return {"message": "View tracked"}
 
 
-@router.get("/recently-viewed", response_model=list)
+@router.get("/recently-viewed", response_model=List[ProductResponse])
 def get_recently_viewed(
     request: Request,
     limit: int = Query(RECENTLY_VIEWED_LIMIT, ge=1, le=50),
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ):
     """Get recently viewed products."""
-    query = db.query(RecentlyViewed).options(joinedload(RecentlyViewed.product).joinedload(Product.images))
+    query = db.query(RecentlyViewed).options(
+        joinedload(RecentlyViewed.product).joinedload(Product.images),
+        joinedload(RecentlyViewed.product).joinedload(Product.variants),
+    )
 
     if current_user:
         query = query.filter(RecentlyViewed.user_id == current_user.id)
@@ -166,14 +170,14 @@ def _get_recommendation_sources(user_id: int, db: Session) -> set:
 def get_recommendations(
     limit: int = Query(8, ge=1, le=20),
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ):
     """Get personalized product recommendations for the logged-in user."""
     if not current_user:
         # Fallback: best sellers / new arrivals
         products = (
             db.query(Product)
-            .options(joinedload(Product.images))
+            .options(joinedload(Product.images), joinedload(Product.variants))
             .filter(Product.is_active == True)
             .order_by(Product.rating.desc(), Product.created_at.desc())
             .limit(limit)
@@ -194,7 +198,7 @@ def get_recommendations(
 
         products = (
             db.query(Product)
-            .options(joinedload(Product.images))
+            .options(joinedload(Product.images), joinedload(Product.variants))
             .filter(
                 Product.is_active == True,
                 Product.category_id.in_(category_ids),
@@ -214,7 +218,7 @@ def get_recommendations(
         existing_ids = {p.id for p in products}
         fallback = (
             db.query(Product)
-            .options(joinedload(Product.images))
+            .options(joinedload(Product.images), joinedload(Product.variants))
             .filter(Product.is_active == True, Product.id.notin_(existing_ids))
             .order_by(Product.rating.desc(), Product.created_at.desc())
             .limit(limit - len(products))

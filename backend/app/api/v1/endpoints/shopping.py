@@ -157,13 +157,26 @@ def _get_cart_items(db: Session, user_id: int):
     rows = db.execute(
         select(cart_association).where(cart_association.c.user_id == user_id)
     ).all()
-    cart_qty_map = {}
-    for row in rows:
-        cart_qty_map[row.product_id] = {
+    return [
+        {
+            "id": row.id,
+            "product_id": row.product_id,
             "quantity": row.quantity,
             "variant_id": row.variant_id,
         }
-    return cart_qty_map
+        for row in rows
+    ]
+
+
+def _get_variant_info(db: Session, variant_id: Optional[int]):
+    """Get variant display info and price modifier"""
+    if variant_id is None:
+        return None, None, None, 0.0
+    variant = db.query(ProductVariant).filter(ProductVariant.id == variant_id).first()
+    if not variant:
+        return None, None, None, 0.0
+    variant_name = f"{variant.size or ''} {variant.color or ''}".strip() or None
+    return variant_name, variant.sku, variant.size, variant.price_modifier or 0.0
 
 
 # Cart Endpoints
@@ -173,19 +186,27 @@ def get_cart(
     db: Session = Depends(get_db)
 ):
     """Get user's cart with quantities"""
-    cart_qty_map = _get_cart_items(db, current_user.id)
+    cart_rows = _get_cart_items(db, current_user.id)
     cart_items = []
-    for product in current_user.cart_items:
-        cart_data = cart_qty_map.get(product.id, {"quantity": 1, "variant_id": None})
-        qty = cart_data["quantity"]
-        price = product.discount_price or product.price
+    for row in cart_rows:
+        product = db.query(Product).filter(Product.id == row["product_id"]).first()
+        if not product:
+            continue
+        base_price = product.discount_price or product.price
+        variant_name, variant_sku, variant_size, price_modifier = _get_variant_info(db, row["variant_id"])
+        price = base_price + price_modifier
         cart_items.append({
-            "id": product.id,
+            "id": row["id"],
+            "product_id": row["product_id"],
             "name": product.name,
             "price": price,
-            "quantity": qty,
-            "total": price * qty,
+            "quantity": row["quantity"],
+            "total": price * row["quantity"],
             "images": product.images,
+            "variant_id": row["variant_id"],
+            "variant_name": variant_name,
+            "variant_sku": variant_sku,
+            "variant_size": variant_size,
         })
     return cart_items
 
@@ -206,21 +227,32 @@ def add_to_cart(
             detail="Product not found"
         )
 
-    existing = db.execute(
-        select(cart_association).where(
-            cart_association.c.user_id == current_user.id,
-            cart_association.c.product_id == product_id,
-        )
-    ).first()
-
-    if existing:
-        stmt = (
-            update(cart_association)
-            .where(
+    # Dedup by (product_id, variant_id) pair
+    existing = None
+    if variant_id is not None:
+        existing = db.execute(
+            select(cart_association).where(
                 cart_association.c.user_id == current_user.id,
                 cart_association.c.product_id == product_id,
+                cart_association.c.variant_id == variant_id,
             )
-            .values(quantity=existing.quantity + quantity, variant_id=variant_id or existing.variant_id)
+        ).first()
+        cart_id = existing.id if existing else None
+    else:
+        existing = db.execute(
+            select(cart_association).where(
+                cart_association.c.user_id == current_user.id,
+                cart_association.c.product_id == product_id,
+                cart_association.c.variant_id.is_(None),
+            )
+        ).first()
+        cart_id = existing.id if existing else None
+
+    if cart_id is not None:
+        stmt = (
+            update(cart_association)
+            .where(cart_association.c.id == cart_id)
+            .values(quantity=existing.quantity + quantity)
         )
         db.execute(stmt)
     else:
@@ -233,40 +265,48 @@ def add_to_cart(
         db.execute(stmt)
 
     db.commit()
-    return {"message": "Product added to cart", "quantity": existing.quantity + quantity if existing else quantity}
+    new_qty = existing.quantity + quantity if cart_id is not None else quantity
+    return {"message": "Product added to cart", "quantity": new_qty}
 
 
 @router.put("/cart/{product_id}")
 def update_cart_item(
     product_id: int,
     quantity: int = Query(..., ge=0),
+    variant_id: Optional[int] = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Update cart item quantity (0 to remove)"""
-    existing = db.execute(
-        select(cart_association).where(
-            cart_association.c.user_id == current_user.id,
-            cart_association.c.product_id == product_id,
-        )
-    ).first()
+    if variant_id is not None:
+        existing = db.execute(
+            select(cart_association).where(
+                cart_association.c.user_id == current_user.id,
+                cart_association.c.product_id == product_id,
+                cart_association.c.variant_id == variant_id,
+            )
+        ).first()
+    else:
+        existing = db.execute(
+            select(cart_association).where(
+                cart_association.c.user_id == current_user.id,
+                cart_association.c.product_id == product_id,
+                cart_association.c.variant_id.is_(None),
+            )
+        ).first()
 
     if not existing:
         raise HTTPException(status_code=404, detail="Item not in cart")
 
     if quantity == 0:
         stmt = delete(cart_association).where(
-            cart_association.c.user_id == current_user.id,
-            cart_association.c.product_id == product_id,
+            cart_association.c.id == existing.id
         )
         db.execute(stmt)
     else:
         stmt = (
             update(cart_association)
-            .where(
-                cart_association.c.user_id == current_user.id,
-                cart_association.c.product_id == product_id,
-            )
+            .where(cart_association.c.id == existing.id)
             .values(quantity=quantity)
         )
         db.execute(stmt)
@@ -278,14 +318,23 @@ def update_cart_item(
 @router.delete("/cart/{product_id}")
 def remove_from_cart(
     product_id: int,
+    variant_id: Optional[int] = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Remove product from cart"""
-    stmt = delete(cart_association).where(
-        cart_association.c.user_id == current_user.id,
-        cart_association.c.product_id == product_id,
-    )
+    if variant_id is not None:
+        stmt = delete(cart_association).where(
+            cart_association.c.user_id == current_user.id,
+            cart_association.c.product_id == product_id,
+            cart_association.c.variant_id == variant_id,
+        )
+    else:
+        stmt = delete(cart_association).where(
+            cart_association.c.user_id == current_user.id,
+            cart_association.c.product_id == product_id,
+            cart_association.c.variant_id.is_(None),
+        )
     result = db.execute(stmt)
     db.commit()
 
@@ -296,7 +345,7 @@ def remove_from_cart(
 
 
 def _build_order_response(order: Order) -> dict:
-    """Build order response dict with product names in items"""
+    """Build order response dict with product names and variant info in items"""
     return {
         "id": order.id,
         "order_number": order.order_number,
@@ -316,6 +365,13 @@ def _build_order_response(order: Order) -> dict:
                 "quantity": item.quantity,
                 "price": item.price,
                 "total": item.total,
+                "variant_id": item.variant_id,
+                "variant_name": (
+                    f"{item.variant.size or ''} {item.variant.color or ''}".strip()
+                    if item.variant else None
+                ) or None,
+                "variant_sku": item.variant.sku if item.variant else None,
+                "variant_size": item.variant.size if item.variant else None,
             }
             for item in order.items
         ],
@@ -352,14 +408,20 @@ def create_order(
                 detail=f"Product {item_data.product_id} not found"
             )
 
-        price = product.discount_price or product.price
+        base_price = product.discount_price or product.price
+        if item_data.variant_id:
+            variant = db.query(ProductVariant).filter(ProductVariant.id == item_data.variant_id).first()
+            price_modifier = variant.price_modifier if variant else 0.0
+        else:
+            price_modifier = 0.0
+        price = base_price + price_modifier
         item_total = price * item_data.quantity
         total_amount += item_total
 
-        # Validate inventory
+        # Validate inventory (with row lock to prevent overselling)
         inventory = db.query(Inventory).filter(
             Inventory.product_id == item_data.product_id
-        ).first()
+        ).with_for_update().first()
         if inventory and inventory.available_quantity < item_data.quantity:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -439,11 +501,24 @@ def create_order(
 
         inventory = db.query(Inventory).filter(
             Inventory.product_id == item["product"].id
-        ).first()
+        ).with_for_update().first()
         if inventory:
             inventory.available_quantity -= item["quantity"]
             inventory.reserved_quantity += item["quantity"]
             db.add(inventory)
+
+        if item["variant_id"]:
+            variant = db.query(ProductVariant).filter(
+                ProductVariant.id == item["variant_id"]
+            ).with_for_update().first()
+            if variant:
+                if variant.quantity < item["quantity"]:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Insufficient variant stock for {item['product'].name}. Available: {variant.quantity}, Requested: {item['quantity']}",
+                    )
+                variant.quantity -= item["quantity"]
+                db.add(variant)
 
     # Create initial tracking event
     from app.models.models import OrderTrackingEvent
@@ -456,10 +531,18 @@ def create_order(
 
     # Clear cart items associated with this order
     for item in order_items_list:
-        stmt = delete(cart_association).where(
-            cart_association.c.user_id == current_user.id,
-            cart_association.c.product_id == item["product"].id,
-        )
+        if item["variant_id"] is not None:
+            stmt = delete(cart_association).where(
+                cart_association.c.user_id == current_user.id,
+                cart_association.c.product_id == item["product"].id,
+                cart_association.c.variant_id == item["variant_id"],
+            )
+        else:
+            stmt = delete(cart_association).where(
+                cart_association.c.user_id == current_user.id,
+                cart_association.c.product_id == item["product"].id,
+                cart_association.c.variant_id.is_(None),
+            )
         db.execute(stmt)
 
     db.commit()
@@ -485,8 +568,8 @@ def checkout(
             detail="Shipping address not found"
         )
 
-    cart_qty_map = _get_cart_items(db, current_user.id)
-    if not cart_qty_map:
+    cart_rows = _get_cart_items(db, current_user.id)
+    if not cart_rows:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cart is empty"
@@ -495,23 +578,29 @@ def checkout(
     total_amount = 0
     order_items_list = []
 
-    for product_id, cart_data in cart_qty_map.items():
-        product = db.query(Product).filter(Product.id == product_id).first()
+    for row in cart_rows:
+        product = db.query(Product).filter(Product.id == row["product_id"]).first()
         if not product:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Product {product_id} not found"
+                detail=f"Product {row['product_id']} not found"
             )
 
-        qty = cart_data["quantity"]
-        variant_id = cart_data["variant_id"]
-        price = product.discount_price or product.price
+        qty = row["quantity"]
+        variant_id = row["variant_id"]
+        base_price = product.discount_price or product.price
+        if variant_id:
+            variant = db.query(ProductVariant).filter(ProductVariant.id == variant_id).first()
+            price_modifier = variant.price_modifier if variant else 0.0
+        else:
+            price_modifier = 0.0
+        price = base_price + price_modifier
         item_total = price * qty
         total_amount += item_total
 
         inventory = db.query(Inventory).filter(
-            Inventory.product_id == product_id
-        ).first()
+            Inventory.product_id == row["product_id"]
+        ).with_for_update().first()
         if inventory and inventory.available_quantity < qty:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -592,11 +681,24 @@ def checkout(
 
         inventory = db.query(Inventory).filter(
             Inventory.product_id == item["product"].id
-        ).first()
+        ).with_for_update().first()
         if inventory:
             inventory.available_quantity -= item["quantity"]
             inventory.reserved_quantity += item["quantity"]
             db.add(inventory)
+
+        if item["variant_id"]:
+            variant = db.query(ProductVariant).filter(
+                ProductVariant.id == item["variant_id"]
+            ).with_for_update().first()
+            if variant:
+                if variant.quantity < item["quantity"]:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Insufficient variant stock for {item['product'].name}. Available: {variant.quantity}, Requested: {item['quantity']}",
+                    )
+                variant.quantity -= item["quantity"]
+                db.add(variant)
 
     # Create initial tracking event
     from app.models.models import OrderTrackingEvent

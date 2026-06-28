@@ -20,6 +20,14 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    let sessionId = localStorage.getItem('guestSessionId');
+    if (!sessionId) {
+      sessionId = window.crypto?.randomUUID
+        ? window.crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      localStorage.setItem('guestSessionId', sessionId);
+    }
+    config.headers['X-Session-Id'] = sessionId;
     return config;
   },
   (error) => Promise.reject(error)

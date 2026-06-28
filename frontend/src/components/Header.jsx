@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { toggleSidebar, openCartDrawer } from '../store/slices/uiSlice';
 import { logout } from '../store/slices/authSlice';
 import { motion } from 'framer-motion';
-import { Menu, Search, X, Loader2, Bell } from 'lucide-react';
+import { Menu, Search, X, Loader2, Bell, ChevronDown } from 'lucide-react';
 import { productsAPI, notificationAPI } from '../api/endpoints';
 import MobileDrawer from './MobileDrawer';
 import NotificationCenter from './NotificationCenter';
@@ -17,6 +17,9 @@ const Header = () => {
   const { quantity } = useSelector(state => state.cart);
   const wishlistCount = useSelector(state => state.wishlist.count);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [catDropdownOpen, setCatDropdownOpen] = useState(false);
+  const [activeParentCat, setActiveParentCat] = useState(null);
+  const [categoryTree, setCategoryTree] = useState([]);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
@@ -29,17 +32,41 @@ const Header = () => {
   const searchRef = useRef(null);
   const debounceRef = useRef(null);
 
+  const catDropdownRef = useRef(null);
+
+  // Close mobile drawer when viewport reaches desktop breakpoint
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024 && drawerOpen) {
+        setDrawerOpen(false);
+        document.body.style.overflow = '';
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [drawerOpen]);
+
+  useEffect(() => {
+    productsAPI.getCategoryTree().then((res) => {
+      if (Array.isArray(res.data)) setCategoryTree(res.data);
+    }).catch(() => {});
+  }, []);
+
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setIsDropdownOpen(false);
       }
+      if (catDropdownRef.current && !catDropdownRef.current.contains(e.target)) {
+        setCatDropdownOpen(false);
+        setActiveParentCat(null);
+      }
     };
-    if (isDropdownOpen) {
+    if (isDropdownOpen || catDropdownOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isDropdownOpen]);
+  }, [isDropdownOpen, catDropdownOpen]);
 
   useEffect(() => {
     setDrawerOpen(false);
@@ -127,10 +154,11 @@ const Header = () => {
   };
 
   return (
-    <header className="sticky top-0 z-50 glass shadow-sm">
-      <NotificationCenter isOpen={notifOpen} onClose={() => setNotifOpen(false)} />
+    <>
       <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <header className="sticky top-0 z-50 glass shadow-sm">
+        <NotificationCenter isOpen={notifOpen} onClose={() => setNotifOpen(false)} />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Top Bar */}
         <div className="flex items-center justify-between py-4">
           {/* Hamburger — mobile only */}
@@ -353,12 +381,76 @@ const Header = () => {
         {/* Navigation — desktop only */}
         <nav className="hidden md:flex border-t items-center justify-between">
           <div className="flex">
-            <button
-              className="px-4 py-3 hover:bg-ivory text-sm font-medium text-gold"
-              onClick={() => navigate('/categories')}
-            >
-              Categories
-            </button>
+            {/* Categories Dropdown */}
+            <div className="relative" ref={catDropdownRef}>
+              <button
+                className="px-4 py-3 hover:bg-ivory text-sm font-medium text-gold flex items-center gap-1"
+                onMouseEnter={() => { setCatDropdownOpen(true); }}
+                onClick={() => { setCatDropdownOpen(!catDropdownOpen); }}
+              >
+                Categories
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${catDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {catDropdownOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  className="absolute left-0 top-full mt-0 bg-white rounded-b-xl shadow-xl border border-gray-100 min-w-[200px] z-50"
+                  onMouseLeave={() => { setCatDropdownOpen(false); setActiveParentCat(null); }}
+                >
+                  {categoryTree.length === 0 ? (
+                    <div className="px-4 py-3 text-sm text-gray-400">No categories</div>
+                  ) : (
+                    categoryTree.map((parent) => (
+                      <div
+                        key={parent.id}
+                        className="relative group"
+                        onMouseEnter={() => setActiveParentCat(parent.id)}
+                      >
+                        <button
+                          onClick={() => { navigate(`/products?category=${parent.id}`); setCatDropdownOpen(false); }}
+                          className="w-full text-left px-4 py-2.5 text-sm font-medium text-text hover:bg-ivory hover:text-gold transition-colors flex items-center justify-between"
+                        >
+                          {parent.name}
+                          {parent.children?.length > 0 && (
+                            <ChevronDown className="w-3 h-3 -rotate-90 text-gray-400" />
+                          )}
+                        </button>
+                        {activeParentCat === parent.id && parent.children?.length > 0 && (
+                          <div className="absolute left-full top-0 bg-white rounded-xl shadow-xl border border-gray-100 min-w-[180px] z-50 ml-1">
+                            <button
+                              onClick={() => { navigate(`/products?category=${parent.id}`); setCatDropdownOpen(false); }}
+                              className="w-full text-left px-4 py-2 text-sm text-gold font-medium hover:bg-ivory transition-colors"
+                            >
+                              All {parent.name}
+                            </button>
+                            <div className="border-t border-gray-50" />
+                            {parent.children.map((child) => (
+                              <button
+                                key={child.id}
+                                onClick={() => { navigate(`/products?category=${child.id}`); setCatDropdownOpen(false); }}
+                                className="w-full text-left px-4 py-2 text-sm text-text hover:bg-ivory hover:text-gold transition-colors"
+                              >
+                                {child.name}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                  <div className="border-t border-gray-50">
+                    <button
+                      onClick={() => { navigate('/categories'); setCatDropdownOpen(false); }}
+                      className="w-full text-left px-4 py-2.5 text-sm text-gold font-medium hover:bg-ivory transition-colors"
+                    >
+                      View All Categories
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </div>
             <button
               className="px-4 py-3 hover:bg-ivory text-sm font-medium"
               onClick={() => navigate('/products')}
@@ -418,6 +510,7 @@ const Header = () => {
         </nav>
       </div>
     </header>
+    </>
   );
 };
 

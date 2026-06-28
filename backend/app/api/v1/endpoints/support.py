@@ -260,12 +260,8 @@ def get_active_announcements(
     now = datetime.utcnow()
     announcements = db.query(AnnouncementBar).filter(
         AnnouncementBar.is_active == True,
-        (
-            (AnnouncementBar.start_date.is_(None)) | (AnnouncementBar.start_date <= now),
-        ),
-        (
-            (AnnouncementBar.end_date.is_(None)) | (AnnouncementBar.end_date >= now),
-        ),
+        (AnnouncementBar.start_date.is_(None)) | (AnnouncementBar.start_date <= now),
+        (AnnouncementBar.end_date.is_(None)) | (AnnouncementBar.end_date >= now),
     ).order_by(AnnouncementBar.created_at.desc()).all()
     return announcements
 

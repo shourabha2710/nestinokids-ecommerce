@@ -1,0 +1,85 @@
+import api from './api';
+
+export const adminAPI = {
+  getDashboard: () => api.get('/admin/dashboard'),
+  getProducts: (params) => api.get('/admin/products', { params }),
+  getProduct: (id) => api.get(`/admin/products/${id}`),
+  createProduct: (data) => api.post('/admin/products', data),
+  updateProduct: (id, data) => api.put(`/admin/products/${id}`, data),
+  deleteProduct: (id) => api.delete(`/admin/products/${id}`),
+  uploadProductImage: (productId, formData) => api.post(`/admin/products/${productId}/images`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  deleteProductImage: (productId, imageId) => api.delete(`/admin/products/${productId}/images/${imageId}`),
+  setProductImagePrimary: (productId, imageId) => api.put(`/admin/products/${productId}/images/${imageId}/primary`),
+  getCategories: (params) => api.get('/admin/categories', { params }),
+  createCategory: (data) => api.post('/admin/categories', data),
+  updateCategory: (id, data) => api.put(`/admin/categories/${id}`, data),
+  deleteCategory: (id) => api.delete(`/admin/categories/${id}`),
+  getInventory: (params) => api.get('/admin/inventory', { params }),
+  getInventoryItem: (productId) => api.get(`/admin/inventory/${productId}`),
+  updateInventory: (productId, data) => api.put(`/admin/inventory/${productId}`, data),
+  getVariants: (productId) => api.get(`/admin/products/${productId}/variants`),
+  createVariant: (productId, data) => api.post(`/admin/products/${productId}/variants`, data),
+  updateVariant: (productId, variantId, data) => api.put(`/admin/products/${productId}/variants/${variantId}`, data),
+  deleteVariant: (productId, variantId) => api.delete(`/admin/products/${productId}/variants/${variantId}`),
+  getBanners: () => api.get('/admin/banners'),
+  getBanner: (id) => api.get(`/admin/banners/${id}`),
+  createBanner: (data) => api.post('/admin/banners', data),
+  updateBanner: (id, data) => api.put(`/admin/banners/${id}`, data),
+  deleteBanner: (id) => api.delete(`/admin/banners/${id}`),
+  getOrders: (params) => api.get('/admin/orders', { params }),
+  getOrder: (id) => api.get(`/admin/orders/${id}`),
+  updateOrderStatus: (id, data) => api.put(`/admin/orders/${id}/status`, data),
+  getCoupons: () => api.get('/admin/coupons'),
+  getCoupon: (id) => api.get(`/admin/coupons/${id}`),
+  createCoupon: (data) => api.post('/admin/coupons', data),
+  updateCoupon: (id, data) => api.put(`/admin/coupons/${id}`, data),
+  deleteCoupon: (id) => api.delete(`/admin/coupons/${id}`),
+  getReviews: () => api.get('/admin/reviews'),
+  getSlides: () => api.get('/admin/hero-slides'),
+  createSlide: (formData) => api.post('/admin/hero-slides', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  updateSlide: (id, formData) => api.put(`/admin/hero-slides/${id}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  deleteSlide: (id) => api.delete(`/admin/hero-slides/${id}`),
+  reorderSlides: (data) => api.post('/admin/hero-slides/reorder', data),
+  getInstagramPosts: () => api.get('/admin/instagram-posts'),
+  createInstagramPost: (formData) => api.post('/admin/instagram-posts', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  updateInstagramPost: (id, formData) => api.put(`/admin/instagram-posts/${id}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  deleteInstagramPost: (id) => api.delete(`/admin/instagram-posts/${id}`),
+  reorderInstagramPosts: (data) => api.post('/admin/instagram-posts/reorder', data),
+  toggleInstagramPost: (id, isActive) => {
+    const fd = new FormData();
+    fd.append('is_active', String(isActive));
+    return api.put(`/admin/instagram-posts/${id}`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  createReview: (formData) => api.post('/admin/reviews', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  updateReview: (id, formData) => api.put(`/admin/reviews/${id}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  deleteReview: (id) => api.delete(`/admin/reviews/${id}`),
+  getSettings: () => api.get('/admin/settings'),
+  updateSettings: (data) => api.put('/admin/settings', data),
+  getSupportTickets: (params) => api.get('/admin/support/tickets', { params }),
+  updateSupportTicket: (id, data) => api.put(`/admin/support/tickets/${id}`, data),
+  deleteSupportTicket: (id) => api.delete(`/admin/support/tickets/${id}`),
+  getFAQs: () => api.get('/admin/faqs'),
+  createFAQ: (data) => api.post('/admin/faqs', data),
+  updateFAQ: (id, data) => api.put(`/admin/faqs/${id}`, data),
+  deleteFAQ: (id) => api.delete(`/admin/faqs/${id}`),
+  getAnnouncements: () => api.get('/admin/announcements'),
+  createAnnouncement: (data) => api.post('/admin/announcements', data),
+  updateAnnouncement: (id, data) => api.put(`/admin/announcements/${id}`, data),
+  deleteAnnouncement: (id) => api.delete(`/admin/announcements/${id}`),
+};

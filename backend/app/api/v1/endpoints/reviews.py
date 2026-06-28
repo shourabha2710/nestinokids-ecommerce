@@ -66,7 +66,7 @@ def create_review(
         with open(upload_dir / unique_name, "wb") as f:
             f.write(contents)
 
-        final_image = f"{str(request.base_url).rstrip('/')}/{settings.UPLOAD_DIR}/reviews/{unique_name}"
+        final_image = f"/{settings.UPLOAD_DIR}/reviews/{unique_name}"
 
     review = CustomerReview(
         customer_name=customer_name,
@@ -142,7 +142,7 @@ def update_review(
         with open(upload_dir / unique_name, "wb") as f:
             f.write(contents)
 
-        review.customer_image = f"{str(request.base_url).rstrip('/')}/{settings.UPLOAD_DIR}/reviews/{unique_name}"
+        review.customer_image = f"/{settings.UPLOAD_DIR}/reviews/{unique_name}"
 
     db.commit()
     db.refresh(review)

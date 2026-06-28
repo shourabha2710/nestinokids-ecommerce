@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from app.db.database import get_db
 from app.schemas.schemas import (
-    BannerResponse, CategoryCreate, CategoryResponse, InstagramPostResponse, ProductCreate, ProductResponse,
+    BannerResponse, CategoryCreate, CategoryResponse, CategoryTreeResponse, InstagramPostResponse, ProductCreate, ProductResponse,
     ProductUpdate, ProductImageResponse, ReviewCreate, ReviewResponse
 )
 from app.models.models import Category, Product, ProductImage, Review, User, Inventory, ProductVariant, Banner, InstagramPost, InstagramPostClick
@@ -30,17 +30,54 @@ def get_active_banners(
 
 
 # Category Endpoints
+def _enrich_category(cat: Category) -> dict:
+    """Convert category to dict with parent_name"""
+    return {
+        "id": cat.id,
+        "name": cat.name,
+        "slug": cat.slug,
+        "description": cat.description,
+        "image": cat.image,
+        "parent_id": cat.parent_id,
+        "is_active": cat.is_active,
+        "created_at": cat.created_at,
+        "parent_name": cat.parent.name if cat.parent else None,
+    }
+
+
+def _build_category_tree(db: Session, parent_id: Optional[int] = None) -> list:
+    """Build category tree recursively"""
+    categories = db.query(Category).filter(
+        Category.parent_id == parent_id,
+        Category.is_active == True
+    ).order_by(Category.name).all()
+    result = []
+    for cat in categories:
+        node = _enrich_category(cat)
+        node["children"] = _build_category_tree(db, cat.id)
+        result.append(node)
+    return result
+
+
 @router.get("/categories", response_model=List[CategoryResponse])
 def get_categories(
     skip: int = Query(0, ge=0),
-    limit: int = Query(10, ge=1, le=100),
+    limit: int = Query(100, ge=1, le=200),
     db: Session = Depends(get_db)
 ):
     """Get all categories"""
     categories = db.query(Category).filter(
         Category.is_active == True
     ).offset(skip).limit(limit).all()
-    return categories
+    return [_enrich_category(c) for c in categories]
+
+
+@router.get("/categories/tree", response_model=List[CategoryTreeResponse])
+def get_category_tree(
+    db: Session = Depends(get_db)
+):
+    """Get category tree (parent -> children hierarchy)"""
+    return _build_category_tree(db)
 
 
 @router.get("/categories/{slug}", response_model=CategoryResponse)
@@ -56,13 +93,26 @@ def get_category(slug: str, db: Session = Depends(get_db)):
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Category not found"
         )
-    return category
+    return _enrich_category(category)
 
 
 # Product Endpoints
+def _get_category_and_descendants(db: Session, category_id: int) -> List[int]:
+    """Get category ID and all descendant category IDs recursively"""
+    ids = [category_id]
+    children = db.query(Category).filter(
+        Category.parent_id == category_id,
+        Category.is_active == True
+    ).all()
+    for child in children:
+        ids.extend(_get_category_and_descendants(db, child.id))
+    return ids
+
+
 @router.get("/products", response_model=List[ProductResponse])
 def get_products(
     category_id: Optional[int] = None,
+    include_subcategories: bool = Query(True, description="Include products from subcategories"),
     search: Optional[str] = None,
     featured: Optional[bool] = None,
     sort_by: str = Query("created_at", regex="^(price|rating|created_at)$"),
@@ -71,10 +121,18 @@ def get_products(
     db: Session = Depends(get_db)
 ):
     """Get all products with filtering and search"""
-    query = db.query(Product).options(joinedload(Product.images)).filter(Product.is_active == True)
+    query = db.query(Product).options(
+        joinedload(Product.images),
+        joinedload(Product.variants),
+        joinedload(Product.category),
+    ).filter(Product.is_active == True)
     
     if category_id:
-        query = query.filter(Product.category_id == category_id)
+        if include_subcategories:
+            cat_ids = _get_category_and_descendants(db, category_id)
+            query = query.filter(Product.category_id.in_(cat_ids))
+        else:
+            query = query.filter(Product.category_id == category_id)
     
     if search:
         query = query.filter(
@@ -100,7 +158,11 @@ def get_products(
 @router.get("/products/{slug}", response_model=ProductResponse)
 def get_product(slug: str, db: Session = Depends(get_db)):
     """Get product by slug"""
-    product = db.query(Product).filter(
+    product = db.query(Product).options(
+        joinedload(Product.images),
+        joinedload(Product.variants),
+        joinedload(Product.category),
+    ).filter(
         Product.slug == slug,
         Product.is_active == True
     ).first()
@@ -202,7 +264,11 @@ def get_related_products(
             detail="Product not found"
         )
     
-    related = db.query(Product).filter(
+    related = db.query(Product).options(
+        joinedload(Product.images),
+        joinedload(Product.variants),
+        joinedload(Product.category),
+    ).filter(
         Product.category_id == product.category_id,
         Product.id != product_id,
         Product.is_active == True
@@ -221,7 +287,11 @@ def search_products(
     db: Session = Depends(get_db)
 ):
     """Search products by name and description"""
-    query = db.query(Product).filter(Product.is_active == True)
+    query = db.query(Product).options(
+        joinedload(Product.images),
+        joinedload(Product.variants),
+        joinedload(Product.category),
+    ).filter(Product.is_active == True)
     
     if category_id:
         query = query.filter(Product.category_id == category_id)
