@@ -6,6 +6,7 @@ import { X, ShoppingBag, Plus, Minus, Trash2, Truck, Loader2 } from 'lucide-reac
 import { closeCartDrawer } from '../store/slices/uiSlice';
 import { setCartItems } from '../store/slices/cartSlice';
 import { shoppingAPI, productsAPI, settingsAPI, recommendationAPI } from '../api/endpoints';
+import ProductImage from './ProductImage';
 
 const PLACEHOLDER = '/images/placeholder-product.svg';
 
@@ -221,11 +222,11 @@ const CartDrawer = () => {
                       animate={{ opacity: 1, x: 0 }}
                       className="flex gap-3 p-3 bg-gray-50 rounded-xl"
                     >
-                      <img
+                      <ProductImage
+                        variant="cart"
                         src={imgUrl}
                         alt={item.name}
-                        className="w-16 h-16 rounded-lg object-cover bg-white flex-shrink-0"
-                        onError={(e) => { e.target.src = PLACEHOLDER; }}
+                        className="w-16 h-16 rounded-lg flex-shrink-0"
                       />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-text truncate">{item.name}</p>
@@ -286,7 +287,7 @@ const CartDrawer = () => {
                       const recImg = rec.images?.find((i) => i.is_primary)?.image_url || rec.images?.[0]?.image_url || PLACEHOLDER;
                       return (
                         <div key={rec.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors">
-                          <img src={recImg} alt={rec.name} className="w-10 h-10 rounded-lg object-cover bg-white" onError={(e) => { e.target.src = PLACEHOLDER; }} />
+                          <ProductImage variant="cart" src={recImg} alt={rec.name} className="w-10 h-10 rounded-lg" />
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-medium text-text truncate">{rec.name}</p>
                             <p className="text-xs text-gold font-semibold">₹{rec.discount_price || rec.price}</p>

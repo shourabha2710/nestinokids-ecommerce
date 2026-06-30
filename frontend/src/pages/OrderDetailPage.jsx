@@ -4,6 +4,7 @@ import { useSelector } from 'react-redux';
 import { shoppingAPI, orderTrackingAPI, settingsAPI } from '../api/endpoints';
 import MobilePageHeader from '../components/MobilePageHeader';
 import { motion } from 'framer-motion';
+import ProductImage from '../components/ProductImage';
 
 const PLACEHOLDER = '/images/placeholder-product.svg';
 
@@ -174,10 +175,11 @@ const OrderDetailPage = () => {
         <div className="space-y-4">
           {order.items?.map((item) => (
             <div key={item.id} className="flex gap-4 pb-4 border-b last:border-0 last:pb-0">
-              <img
+              <ProductImage
+                variant="cart"
                 src={PLACEHOLDER}
                 alt={item.product_name}
-                className="w-16 h-16 object-cover rounded"
+                className="w-16 h-16 rounded"
               />
               <div className="flex-1">
                 <p className="font-medium text-text">{item.product_name}</p>

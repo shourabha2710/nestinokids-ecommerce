@@ -6,6 +6,7 @@ import { addToCart } from '../store/slices/cartSlice';
 import { removeWishlistItem, setWishlist } from '../store/slices/wishlistSlice';
 import MobilePageHeader from '../components/MobilePageHeader';
 import { motion } from 'framer-motion';
+import ProductImage from '../components/ProductImage';
 
 const PLACEHOLDER = '/images/placeholder-product.svg';
 
@@ -15,8 +16,6 @@ const WishlistPage = () => {
   const { isAuthenticated } = useSelector((state) => state.auth);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [imgErrors, setImgErrors] = useState({});
-
   useEffect(() => {
     if (!isAuthenticated) { navigate('/login'); return; }
     fetchWishlist();
@@ -110,12 +109,12 @@ const WishlistPage = () => {
               animate={{ opacity: 1, y: 0 }}
               className="bg-white rounded-lg shadow overflow-hidden"
             >
-              <img
-                src={imgErrors[item.id] ? PLACEHOLDER : (item.images?.[0]?.image_url || PLACEHOLDER)}
+              <ProductImage
+                variant="wishlist"
+                src={item.images?.[0]?.image_url || PLACEHOLDER}
                 alt={item.name}
-                className="w-full h-48 object-cover cursor-pointer"
+                className="w-full cursor-pointer"
                 onClick={() => navigate(`/products/${item.slug}`)}
-                onError={() => setImgErrors((prev) => ({ ...prev, [item.id]: true }))}
               />
               <div className="p-4">
                 <h3 className="font-semibold text-text mb-2">{item.name}</h3>
