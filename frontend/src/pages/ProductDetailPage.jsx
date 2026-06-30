@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, ShoppingBag, Star, Shield, Truck, RefreshCw, ChevronLeft, ChevronRight, Minus, Plus } from 'lucide-react';
 import RelatedProducts from '../components/RelatedProducts';
 import YouMayAlsoLike from '../components/YouMayAlsoLike';
+import ProductImage from '../components/ProductImage';
 
 const PLACEHOLDER = '/images/placeholder-product.svg';
 
@@ -200,17 +201,20 @@ const ProductDetailPage = () => {
           <div className="lg:sticky lg:top-24 lg:self-start">
             <motion.div layout className="relative bg-ivory rounded-2xl overflow-hidden aspect-square mb-4 shadow-card">
               <AnimatePresence mode="wait">
-                <motion.img
+                <motion.div
                   key={selectedImage}
-                  src={images[selectedImage]?.image_url || PLACEHOLDER}
-                  alt={images[selectedImage]?.alt_text || product.name}
                   initial={{ opacity: 0, scale: 1.02 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.3 }}
-                  className="w-full h-full object-cover"
-                  onError={(e) => { e.target.src = PLACEHOLDER; }}
-                />
+                  className="w-full h-full"
+                >
+                  <ProductImage
+                    variant="detail"
+                    src={images[selectedImage]?.image_url || PLACEHOLDER}
+                    alt={images[selectedImage]?.alt_text || product.name}
+                  />
+                </motion.div>
               </AnimatePresence>
 
               {/* Nav arrows */}
@@ -243,11 +247,10 @@ const ProductDetailPage = () => {
                       i === selectedImage ? 'border-gold shadow-premium' : 'border-gray-100 opacity-70 hover:opacity-100'
                     }`}
                   >
-                    <img
+                    <ProductImage
+                      variant="thumbnail"
                       src={img.image_url}
                       alt={img.alt_text || `View ${i + 1}`}
-                      className="w-full h-full object-cover"
-                      onError={(e) => { e.target.src = PLACEHOLDER; }}
                     />
                   </button>
                 ))}

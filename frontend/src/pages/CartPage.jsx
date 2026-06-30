@@ -5,6 +5,7 @@ import { shoppingAPI } from '../api/endpoints';
 import { clearCart, setCartItems } from '../store/slices/cartSlice';
 import MobilePageHeader from '../components/MobilePageHeader';
 import { motion } from 'framer-motion';
+import ProductImage from '../components/ProductImage';
 
 const PLACEHOLDER = '/images/placeholder-product.svg';
 
@@ -15,8 +16,6 @@ const CartPage = () => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [imgErrors, setImgErrors] = useState({});
-
   const fetchCart = async () => {
     try {
       setLoading(true);
@@ -144,11 +143,11 @@ const CartPage = () => {
               animate={{ opacity: 1, y: 0 }}
               className="flex gap-4 p-4 bg-white rounded-lg shadow"
             >
-              <img
-                src={imgErrors[getItemKey(item)] ? PLACEHOLDER : (item.images?.[0]?.image_url || PLACEHOLDER)}
+              <ProductImage
+                variant="cart"
+                src={item.images?.[0]?.image_url || PLACEHOLDER}
                 alt={item.name}
-                className="w-24 h-24 object-cover rounded"
-                onError={() => setImgErrors((prev) => ({ ...prev, [getItemKey(item)]: true }))}
+                className="w-24 h-24 rounded"
               />
               <div className="flex-1">
                 <h3 className="font-semibold text-text">{item.name}</h3>

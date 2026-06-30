@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { shoppingAPI } from '../api/endpoints';
@@ -6,13 +6,13 @@ import { addToCart } from '../store/slices/cartSlice';
 import { addWishlistItem, removeWishlistItem } from '../store/slices/wishlistSlice';
 import { motion } from 'framer-motion';
 import { Heart, ShoppingBag, Star } from 'lucide-react';
+import ProductImage from './ProductImage';
 
 const PLACEHOLDER = '/images/placeholder-product.svg';
 
 const ProductCard = ({ product, index = 0 }) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const [imgError, setImgError] = useState(false);
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState(false);
   const [wishlistLoading, setWishlistLoading] = useState(false);
@@ -20,13 +20,9 @@ const ProductCard = ({ product, index = 0 }) => {
   const wishlistIds = useSelector((state) => state.wishlist.ids);
   const isInWishlist = wishlistIds.includes(product.id);
 
-  useEffect(() => {
-    setImgError(false);
-  }, [product]);
-
   const primaryImage = product.images?.find((img) => img.is_primary)?.image_url;
   const fallbackImage = product.images?.[0]?.image_url;
-  const imageUrl = imgError ? PLACEHOLDER : (primaryImage || fallbackImage || PLACEHOLDER);
+  const imageUrl = primaryImage || fallbackImage || PLACEHOLDER;
   const discount = product.discount_price
     ? Math.round(((product.price - product.discount_price) / product.price) * 100)
     : 0;
@@ -80,13 +76,11 @@ const ProductCard = ({ product, index = 0 }) => {
     >
       {/* Image container */}
       <div className="relative overflow-hidden bg-ivory aspect-square">
-        <motion.img
+        <ProductImage
+          variant="card"
           src={imageUrl}
           alt={product.name}
-          className="w-full h-full object-cover"
-          whileHover={{ scale: 1.08 }}
-          transition={{ duration: 0.6 }}
-          onError={() => setImgError(true)}
+          imgClassName="transition-transform duration-600 hover:scale-[1.15]"
         />
 
         {/* Discount ribbon */}

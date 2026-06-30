@@ -8,6 +8,7 @@ import { Menu, Search, X, Loader2, Bell, ChevronDown } from 'lucide-react';
 import { productsAPI, notificationAPI } from '../api/endpoints';
 import MobileDrawer from './MobileDrawer';
 import NotificationCenter from './NotificationCenter';
+import ProductImage from './ProductImage';
 
 const Header = () => {
   const dispatch = useDispatch();
@@ -230,7 +231,7 @@ const Header = () => {
                         onClick={() => handleSuggestionClick(product)}
                         className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${index === selectedIndex ? 'bg-gray-50' : ''}`}
                       >
-                        <img src={imgUrl} alt="" className="w-10 h-10 rounded-lg object-cover bg-gray-100 flex-shrink-0" />
+                        <ProductImage variant="cart" src={imgUrl} alt="" className="w-10 h-10 rounded-lg bg-gray-100 flex-shrink-0" />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-900 truncate">{product.name}</p>
                           <p className="text-xs text-gray-500">₹{product.discount_price || product.price}</p>

@@ -5,6 +5,7 @@ import { shoppingAPI } from '../api/endpoints';
 import { clearCart } from '../store/slices/cartSlice';
 import { motion } from 'framer-motion';
 import { ShieldCheck, Truck, RotateCcw, Sparkles, Check } from 'lucide-react';
+import ProductImage from '../components/ProductImage';
 
 const PLACEHOLDER = '/images/placeholder-product.svg';
 
@@ -271,11 +272,11 @@ const CheckoutPage = () => {
             <div className="space-y-3 mb-4 max-h-60 overflow-y-auto">
               {cartItems.map((item) => (
                 <div key={item.id} className="flex gap-3">
-                  <img
+                  <ProductImage
+                    variant="cart"
                     src={item.images?.[0]?.image_url || PLACEHOLDER}
                     alt={item.name}
-                    className="w-12 h-12 object-cover rounded"
-                    onError={(e) => { e.target.src = PLACEHOLDER; }}
+                    className="w-12 h-12 rounded"
                   />
                   <div className="flex-1">
                     <p className="text-sm font-medium text-text">{item.name}</p>
