@@ -674,6 +674,30 @@ class LoyaltyAnalyticsResponse(BaseModel):
     most_wishlisted_products: list = []
 
 
+class DashboardResponse(BaseModel):
+    total_products: int
+    active_products: int = 0
+    total_categories: int
+    total_orders: int
+    pending_orders: int
+    delivered_orders: int
+    cancelled_orders: int = 0
+    total_users: int
+    total_inventory_items: int
+    inventory_value: float = 0.0
+    low_stock_products: int
+    out_of_stock_products: int
+    total_revenue: float
+    total_loyalty_points_issued: int = 0
+    total_loyalty_points_redeemed: int = 0
+    total_referrals: int = 0
+    repeat_customer_rate: float = 0.0
+    most_wishlisted_products: list = []
+    open_tickets: int = 0
+    resolved_tickets: int = 0
+    total_notifications_sent: int = 0
+
+
 # ─── Phase 8 Schemas ───
 
 # Order Tracking Schemas
