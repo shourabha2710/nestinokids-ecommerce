@@ -1,7 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { adminAPI } from '../../services/adminApi';
+import DashboardSection from '../../components/dashboard/DashboardSection';
+import DashboardGrid from '../../components/dashboard/DashboardGrid';
+import DashboardChartCard from '../../components/dashboard/DashboardChartCard';
 import DashboardStatsGrid from '../../components/dashboard/DashboardStatsGrid';
+import RevenueTrendChart from '../../components/dashboard/charts/RevenueTrendChart';
+import OrdersTrendChart from '../../components/dashboard/charts/OrdersTrendChart';
+import OrderStatusChart from '../../components/dashboard/charts/OrderStatusChart';
 
 import {
   ShoppingCart, Clock, CheckCircle, IndianRupee, Package, FolderTree, Users,
@@ -32,25 +38,63 @@ const statCards = [
   { key: 'total_notifications_sent', label: 'Notifications Sent', icon: Bell, color: 'bg-blue-500' },
 ];
 
+const chartSections = [
+  {
+    title: 'Revenue',
+    description: 'Revenue and order trends over time',
+    cols: 2,
+    cards: [
+      { key: 'revenue-trend', title: 'Revenue Trend', icon: IndianRupee, color: 'bg-emerald-500', dataKey: 'revenue_trend', Chart: RevenueTrendChart },
+      { key: 'orders-trend', title: 'Orders Trend', icon: ShoppingCart, color: 'bg-blue-500', dataKey: 'orders_trend', Chart: OrdersTrendChart },
+    ],
+  },
+  {
+    title: 'Orders',
+    description: 'Order analytics and status distribution',
+    cols: 2,
+    cards: [
+      { key: 'order-status', title: 'Order Status Distribution', icon: CheckCircle, color: 'bg-green-500', dataKey: 'order_status', Chart: OrderStatusChart },
+      { key: 'latest-orders', title: 'Latest Orders', icon: Clock, color: 'bg-yellow-500', placeholder: 'Latest orders table will be added in a future phase' },
+    ],
+  },
+  {
+    title: 'Products',
+    description: 'Product performance and inventory alerts',
+    cols: 2,
+    cards: [
+      { key: 'top-products', title: 'Top Selling Products', icon: Package, color: 'bg-violet-500', placeholder: 'Top products chart will be added in a future phase' },
+      { key: 'low-stock', title: 'Low Stock Products', icon: AlertIcon, color: 'bg-red-500', placeholder: 'Low stock table will be added in a future phase' },
+    ],
+  },
+];
+
 const AdminDashboard = () => {
   const [stats, setStats] = useState(null);
+  const [chartData, setChartData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [chartLoading, setChartLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const fetchStats = async () => {
+    const fetchAll = async () => {
       try {
         setLoading(true);
-        const res = await adminAPI.getDashboard();
-        setStats(res.data);
+        setChartLoading(true);
+        const [statsRes, chartsRes] = await Promise.all([
+          adminAPI.getDashboard(),
+          adminAPI.getDashboardCharts(),
+        ]);
+        setStats(statsRes.data);
+        setChartData(chartsRes.data);
       } catch (err) {
         setError('Failed to load dashboard data');
       } finally {
         setLoading(false);
+        setChartLoading(false);
       }
     };
 
-    fetchStats();
+    fetchAll();
   }, []);
 
   if (error) {
@@ -77,11 +121,39 @@ const AdminDashboard = () => {
         <p className="text-gray-500 mt-1">Overview of your store performance</p>
       </div>
 
-      <DashboardStatsGrid
-        cards={statCards}
-        stats={stats}
-        loading={loading}
-      />
+      <DashboardSection title="Overview" description="Key metrics at a glance">
+        <DashboardStatsGrid
+          cards={statCards}
+          stats={stats}
+          loading={loading}
+        />
+      </DashboardSection>
+
+      {chartSections.map((section) => (
+        <DashboardSection
+          key={section.title}
+          title={section.title}
+          description={section.description}
+        >
+          <DashboardGrid cols={section.cols}>
+            {section.cards.map((card) => (
+              <DashboardChartCard
+                key={card.key}
+                icon={card.icon}
+                title={card.title}
+                color={card.color}
+                loading={chartLoading}
+                isEmpty={card.Chart && !chartData?.[card.dataKey]?.length}
+                placeholder={card.placeholder}
+              >
+                {card.Chart && (
+                  <card.Chart data={chartData?.[card.dataKey] || []} />
+                )}
+              </DashboardChartCard>
+            ))}
+          </DashboardGrid>
+        </DashboardSection>
+      ))}
     </div>
   );
 };

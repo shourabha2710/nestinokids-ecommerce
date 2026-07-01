@@ -2,6 +2,7 @@ import api from './api';
 
 export const adminAPI = {
   getDashboard: () => api.get('/admin/dashboard'),
+  getDashboardCharts: () => api.get('/admin/dashboard/charts'),
   getProducts: (params) => api.get('/admin/products', { params }),
   getProduct: (id) => api.get(`/admin/products/${id}`),
   createProduct: (data) => api.post('/admin/products', data),

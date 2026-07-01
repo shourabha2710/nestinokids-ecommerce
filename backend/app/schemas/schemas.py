@@ -698,6 +698,12 @@ class DashboardResponse(BaseModel):
     total_notifications_sent: int = 0
 
 
+class DashboardChartsResponse(BaseModel):
+    revenue_trend: list[dict] = []
+    orders_trend: list[dict] = []
+    order_status: list[dict] = []
+
+
 # ─── Phase 8 Schemas ───
 
 # Order Tracking Schemas
