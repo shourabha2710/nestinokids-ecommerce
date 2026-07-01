@@ -14,6 +14,7 @@ from app.schemas.schemas import (
     CategoryCreate,
     CategoryResponse,
     CategoryUpdate,
+    DashboardResponse,
     InstagramPostCreate,
     InstagramPostResponse,
     InstagramPostUpdate,
@@ -28,6 +29,7 @@ from app.schemas.schemas import (
     ProductVariantBase,
     ProductVariantResponse,
 )
+from app.services.dashboard_service import dashboard_service
 from sqlalchemy.orm import joinedload
 from app.models.models import (
     Product, Category, Order, OrderItem, User, ProductImage, Inventory,
@@ -39,32 +41,10 @@ from app.api.v1.endpoints.auth import require_admin
 from app.utils.helpers import generate_slug, generate_sku
 from app.core.config import settings
 from typing import List, Optional
-from pydantic import BaseModel
 
 ALLOWED_IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp'}
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
-
-
-class DashboardResponse(BaseModel):
-    total_products: int
-    total_categories: int
-    total_orders: int
-    total_users: int
-    total_inventory_items: int
-    low_stock_products: int
-    out_of_stock_products: int
-    pending_orders: int
-    delivered_orders: int
-    total_revenue: float
-    total_loyalty_points_issued: int = 0
-    total_loyalty_points_redeemed: int = 0
-    total_referrals: int = 0
-    repeat_customer_rate: float = 0.0
-    most_wishlisted_products: list = []
-    open_tickets: int = 0
-    resolved_tickets: int = 0
-    total_notifications_sent: int = 0
 
 
 @router.get("/dashboard", response_model=DashboardResponse)
@@ -72,111 +52,8 @@ def get_dashboard(
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    total_inventory = db.query(func.count(Inventory.id)).scalar() or 0
-    low_stock = (
-        db.query(func.count(Inventory.id))
-        .filter(Inventory.available_quantity <= Inventory.low_stock_threshold)
-        .filter(Inventory.available_quantity > 0)
-        .scalar() or 0
-    )
-    out_of_stock = (
-        db.query(func.count(Inventory.id))
-        .filter(Inventory.available_quantity <= 0)
-        .scalar() or 0
-    )
-    total_revenue = (
-        db.query(func.coalesce(func.sum(Order.final_amount), 0))
-        .filter(Order.status == OrderStatusEnum.DELIVERED)
-        .scalar()
-    )
-
-    # Loyalty analytics
-    total_loyalty_points_issued = (
-        db.query(func.coalesce(func.sum(LoyaltyTransaction.points), 0))
-        .filter(LoyaltyTransaction.transaction_type.in_(["earned", "signup_bonus", "referral_bonus", "admin_adjustment"]), LoyaltyTransaction.points > 0)
-        .scalar() or 0
-    )
-    total_loyalty_points_redeemed = (
-        db.query(func.coalesce(func.sum(LoyaltyTransaction.points), 0))
-        .filter(LoyaltyTransaction.transaction_type == "redeemed")
-        .scalar() or 0
-    )
-
-    # Referral analytics
-    total_referrals = (
-        db.query(func.count(User.id))
-        .filter(User.referred_by.isnot(None))
-        .scalar() or 0
-    )
-
-    # Repeat customer rate (users with >1 delivered order)
-    total_users_with_orders = (
-        db.query(func.count(func.distinct(Order.user_id)))
-        .filter(Order.status == OrderStatusEnum.DELIVERED)
-        .scalar() or 0
-    )
-    repeat_customers = (
-        db.query(func.count(func.distinct(Order.user_id)))
-        .filter(Order.status == OrderStatusEnum.DELIVERED)
-        .group_by(Order.user_id)
-        .having(func.count(Order.id) > 1)
-        .subquery()
-    )
-    repeat_count = db.query(func.count()).select_from(repeat_customers).scalar() or 0
-    repeat_customer_rate = round((repeat_count / total_users_with_orders * 100), 1) if total_users_with_orders > 0 else 0.0
-
-    # Most wishlisted products
-    most_wishlisted = (
-        db.query(
-            wishlist_association.c.product_id,
-            func.count(wishlist_association.c.user_id).label("wishlist_count"),
-        )
-        .group_by(wishlist_association.c.product_id)
-        .order_by(desc("wishlist_count"))
-        .limit(5)
-        .all()
-    )
-    most_wishlisted_products = []
-    for product_id, count in most_wishlisted:
-        product = db.query(Product).filter(Product.id == product_id).first()
-        if product:
-            most_wishlisted_products.append({
-                "id": product.id,
-                "name": product.name,
-                "wishlist_count": count,
-            })
-
-    # Support ticket stats
-    open_tickets = db.query(func.count(SupportTicket.id)).filter(
-        SupportTicket.status.in_(["Open", "In Progress"])
-    ).scalar() or 0
-    resolved_tickets = db.query(func.count(SupportTicket.id)).filter(
-        SupportTicket.status == "Resolved"
-    ).scalar() or 0
-
-    # Notification stats
-    total_notifications_sent = db.query(func.count(Notification.id)).scalar() or 0
-
-    return DashboardResponse(
-        total_products=db.query(func.count(Product.id)).scalar() or 0,
-        total_categories=db.query(func.count(Category.id)).scalar() or 0,
-        total_orders=db.query(func.count(Order.id)).scalar() or 0,
-        total_users=db.query(func.count(User.id)).scalar() or 0,
-        total_inventory_items=total_inventory,
-        low_stock_products=low_stock,
-        out_of_stock_products=out_of_stock,
-        pending_orders=db.query(func.count(Order.id)).filter(Order.status == OrderStatusEnum.PENDING).scalar() or 0,
-        delivered_orders=db.query(func.count(Order.id)).filter(Order.status == OrderStatusEnum.DELIVERED).scalar() or 0,
-        total_revenue=total_revenue,
-        total_loyalty_points_issued=total_loyalty_points_issued,
-        total_loyalty_points_redeemed=total_loyalty_points_redeemed,
-        total_referrals=total_referrals,
-        repeat_customer_rate=repeat_customer_rate,
-        most_wishlisted_products=most_wishlisted_products,
-        open_tickets=open_tickets,
-        resolved_tickets=resolved_tickets,
-        total_notifications_sent=total_notifications_sent,
-    )
+    summary = dashboard_service.get_summary(db)
+    return DashboardResponse(**summary.model_dump())
 
 
 def _build_inventory_response(inventory: Inventory) -> dict:
