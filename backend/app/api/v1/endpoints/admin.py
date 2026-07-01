@@ -11,6 +11,7 @@ from app.schemas.schemas import (
     BannerCreate,
     BannerResponse,
     BannerUpdate,
+    DashboardChartsResponse,
     CategoryCreate,
     CategoryResponse,
     CategoryUpdate,
@@ -54,6 +55,19 @@ def get_dashboard(
 ):
     summary = dashboard_service.get_summary(db)
     return DashboardResponse(**summary.model_dump())
+
+
+@router.get("/dashboard/charts", response_model=DashboardChartsResponse)
+def get_dashboard_charts(
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+    range: str = Query("30d", alias="range"),
+):
+    return DashboardChartsResponse(
+        revenue_trend=dashboard_service.get_revenue_trend(db, range=range),
+        orders_trend=dashboard_service.get_orders_trend(db, range=range),
+        order_status=dashboard_service.get_order_status_distribution(db, range=range),
+    )
 
 
 def _build_inventory_response(inventory: Inventory) -> dict:

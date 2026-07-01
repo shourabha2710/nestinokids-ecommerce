@@ -1,3 +1,5 @@
+import datetime
+from datetime import timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
 from pydantic import BaseModel
@@ -206,10 +208,97 @@ class DashboardService:
             total_notifications_sent=total_notifications_sent,
         )
 
+    # ── Date-range helpers ───────────────────────────────────────────
+
+    def _parse_date_range(self, range_str: str = "30d") -> datetime.datetime:
+        """Calculate the cutoff datetime for a given range string.
+
+        Supported values:
+            ``7d``  — last 7 days
+            ``30d`` — last 30 days (default)
+            ``90d`` — last 90 days
+            ``12m`` — last 12 months (365 days)
+
+        Returns a UTC datetime to use in ``created_at >= cutoff`` filters.
+        """
+        now = datetime.datetime.utcnow()
+        mapping = {"7d": 7, "30d": 30, "90d": 90, "12m": 365}
+        days = mapping.get(range_str, 30)
+        return now - timedelta(days=days)
+
+    # ── Phase 12.2B Chart methods ────────────────────────────────────
+
+    def get_revenue_trend(self, db: Session, range: str = "30d") -> list[dict]:
+        """Monthly revenue trend for delivered orders within *range*.
+
+        Returns a list of ``{"date": "2024-01", "revenue": 1234.56}``
+        dicts ordered chronologically.
+        """
+        cutoff = self._parse_date_range(range)
+        rows = (
+            db.query(
+                func.date_trunc("month", Order.created_at).label("month"),
+                func.coalesce(func.sum(Order.final_amount), 0).label("revenue"),
+            )
+            .filter(Order.status == OrderStatusEnum.DELIVERED)
+            .filter(Order.created_at >= cutoff)
+            .group_by(func.date_trunc("month", Order.created_at))
+            .order_by(func.date_trunc("month", Order.created_at))
+            .all()
+        )
+        return [
+            {"date": row.month.strftime("%Y-%m"), "revenue": float(row.revenue)}
+            for row in rows
+        ]
+
+    def get_orders_trend(self, db: Session, range: str = "30d") -> list[dict]:
+        """Monthly order volume trend within *range*.
+
+        Returns a list of ``{"date": "2024-01", "orders": 42}`` dicts
+        ordered chronologically.
+        """
+        cutoff = self._parse_date_range(range)
+        rows = (
+            db.query(
+                func.date_trunc("month", Order.created_at).label("month"),
+                func.count(Order.id).label("orders"),
+            )
+            .filter(Order.created_at >= cutoff)
+            .group_by(func.date_trunc("month", Order.created_at))
+            .order_by(func.date_trunc("month", Order.created_at))
+            .all()
+        )
+        return [
+            {"date": row.month.strftime("%Y-%m"), "orders": row.orders}
+            for row in rows
+        ]
+
+    def get_order_status_distribution(self, db: Session, range: str = "30d") -> list[dict]:
+        """Order count grouped by status within *range*.
+
+        Returns a list of ``{"status": "pending", "count": 10}`` dicts
+        sorted by count descending (most frequent first).
+        """
+        cutoff = self._parse_date_range(range)
+        rows = (
+            db.query(
+                Order.status,
+                func.count(Order.id).label("count"),
+            )
+            .filter(Order.created_at >= cutoff)
+            .group_by(Order.status)
+            .order_by(desc("count"))
+            .all()
+        )
+        return [
+            {"status": row.status.value if hasattr(row.status, "value") else str(row.status), "count": row.count}
+            for row in rows
+        ]
+
     # ── Future-phase stubs ────────────────────────────────────────────
 
     def get_revenue(self, db: Session):
-        """TODO (Phase 13): Revenue trends, daily/monthly/ yearly breakdown.
+        """TODO (Phase 13+): Revenue trends, daily / monthly / yearly breakdown.
 
         Planned output: time-series revenue data grouped by day, month,
         or year so the frontend can render revenue-over-time charts.
@@ -217,7 +306,7 @@ class DashboardService:
         raise NotImplementedError
 
     def get_orders(self, db: Session):
-        """TODO (Phase 13): Order status distribution and timeline.
+        """TODO (Phase 13+): Order status distribution and timeline.
 
         Planned output: counts per status over time, average fulfillment
         time, and order volume trends.
@@ -247,6 +336,41 @@ class DashboardService:
         cohort, and lifetime value grouping.
         """
         raise NotImplementedError
+
+    # ── Future cache support (Redis) ─────────────────────────────────
+
+    def _get_cached_data(self, cache_key: str):
+        """Retrieve cached dashboard data.
+
+        Placeholder for future Redis ``get`` integration.
+
+        Cache-key strategy (for future use)::
+
+            "dashboard:{method_name}:{range}:{args_hash}"
+
+        Example::
+
+            "dashboard:get_revenue_trend:30d:"
+
+        Recommended TTL: **5 minutes** (300 seconds) — short enough
+        to keep dashboard data reasonably fresh while absorbing
+        repeated page loads from multiple admin users.
+
+        :param cache_key: String key to look up in Redis.
+        :returns: Cached value or ``None``.
+        """
+        return None
+
+    def _set_cached_data(self, cache_key: str, data, ttl: int = 300):
+        """Store dashboard data in cache.
+
+        Placeholder for future Redis ``setex`` integration.
+
+        :param cache_key: String key under which to store *data*.
+        :param data: Serialisable value to cache.
+        :param ttl: Time-to-live in seconds (default 300 / 5 min).
+        """
+        pass
 
 
 dashboard_service = DashboardService()
