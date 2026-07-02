@@ -1,13 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { AlertTriangle } from 'lucide-react';
-import { adminAPI } from '../../services/adminApi';
+import { dashboardApi } from '../../services/dashboardApi';
 import DashboardSection from '../../components/dashboard/DashboardSection';
 import DashboardGrid from '../../components/dashboard/DashboardGrid';
 import DashboardChartCard from '../../components/dashboard/DashboardChartCard';
+import DashboardWidget from '../../components/dashboard/DashboardWidget';
 import DashboardStatsGrid from '../../components/dashboard/DashboardStatsGrid';
 import RevenueTrendChart from '../../components/dashboard/charts/RevenueTrendChart';
 import OrdersTrendChart from '../../components/dashboard/charts/OrdersTrendChart';
 import OrderStatusChart from '../../components/dashboard/charts/OrderStatusChart';
+import LatestOrdersWidget from '../../components/dashboard/widgets/LatestOrdersWidget';
 
 import {
   ShoppingCart, Clock, CheckCircle, IndianRupee, Package, FolderTree, Users,
@@ -54,7 +56,7 @@ const chartSections = [
     cols: 2,
     cards: [
       { key: 'order-status', title: 'Order Status Distribution', icon: CheckCircle, color: 'bg-green-500', dataKey: 'order_status', Chart: OrderStatusChart },
-      { key: 'latest-orders', title: 'Latest Orders', icon: Clock, color: 'bg-yellow-500', placeholder: 'Latest orders table will be added in a future phase' },
+      { key: 'latest-orders', title: 'Latest Orders', icon: Clock, color: 'bg-yellow-500', Widget: LatestOrdersWidget },
     ],
   },
   {
@@ -71,31 +73,39 @@ const chartSections = [
 const AdminDashboard = () => {
   const [stats, setStats] = useState(null);
   const [chartData, setChartData] = useState(null);
+  const [widgetData, setWidgetData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [chartLoading, setChartLoading] = useState(true);
+  const [widgetLoading, setWidgetLoading] = useState(true);
   const [error, setError] = useState('');
+  const [lastUpdated, setLastUpdated] = useState(null);
+
+  const fetchAll = useCallback(async () => {
+    try {
+      setLoading(true);
+      setChartLoading(true);
+      setWidgetLoading(true);
+      const [statsRes, chartsRes, widgetsRes] = await Promise.all([
+        dashboardApi.getSummary(),
+        dashboardApi.getCharts(),
+        dashboardApi.getWidgets(),
+      ]);
+      setStats(statsRes.data);
+      setChartData(chartsRes.data);
+      setWidgetData(widgetsRes.data);
+      setLastUpdated(new Date());
+    } catch (err) {
+      setError('Failed to load dashboard data');
+    } finally {
+      setLoading(false);
+      setChartLoading(false);
+      setWidgetLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const fetchAll = async () => {
-      try {
-        setLoading(true);
-        setChartLoading(true);
-        const [statsRes, chartsRes] = await Promise.all([
-          adminAPI.getDashboard(),
-          adminAPI.getDashboardCharts(),
-        ]);
-        setStats(statsRes.data);
-        setChartData(chartsRes.data);
-      } catch (err) {
-        setError('Failed to load dashboard data');
-      } finally {
-        setLoading(false);
-        setChartLoading(false);
-      }
-    };
-
     fetchAll();
-  }, []);
+  }, [fetchAll]);
 
   if (error) {
     return (
@@ -137,19 +147,37 @@ const AdminDashboard = () => {
         >
           <DashboardGrid cols={section.cols}>
             {section.cards.map((card) => (
-              <DashboardChartCard
-                key={card.key}
-                icon={card.icon}
-                title={card.title}
-                color={card.color}
-                loading={chartLoading}
-                isEmpty={card.Chart && !chartData?.[card.dataKey]?.length}
-                placeholder={card.placeholder}
-              >
-                {card.Chart && (
+              card.Widget ? (
+                <card.Widget
+                  key={card.key}
+                  latestOrders={widgetData?.latest_orders}
+                  loading={widgetLoading}
+                  error={error}
+                  lastUpdated={lastUpdated}
+                  onRefresh={fetchAll}
+                />
+              ) : card.Chart ? (
+                <DashboardWidget
+                  key={card.key}
+                  icon={card.icon}
+                  title={card.title}
+                  color={card.color}
+                  loading={chartLoading}
+                  isEmpty={!chartData?.[card.dataKey]?.length}
+                  onRefresh={fetchAll}
+                  lastUpdated={lastUpdated}
+                >
                   <card.Chart data={chartData?.[card.dataKey] || []} />
-                )}
-              </DashboardChartCard>
+                </DashboardWidget>
+              ) : (
+                <DashboardChartCard
+                  key={card.key}
+                  icon={card.icon}
+                  title={card.title}
+                  color={card.color}
+                  placeholder={card.placeholder}
+                />
+              )
             ))}
           </DashboardGrid>
         </DashboardSection>

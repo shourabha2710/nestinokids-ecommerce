@@ -395,6 +395,41 @@ class CartItemResponse(BaseModel):
 
 
 # Inventory Schemas
+class LatestOrderWidgetItem(BaseModel):
+    order_number: str
+    customer_name: str
+    total_amount: float
+    discount_amount: float
+    tax_amount: float
+    shipping_amount: float
+    final_amount: float
+    payment_status: str
+    order_status: str
+    item_count: int
+    created_at: datetime
+
+
+class LowStockWidgetItem(BaseModel):
+    product_id: int
+    product_name: str
+    total_quantity: int
+    available_quantity: int
+    reserved_quantity: int
+    low_stock_threshold: int
+
+
+class TopSellingProductWidgetItem(BaseModel):
+    product_id: int
+    product_name: str
+    total_sold: int
+
+
+class DashboardWidgetsResponse(BaseModel):
+    latest_orders: list[LatestOrderWidgetItem] = []
+    low_stock_products: list[LowStockWidgetItem] = []
+    top_selling_products: list[TopSellingProductWidgetItem] = []
+
+
 class InventoryResponse(BaseModel):
     product_id: int
     product_name: str

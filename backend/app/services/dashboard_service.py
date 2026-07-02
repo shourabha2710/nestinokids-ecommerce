@@ -1,10 +1,10 @@
 import datetime
 from datetime import timedelta
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, desc
 from pydantic import BaseModel
 from app.models.models import (
-    Product, Category, Order, User, Inventory, ProductVariant,
+    Product, Category, Order, OrderItem, User, Inventory, ProductVariant,
     LoyaltyTransaction, SupportTicket, Notification,
     OrderStatusEnum, wishlist_association,
 )
@@ -336,6 +336,132 @@ class DashboardService:
         cohort, and lifetime value grouping.
         """
         raise NotImplementedError
+
+    # ── Operational widgets ───────────────────────────────────────────
+
+    def get_widgets(self, db: Session, limit: int = 5, range: str = "30d") -> dict:
+        """Gather all operational widget data in one call.
+
+        Delegates to private methods for each domain.
+        Each private method handles its own cache check.
+
+        :param db: Database session.
+        :param limit: Max rows per widget (forwarded to order + product queries).
+        :param range: Date range string (unused today, reserved for future expansion).
+        :returns: Dict with ``latest_orders``, ``low_stock_products``,
+                  ``top_selling_products``.
+        """
+        return {
+            "latest_orders": self._get_latest_orders(db, limit=limit),
+            "low_stock_products": self._get_low_stock_products(db),
+            "top_selling_products": self._get_top_selling_products(db, limit=limit),
+        }
+
+    def _get_latest_orders(self, db: Session, limit: int = 5) -> list[dict]:
+        """Return the *limit* most recent orders with customer info.
+
+        Cache key: ``dashboard:latest_orders``
+        """
+        cache_key = "dashboard:latest_orders"
+        cached = self._get_cached_data(cache_key)
+        if cached is not None:
+            return cached
+
+        orders = (
+            db.query(Order)
+            .options(joinedload(Order.user))
+            .order_by(Order.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+        result = [
+            {
+                "order_number": o.order_number,
+                "customer_name": f"{o.user.first_name} {o.user.last_name}",
+                "total_amount": o.total_amount,
+                "discount_amount": o.discount_amount,
+                "tax_amount": o.tax_amount,
+                "shipping_amount": o.shipping_amount,
+                "final_amount": o.final_amount,
+                "payment_status": o.payment_status.value if hasattr(o.payment_status, 'value') else o.payment_status,
+                "order_status": o.status.value if hasattr(o.status, 'value') else o.status,
+                "item_count": len(o.items),
+                "created_at": o.created_at,
+            }
+            for o in orders
+        ]
+        self._set_cached_data(cache_key, result)
+        return result
+
+    def _get_low_stock_products(self, db: Session) -> list[dict]:
+        """Return inventory items whose available quantity is at or below threshold.
+
+        Cache key: ``dashboard:low_stock``
+        """
+        cache_key = "dashboard:low_stock"
+        cached = self._get_cached_data(cache_key)
+        if cached is not None:
+            return cached
+
+        low_stock = (
+            db.query(Inventory)
+            .options(joinedload(Inventory.product))
+            .join(Product)
+            .filter(
+                Inventory.available_quantity <= Inventory.low_stock_threshold,
+                Inventory.available_quantity > 0,
+            )
+            .order_by(Inventory.available_quantity.asc())
+            .all()
+        )
+        result = [
+            {
+                "product_id": inv.product_id,
+                "product_name": inv.product.name,
+                "total_quantity": inv.total_quantity,
+                "available_quantity": inv.available_quantity,
+                "reserved_quantity": inv.reserved_quantity,
+                "low_stock_threshold": inv.low_stock_threshold,
+            }
+            for inv in low_stock
+        ]
+        self._set_cached_data(cache_key, result)
+        return result
+
+    def _get_top_selling_products(self, db: Session, limit: int = 10) -> list[dict]:
+        """Return *limit* products ranked by delivered quantity sold.
+
+        Cache key: ``dashboard:top_products``
+        """
+        cache_key = "dashboard:top_products"
+        cached = self._get_cached_data(cache_key)
+        if cached is not None:
+            return cached
+
+        top = (
+            db.query(
+                Product.id,
+                Product.name,
+                func.coalesce(func.sum(OrderItem.quantity), 0).label("total_sold"),
+            )
+            .join(OrderItem, Product.id == OrderItem.product_id)
+            .join(Order, Order.id == OrderItem.order_id)
+            .filter(Order.status == OrderStatusEnum.DELIVERED)
+            .group_by(Product.id, Product.name)
+            .order_by(desc("total_sold"))
+            .limit(limit)
+            .all()
+        )
+        result = [
+            {
+                "product_id": row.id,
+                "product_name": row.name,
+                "total_sold": int(row.total_sold),
+            }
+            for row in top
+        ]
+        self._set_cached_data(cache_key, result)
+        return result
 
     # ── Future cache support (Redis) ─────────────────────────────────
 

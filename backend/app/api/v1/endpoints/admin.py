@@ -16,6 +16,7 @@ from app.schemas.schemas import (
     CategoryResponse,
     CategoryUpdate,
     DashboardResponse,
+    DashboardWidgetsResponse,
     InstagramPostCreate,
     InstagramPostResponse,
     InstagramPostUpdate,
@@ -68,6 +69,17 @@ def get_dashboard_charts(
         orders_trend=dashboard_service.get_orders_trend(db, range=range),
         order_status=dashboard_service.get_order_status_distribution(db, range=range),
     )
+
+
+@router.get("/dashboard/widgets", response_model=DashboardWidgetsResponse)
+def get_dashboard_widgets(
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+    limit: int = Query(5, ge=1, le=100, description="Max items per widget list"),
+    range: str = Query("30d", alias="range", description="Date range for trend widgets"),
+):
+    widgets = dashboard_service.get_widgets(db, limit=limit, range=range)
+    return DashboardWidgetsResponse(**widgets)
 
 
 def _build_inventory_response(inventory: Inventory) -> dict:
