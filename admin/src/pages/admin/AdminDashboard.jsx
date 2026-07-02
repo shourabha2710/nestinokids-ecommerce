@@ -10,6 +10,9 @@ import RevenueTrendChart from '../../components/dashboard/charts/RevenueTrendCha
 import OrdersTrendChart from '../../components/dashboard/charts/OrdersTrendChart';
 import OrderStatusChart from '../../components/dashboard/charts/OrderStatusChart';
 import LatestOrdersWidget from '../../components/dashboard/widgets/LatestOrdersWidget';
+import LowStockWidget from '../../components/dashboard/widgets/LowStockWidget';
+import TopSellingProductsWidget from '../../components/dashboard/widgets/TopSellingProductsWidget';
+import QuickActionsWidget from '../../components/dashboard/widgets/QuickActionsWidget';
 
 import {
   ShoppingCart, Clock, CheckCircle, IndianRupee, Package, FolderTree, Users,
@@ -64,8 +67,8 @@ const chartSections = [
     description: 'Product performance and inventory alerts',
     cols: 2,
     cards: [
-      { key: 'top-products', title: 'Top Selling Products', icon: Package, color: 'bg-violet-500', placeholder: 'Top products chart will be added in a future phase' },
-      { key: 'low-stock', title: 'Low Stock Products', icon: AlertIcon, color: 'bg-red-500', placeholder: 'Low stock table will be added in a future phase' },
+      { key: 'top-products', title: 'Top Selling Products', icon: Package, color: 'bg-violet-500', Widget: TopSellingProductsWidget },
+      { key: 'low-stock', title: 'Low Stock Products', icon: AlertIcon, color: 'bg-red-500', Widget: LowStockWidget },
     ],
   },
 ];
@@ -151,6 +154,8 @@ const AdminDashboard = () => {
                 <card.Widget
                   key={card.key}
                   latestOrders={widgetData?.latest_orders}
+                  lowStockProducts={widgetData?.low_stock_products}
+                  topSellingProducts={widgetData?.top_selling_products}
                   loading={widgetLoading}
                   error={error}
                   lastUpdated={lastUpdated}
@@ -182,6 +187,10 @@ const AdminDashboard = () => {
           </DashboardGrid>
         </DashboardSection>
       ))}
+
+      <DashboardSection title="Quick Actions" description="Common administrative tasks">
+        <QuickActionsWidget />
+      </DashboardSection>
     </div>
   );
 };

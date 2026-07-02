@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { ArrowUpRight, Clock } from 'lucide-react';
 import DashboardWidget from '../DashboardWidget';
 import { DashboardSkeletonTable } from '../DashboardSkeleton';
@@ -84,13 +85,13 @@ const LatestOrdersWidget = React.memo(({ latestOrders, loading, error, lastUpdat
           </table>
         </div>
         <div className="mt-4 pt-4 border-t border-gray-100">
-          <a
-            href="/admin/orders"
+          <Link
+            to="/orders"
             className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-lg px-3 py-1.5 transition-colors"
           >
             View All Orders
             <ArrowUpRight className="w-3.5 h-3.5" />
-          </a>
+          </Link>
         </div>
       </div>
     )}
