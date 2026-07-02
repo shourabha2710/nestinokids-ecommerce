@@ -52,5 +52,22 @@ const DashboardSkeletonChart = ({ height = 48 }) => (
   </div>
 );
 
-export { DashboardSkeleton, DashboardSkeletonCard, DashboardSkeletonChart };
+const DashboardSkeletonTable = ({ rows = 5, cols = 5 }) => (
+  <div className="animate-pulse">
+    <div className="flex gap-4 pb-3 border-b border-gray-100">
+      {Array.from({ length: cols }).map((_, i) => (
+        <div key={i} className="h-4 bg-gray-100 rounded" style={{ width: `${[22, 24, 14, 16, 24][i] || 20}%` }} />
+      ))}
+    </div>
+    {Array.from({ length: rows }).map((_, r) => (
+      <div key={r} className="flex gap-4 py-3 border-b border-gray-50">
+        {Array.from({ length: cols }).map((_, c) => (
+          <div key={c} className="h-4 bg-gray-50 rounded" style={{ width: `${[22, 24, 14, 16, 24][c] || 20}%` }} />
+        ))}
+      </div>
+    ))}
+  </div>
+);
+
+export { DashboardSkeleton, DashboardSkeletonCard, DashboardSkeletonChart, DashboardSkeletonTable };
 export default DashboardSkeleton;
