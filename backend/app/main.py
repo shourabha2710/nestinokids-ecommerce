@@ -6,6 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from app.core.config import settings
 from app.api.v1.endpoints import auth, products, shopping, admin
+from app.api.v1.endpoints import search as search_router
 from app.api.v1.endpoints import reviews as reviews_router
 from app.api.v1.endpoints import settings as site_settings_router
 from app.api.v1.endpoints import hero as hero_router
@@ -56,6 +57,7 @@ app.include_router(coupons_router.router)
 app.include_router(engagement_router.router)
 app.include_router(support_router.router)
 app.include_router(notifications_router.router)
+app.include_router(search_router.router)
 
 # Serve uploaded files
 app.mount(f"/{settings.UPLOAD_DIR}", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
