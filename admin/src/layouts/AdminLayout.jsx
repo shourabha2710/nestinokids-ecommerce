@@ -30,6 +30,7 @@ import {
 
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/notifications', label: 'Notifications', icon: Bell },
   { path: '/products', label: 'Products', icon: Package },
   { path: '/categories', label: 'Categories', icon: FolderTree },
   { path: '/inventory', label: 'Inventory', icon: ClipboardList },

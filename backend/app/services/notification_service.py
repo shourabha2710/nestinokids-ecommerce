@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from typing import Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from app.models.models import Notification
@@ -36,16 +37,22 @@ class NotificationService:
         limit: int = 10,
         offset: int = 0,
         unread_only: bool = False,
+        type: Optional[list[str]] = None,
     ) -> tuple[list[Notification], int, int]:
         """Return (notifications, total_count, unread_count).
 
         Uses a single filtered query for notifications and lightweight
         scalar queries for counts — no N+1, no duplicated SQL.
+
+        Pass ``type=[...]`` to filter by one or more notification types.
         """
         query = db.query(Notification).filter(Notification.user_id == user_id)
 
         if unread_only:
             query = query.filter(Notification.is_read == False)
+
+        if type:
+            query = query.filter(Notification.type.in_(type))
 
         total = query.count()
         notifications = (
