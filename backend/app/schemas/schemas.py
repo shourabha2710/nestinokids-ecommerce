@@ -879,5 +879,20 @@ class NotificationResponse(BaseModel):
         from_attributes = True
 
 
+class NotificationType:
+    NEW_ORDER = "NEW_ORDER"
+    LOW_STOCK = "LOW_STOCK"
+    SUPPORT_TICKET = "SUPPORT_TICKET"
+    ORDER_CANCELLED = "ORDER_CANCELLED"
+    PAYMENT_FAILED = "PAYMENT_FAILED"
+    SYSTEM = "SYSTEM"
+
+
+class NotificationListResponse(BaseModel):
+    notifications: list[NotificationResponse]
+    total: int
+    unread_count: int
+
+
 class UnreadCountResponse(BaseModel):
     count: int = 0

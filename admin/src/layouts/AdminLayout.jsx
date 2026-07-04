@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { NotificationProvider } from '../context/NotificationContext';
+import NotificationBell from '../components/notifications/NotificationBell';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard,
@@ -70,6 +72,7 @@ const AdminLayout = () => {
   };
 
   return (
+    <NotificationProvider>
     <div className="h-screen bg-gray-50 overflow-hidden">
       {/* Mobile overlay */}
       <AnimatePresence>
@@ -221,10 +224,7 @@ const AdminLayout = () => {
           <div className="flex-1" />
 
           <div className="flex items-center space-x-4">
-            <button className="relative text-gray-400 hover:text-gray-600 transition-colors">
-              <Bell className="w-5 h-5" />
-              <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
-            </button>
+            <NotificationBell />
             <div className="flex items-center space-x-3 pl-4 border-l border-gray-200">
               <div className="hidden sm:block text-right">
                 <p className="text-sm font-medium text-gray-700">
@@ -253,6 +253,7 @@ const AdminLayout = () => {
         </main>
       </div>
     </div>
+    </NotificationProvider>
   );
 };
 
