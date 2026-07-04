@@ -13,6 +13,7 @@ from app.models.models import (
 )
 from app.api.v1.endpoints.auth import get_current_user
 from app.utils.helpers import generate_order_number
+from app.services.notification_event_service import notification_event_service
 from typing import List, Optional
 from datetime import datetime
 
@@ -399,6 +400,7 @@ def create_order(
 
     total_amount = 0
     order_items_list = []
+    low_stock_products = []
 
     for item_data in order_data.items:
         product = db.query(Product).filter(Product.id == item_data.product_id).first()
@@ -506,6 +508,8 @@ def create_order(
             inventory.available_quantity -= item["quantity"]
             inventory.reserved_quantity += item["quantity"]
             db.add(inventory)
+            if inventory.available_quantity <= inventory.low_stock_threshold:
+                low_stock_products.append((item["product"], inventory))
 
         if item["variant_id"]:
             variant = db.query(ProductVariant).filter(
@@ -547,6 +551,17 @@ def create_order(
 
     db.commit()
     db.refresh(db_order)
+
+    try:
+        notification_event_service.notify_new_order(db, db_order)
+    except Exception:
+        pass
+    for product, inv in low_stock_products:
+        try:
+            notification_event_service.notify_low_stock(db, product, inv)
+        except Exception:
+            pass
+
     return _build_order_response(db_order)
 
 
@@ -577,6 +592,7 @@ def checkout(
 
     total_amount = 0
     order_items_list = []
+    low_stock_products = []
 
     for row in cart_rows:
         product = db.query(Product).filter(Product.id == row["product_id"]).first()
@@ -686,6 +702,8 @@ def checkout(
             inventory.available_quantity -= item["quantity"]
             inventory.reserved_quantity += item["quantity"]
             db.add(inventory)
+            if inventory.available_quantity <= inventory.low_stock_threshold:
+                low_stock_products.append((item["product"], inventory))
 
         if item["variant_id"]:
             variant = db.query(ProductVariant).filter(
@@ -717,6 +735,17 @@ def checkout(
 
     db.commit()
     db.refresh(db_order)
+
+    try:
+        notification_event_service.notify_new_order(db, db_order)
+    except Exception:
+        pass
+    for product, inv in low_stock_products:
+        try:
+            notification_event_service.notify_low_stock(db, product, inv)
+        except Exception:
+            pass
+
     return _build_order_response(db_order)
 
 

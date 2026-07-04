@@ -42,6 +42,7 @@ from app.models.models import (
 from app.api.v1.endpoints.auth import require_admin
 from app.utils.helpers import generate_slug, generate_sku
 from app.core.config import settings
+from app.services.notification_event_service import notification_event_service
 from typing import List, Optional
 
 ALLOWED_IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp'}
@@ -415,6 +416,13 @@ def admin_update_order_status(
     # Restore inventory and variant stock on cancellation or return
     if new_status in ("cancelled", "returned"):
         _restore_order_stock(order, db)
+
+    # Notify admins on cancellation
+    if new_status == "cancelled":
+        try:
+            notification_event_service.notify_order_cancelled(db, order)
+        except Exception:
+            pass
 
     # Award loyalty points on delivery
     if new_status == "delivered":
