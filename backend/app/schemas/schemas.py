@@ -896,3 +896,18 @@ class NotificationListResponse(BaseModel):
 
 class UnreadCountResponse(BaseModel):
     count: int = 0
+
+
+class GlobalSearchResult(BaseModel):
+    type: str
+    id: int
+    title: str
+    subtitle: str
+    url: str
+    metadata: Optional[dict] = None
+
+
+class GlobalSearchResponse(BaseModel):
+    query: str
+    results: dict[str, list[GlobalSearchResult]]
+    total_results: int

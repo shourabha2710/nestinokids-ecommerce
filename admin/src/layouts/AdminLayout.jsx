@@ -3,6 +3,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { NotificationProvider } from '../context/NotificationContext';
 import NotificationBell from '../components/notifications/NotificationBell';
+import GlobalSearch from '../components/search/GlobalSearch';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard,
@@ -222,9 +223,11 @@ const AdminLayout = () => {
             <Menu className="w-5 h-5" />
           </button>
 
-          <div className="flex-1" />
+          <div className="flex-1 flex justify-center">
+            <GlobalSearch />
+          </div>
 
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-4 flex-shrink-0 ml-4">
             <NotificationBell />
             <div className="flex items-center space-x-3 pl-4 border-l border-gray-200">
               <div className="hidden sm:block text-right">
