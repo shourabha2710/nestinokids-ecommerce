@@ -23,6 +23,7 @@ from app.models.models import (
     User, Order, OrderTrackingEvent, SupportTicket, FAQ, AnnouncementBar, Notification,
 )
 from app.api.v1.endpoints.auth import get_current_user, require_admin
+from app.services.notification_event_service import notification_event_service
 from typing import List, Optional
 from datetime import datetime
 
@@ -94,6 +95,12 @@ def create_ticket(
     db.add(ticket)
     db.commit()
     db.refresh(ticket)
+
+    try:
+        notification_event_service.notify_support_ticket(db, ticket)
+    except Exception:
+        pass
+
     return ticket
 
 
