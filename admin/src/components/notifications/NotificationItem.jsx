@@ -7,23 +7,24 @@ import {
   AlertCircle,
   Bell,
 } from 'lucide-react';
+import { NOTIFICATION_TYPES } from '../../constants/notificationTypes';
 
 const ICON_MAP = {
-  SHOPPING_BAG: ShoppingBag,
-  ALERT_TRIANGLE: AlertTriangle,
-  MESSAGE_SQUARE: MessageSquare,
-  X_CIRCLE: XCircle,
-  ALERT_CIRCLE: AlertCircle,
-  BELL: Bell,
+  [NOTIFICATION_TYPES.NEW_ORDER]: ShoppingBag,
+  [NOTIFICATION_TYPES.LOW_STOCK]: AlertTriangle,
+  [NOTIFICATION_TYPES.SUPPORT_TICKET]: MessageSquare,
+  [NOTIFICATION_TYPES.ORDER_CANCELLED]: XCircle,
+  [NOTIFICATION_TYPES.PAYMENT_FAILED]: AlertCircle,
+  [NOTIFICATION_TYPES.SYSTEM]: Bell,
 };
 
 const COLOR_MAP = {
-  NEW_ORDER: 'bg-emerald-100 text-emerald-600',
-  LOW_STOCK: 'bg-amber-100 text-amber-600',
-  SUPPORT_TICKET: 'bg-blue-100 text-blue-600',
-  ORDER_CANCELLED: 'bg-red-100 text-red-600',
-  PAYMENT_FAILED: 'bg-rose-100 text-rose-600',
-  SYSTEM: 'bg-gray-100 text-gray-600',
+  [NOTIFICATION_TYPES.NEW_ORDER]: 'bg-emerald-100 text-emerald-600',
+  [NOTIFICATION_TYPES.LOW_STOCK]: 'bg-amber-100 text-amber-600',
+  [NOTIFICATION_TYPES.SUPPORT_TICKET]: 'bg-blue-100 text-blue-600',
+  [NOTIFICATION_TYPES.ORDER_CANCELLED]: 'bg-red-100 text-red-600',
+  [NOTIFICATION_TYPES.PAYMENT_FAILED]: 'bg-rose-100 text-rose-600',
+  [NOTIFICATION_TYPES.SYSTEM]: 'bg-gray-100 text-gray-600',
 };
 
 const getTimeAgo = (dateStr) => {
@@ -42,7 +43,7 @@ const getTimeAgo = (dateStr) => {
 };
 
 const NotificationItem = ({ notification, onMarkAsRead }) => {
-  const IconComponent = ICON_MAP[notification.icon] || Bell;
+  const IconComponent = ICON_MAP[notification.type] || Bell;
   const colorClass = COLOR_MAP[notification.type] || 'bg-gray-100 text-gray-600';
 
   return (

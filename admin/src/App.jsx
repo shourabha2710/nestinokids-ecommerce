@@ -16,6 +16,7 @@ import Reviews from './pages/admin/Reviews';
 import AdminBannerList from './pages/admin/AdminBannerList';
 import HeroSlides from './pages/admin/HeroSlides';
 import AdminInstagramFeed from './pages/admin/AdminInstagramFeed';
+import AdminNotifications from './pages/admin/AdminNotifications';
 import SupportTickets from './pages/admin/SupportTickets';
 import FAQs from './pages/admin/FAQs';
 import Announcements from './pages/admin/Announcements';
@@ -49,6 +50,7 @@ function App() {
           <Route path="hero-slides" element={<HeroSlides />} />
           <Route path="instagram" element={<AdminInstagramFeed />} />
           <Route path="reviews" element={<Reviews />} />
+          <Route path="notifications" element={<AdminNotifications />} />
           <Route path="support-tickets" element={<SupportTickets />} />
           <Route path="faqs" element={<FAQs />} />
           <Route path="announcements" element={<Announcements />} />
