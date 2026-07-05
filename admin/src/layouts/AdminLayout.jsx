@@ -224,7 +224,7 @@ const AdminLayout = () => {
             <Menu className="w-5 h-5" />
           </button>
 
-          <div className="flex-1 flex justify-center">
+          <div className="max-md:ml-auto md:flex-1 md:flex md:justify-center">
             <GlobalSearch />
           </div>
 
