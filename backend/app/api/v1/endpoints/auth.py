@@ -212,8 +212,8 @@ def get_optional_current_user(
 
 
 def require_admin(current_user: User = Depends(get_current_user)):
-    """Dependency: require admin role"""
-    if current_user.role != RoleEnum.ADMIN:
+    """Dependency: require admin or super admin role"""
+    if current_user.role not in (RoleEnum.ADMIN, RoleEnum.SUPER_ADMIN):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access required"
@@ -222,8 +222,8 @@ def require_admin(current_user: User = Depends(get_current_user)):
 
 
 def require_staff(current_user: User = Depends(get_current_user)):
-    """Dependency: require admin or moderator role"""
-    if current_user.role not in (RoleEnum.ADMIN, RoleEnum.MODERATOR):
+    """Dependency: require admin, super admin, or moderator role"""
+    if current_user.role not in (RoleEnum.ADMIN, RoleEnum.SUPER_ADMIN, RoleEnum.MODERATOR):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Staff access required"

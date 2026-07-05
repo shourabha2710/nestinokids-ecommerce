@@ -30,6 +30,10 @@ class RoleEnum(str, PyEnum):
     USER = "user"
     ADMIN = "admin"
     MODERATOR = "moderator"
+    SUPER_ADMIN = "super_admin"
+    MANAGER = "manager"
+    SUPPORT = "support"
+    INVENTORY_MANAGER = "inventory_manager"
 
 
 class OrderStatusEnum(str, PyEnum):
