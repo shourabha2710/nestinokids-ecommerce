@@ -42,6 +42,8 @@ from app.models.models import (
 from app.api.v1.endpoints.auth import require_admin
 from app.utils.helpers import generate_slug, generate_sku
 from app.core.config import settings
+from app.core.constants import AuditAction, AuditEntityType
+from app.services.audit_service import audit_service
 from app.services.notification_event_service import notification_event_service
 from typing import List, Optional
 
@@ -150,6 +152,9 @@ def admin_update_inventory(
         raise HTTPException(status_code=404, detail="Inventory not found for this product")
 
     product = db.query(Product).filter(Product.id == product_id).first()
+
+    old_quantity = inventory.total_quantity
+    old_threshold = inventory.low_stock_threshold
     if product and product.variants:
         raise HTTPException(
             status_code=400,
@@ -191,6 +196,18 @@ def admin_update_inventory(
     db.add(inventory)
     db.commit()
     db.refresh(inventory)
+
+    audit_service.create_log(
+        db=db,
+        user=admin,
+        action=AuditAction.UPDATE,
+        entity_type=AuditEntityType.INVENTORY,
+        entity_id=inventory.id,
+        description=f"Updated inventory for product {product.name}" if product else "Updated inventory",
+        old_values={"quantity": old_quantity, "threshold": old_threshold},
+        new_values={"quantity": inventory.total_quantity, "threshold": inventory.low_stock_threshold},
+    )
+
     return _build_inventory_response(inventory)
 
 
@@ -431,6 +448,18 @@ def admin_update_order_status(
 
     db.commit()
     db.refresh(order)
+
+    audit_service.create_log(
+        db=db,
+        user=admin,
+        action=AuditAction.STATUS_CHANGE,
+        entity_type=AuditEntityType.ORDER,
+        entity_id=order.id,
+        description=f"Changed order status from {current_status} to {new_status}",
+        old_values={"status": current_status},
+        new_values={"status": new_status},
+    )
+
     return _build_admin_order(order)
 
 
@@ -541,6 +570,22 @@ def admin_create_product(
 
     db.commit()
     db.refresh(product)
+
+    audit_service.create_log(
+        db=db,
+        user=admin,
+        action=AuditAction.CREATE,
+        entity_type=AuditEntityType.PRODUCT,
+        entity_id=product.id,
+        description=f"Created product: {product.name}",
+        new_values={
+            "name": product.name,
+            "price": product.price,
+            "sku": product.sku,
+            "category_id": product.category_id,
+        },
+    )
+
     return product
 
 
@@ -554,6 +599,14 @@ def admin_update_product(
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
+
+    old_values = {
+        "name": product.name,
+        "price": product.price,
+        "description": product.description,
+        "status": product.is_active,
+        "category_id": product.category_id,
+    }
 
     update_data = product_data.dict(exclude_unset=True)
 
@@ -585,6 +638,23 @@ def admin_update_product(
     db.add(product)
     db.commit()
     db.refresh(product)
+
+    audit_service.create_log(
+        db=db,
+        user=admin,
+        action=AuditAction.UPDATE,
+        entity_type=AuditEntityType.PRODUCT,
+        entity_id=product.id,
+        old_values=old_values,
+        new_values={
+            "name": product.name,
+            "price": product.price,
+            "description": product.description,
+            "status": product.is_active,
+            "category_id": product.category_id,
+        },
+    )
+
     return product
 
 
@@ -613,6 +683,14 @@ def admin_delete_product(
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
+    old_product = {
+        "name": product.name,
+        "price": product.price,
+        "description": product.description,
+        "status": product.is_active,
+        "category_id": product.category_id,
+    }
+
     # Check if product has any order history
     has_orders = db.query(OrderItem).filter(OrderItem.product_id == product_id).first() is not None
 
@@ -620,6 +698,22 @@ def admin_delete_product(
         product.is_active = False
         db.add(product)
         db.commit()
+        audit_service.create_log(
+            db=db,
+            user=admin,
+            action=AuditAction.UPDATE,
+            entity_type=AuditEntityType.PRODUCT,
+            entity_id=product.id,
+            description=f"Archived product: {product.name} (had order history)",
+            old_values=old_product,
+            new_values={
+                "name": product.name,
+                "price": product.price,
+                "description": product.description,
+                "status": False,
+                "category_id": product.category_id,
+            },
+        )
         return {"message": "This product has existing order history and was archived instead of deleted."}
 
     _delete_image_files(product.images)
@@ -631,6 +725,17 @@ def admin_delete_product(
 
     db.delete(product)
     db.commit()
+
+    audit_service.create_log(
+        db=db,
+        user=admin,
+        action=AuditAction.DELETE,
+        entity_type=AuditEntityType.PRODUCT,
+        entity_id=product_id,
+        description=f"Deleted product: {old_product['name']}",
+        old_values=old_product,
+    )
+
     return {"message": "Product deleted successfully"}
 
 

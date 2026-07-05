@@ -339,16 +339,40 @@ const AdminProductForm = () => {
 
       if (isEditing) {
         await adminAPI.updateProduct(id, payload);
-        for (const v of initialVariants.current) {
-          await adminAPI.deleteVariant(id, v.id);
-        }
+
+        const oldMap = new Map(initialVariants.current.map((v) => [v.id, v]));
+        const newMap = new Map(variants.filter((v) => v.id).map((v) => [v.id, v]));
+
         for (const v of variants) {
-          await adminAPI.createVariant(id, {
-            size: v.size,
-            sku: v.sku,
-            quantity: Number(v.quantity),
-            price_modifier: Number(v.price_modifier),
-          });
+          if (v.id) {
+            const old = oldMap.get(v.id);
+            if (
+              old.size !== v.size ||
+              old.sku !== v.sku ||
+              Number(old.quantity) !== Number(v.quantity) ||
+              Number(old.price_modifier) !== Number(v.price_modifier)
+            ) {
+              await adminAPI.updateVariant(id, v.id, {
+                size: v.size,
+                sku: v.sku,
+                quantity: Number(v.quantity),
+                price_modifier: Number(v.price_modifier),
+              });
+            }
+          } else {
+            await adminAPI.createVariant(id, {
+              size: v.size,
+              sku: v.sku,
+              quantity: Number(v.quantity),
+              price_modifier: Number(v.price_modifier),
+            });
+          }
+        }
+
+        for (const v of initialVariants.current) {
+          if (!newMap.has(v.id)) {
+            await adminAPI.deleteVariant(id, v.id);
+          }
         }
       } else {
         payload.variants = variants.map((v) => ({
