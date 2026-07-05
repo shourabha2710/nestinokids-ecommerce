@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { adminAPI } from '../../services/adminApi';
+import { usePermissions } from '../../hooks/usePermissions';
+import { Permissions } from '../../constants/permissions';
 import {
   ShoppingCart,
   Search,
@@ -37,6 +39,7 @@ const STATUS_CONFIG = {
 };
 
 const AdminOrderList = () => {
+  const { hasPermission } = usePermissions();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -338,7 +341,7 @@ const AdminOrderList = () => {
                             <span className="text-gray-500 flex-shrink-0">Status</span>
                             <div className="flex items-center gap-2">
                               <StatusBadge status={detailOrder.order_status} />
-                              {STATUS_TRANSITIONS[detailOrder.order_status]?.length > 0 && (
+                              {hasPermission(Permissions.ORDER_UPDATE) && STATUS_TRANSITIONS[detailOrder.order_status]?.length > 0 && (
                                 <select
                                   value=""
                                   onChange={(e) => {

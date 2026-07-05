@@ -3,7 +3,8 @@ from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.schemas.schemas import AuditLogListResponse, AuditLogResponse
 from app.services.audit_service import audit_service
-from app.api.v1.endpoints.auth import require_admin
+from app.core.rbac import require_permission
+from app.core.permissions import Permissions
 from app.models.models import User
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin-audit"])
@@ -17,7 +18,7 @@ def get_audit_logs(
     action: str = Query(None, description="Filter by action (CREATE, UPDATE, DELETE, etc.)"),
     user_id: int = Query(None, ge=1, description="Filter by user ID"),
     db: Session = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_permission(Permissions.AUDIT_VIEW)),
 ):
     logs = audit_service.get_logs(
         db,

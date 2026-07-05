@@ -40,6 +40,8 @@ from app.models.models import (
     wishlist_association, cart_association,
 )
 from app.api.v1.endpoints.auth import require_admin
+from app.core.rbac import require_permission
+from app.core.permissions import Permissions
 from app.utils.helpers import generate_slug, generate_sku
 from app.core.config import settings
 from app.core.constants import AuditAction, AuditEntityType
@@ -117,7 +119,7 @@ def _restore_order_stock(order: Order, db: Session):
 def admin_get_inventory(
     search: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_permission(Permissions.INVENTORY_VIEW)),
 ):
     query = db.query(Inventory).options(
         joinedload(Inventory.product).joinedload(Product.variants)
@@ -132,7 +134,7 @@ def admin_get_inventory(
 def admin_get_inventory_item(
     product_id: int,
     db: Session = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_permission(Permissions.INVENTORY_VIEW)),
 ):
     inventory = db.query(Inventory).filter(Inventory.product_id == product_id).first()
     if not inventory:
@@ -145,7 +147,7 @@ def admin_update_inventory(
     product_id: int,
     data: InventoryUpdate,
     db: Session = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_permission(Permissions.INVENTORY_UPDATE)),
 ):
     inventory = db.query(Inventory).filter(Inventory.product_id == product_id).first()
     if not inventory:
@@ -339,7 +341,7 @@ def admin_get_orders(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_permission(Permissions.ORDER_VIEW)),
 ):
     query = (
         db.query(Order)
@@ -368,7 +370,7 @@ def admin_get_orders(
 def admin_get_order(
     order_id: int,
     db: Session = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_permission(Permissions.ORDER_VIEW)),
 ):
     order = (
         db.query(Order)
@@ -389,7 +391,7 @@ def admin_update_order_status(
     order_id: int,
     data: OrderStatusUpdate,
     db: Session = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_permission(Permissions.ORDER_UPDATE)),
 ):
     order = db.query(Order).options(
         joinedload(Order.items).joinedload(OrderItem.variant),
@@ -469,7 +471,7 @@ def admin_get_products(
     limit: int = Query(50, ge=1, le=200),
     include_inactive: bool = Query(False),
     db: Session = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_permission(Permissions.PRODUCT_VIEW)),
 ):
     query = db.query(Product).options(joinedload(Product.variants))
     if not include_inactive:
@@ -488,7 +490,7 @@ def admin_get_products(
 def admin_get_product(
     product_id: int,
     db: Session = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_permission(Permissions.PRODUCT_VIEW)),
 ):
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
@@ -500,7 +502,7 @@ def admin_get_product(
 def admin_create_product(
     product_data: ProductCreate,
     db: Session = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_permission(Permissions.PRODUCT_CREATE)),
 ):
     category = db.query(Category).filter(Category.id == product_data.category_id).first()
     if not category:
@@ -594,7 +596,7 @@ def admin_update_product(
     product_id: int,
     product_data: ProductUpdate,
     db: Session = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_permission(Permissions.PRODUCT_UPDATE)),
 ):
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
@@ -677,7 +679,7 @@ def _delete_image_files(images):
 def admin_delete_product(
     product_id: int,
     db: Session = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_permission(Permissions.PRODUCT_DELETE)),
 ):
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
@@ -746,7 +748,7 @@ def admin_delete_product(
 def admin_list_product_variants(
     product_id: int,
     db: Session = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_permission(Permissions.PRODUCT_VIEW)),
 ):
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
@@ -759,7 +761,7 @@ def admin_create_product_variant(
     product_id: int,
     variant_data: ProductVariantBase,
     db: Session = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_permission(Permissions.PRODUCT_UPDATE)),
 ):
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
@@ -827,7 +829,7 @@ def admin_update_product_variant(
     variant_id: int,
     variant_data: ProductVariantBase,
     db: Session = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_permission(Permissions.PRODUCT_UPDATE)),
 ):
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
@@ -898,7 +900,7 @@ def admin_delete_product_variant(
     product_id: int,
     variant_id: int,
     db: Session = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_permission(Permissions.PRODUCT_UPDATE)),
 ):
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
@@ -949,7 +951,7 @@ def admin_upload_product_image(
     is_primary: bool = Form(False),
     alt_text: Optional[str] = Form(None),
     db: Session = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_permission(Permissions.PRODUCT_UPDATE)),
 ):
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
@@ -1004,7 +1006,7 @@ def admin_set_primary_image(
     product_id: int,
     image_id: int,
     db: Session = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_permission(Permissions.PRODUCT_UPDATE)),
 ):
     image = db.query(ProductImage).filter(
         ProductImage.id == image_id,
@@ -1030,7 +1032,7 @@ def admin_delete_product_image(
     product_id: int,
     image_id: int,
     db: Session = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_permission(Permissions.PRODUCT_UPDATE)),
 ):
     image = db.query(ProductImage).filter(
         ProductImage.id == image_id,

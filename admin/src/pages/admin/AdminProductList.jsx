@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { adminAPI } from '../../services/adminApi';
+import { usePermissions } from '../../hooks/usePermissions';
+import { Permissions } from '../../constants/permissions';
 import {
   Package,
   Plus,
@@ -16,6 +18,7 @@ import {
 
 const AdminProductList = () => {
   const navigate = useNavigate();
+  const { hasPermission } = usePermissions();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -140,13 +143,15 @@ const AdminProductList = () => {
           <h1 className="text-2xl font-bold text-gray-900">Products</h1>
           <p className="text-sm text-gray-500 mt-1">Manage your product catalog</p>
         </div>
-        <button
-          onClick={() => navigate('/products/new')}
-          className="inline-flex items-center justify-center space-x-2 bg-gray-900 text-white px-4 py-2.5 rounded-xl font-medium hover:bg-gray-800 transition-all text-sm w-full sm:w-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add Product</span>
-        </button>
+        {hasPermission(Permissions.PRODUCT_CREATE) && (
+          <button
+            onClick={() => navigate('/products/new')}
+            className="inline-flex items-center justify-center space-x-2 bg-gray-900 text-white px-4 py-2.5 rounded-xl font-medium hover:bg-gray-800 transition-all text-sm w-full sm:w-auto"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Product</span>
+          </button>
+        )}
       </div>
 
       {error && (
@@ -219,7 +224,7 @@ const AdminProductList = () => {
                       <p className="text-xs text-gray-400">
                         {searchQuery ? 'Try a different search term' : 'Get started by adding your first product'}
                       </p>
-                      {!searchQuery && (
+                      {!searchQuery && hasPermission(Permissions.PRODUCT_CREATE) && (
                         <button
                           onClick={() => navigate('/products/new')}
                           className="mt-4 inline-flex items-center space-x-1.5 text-sm font-medium text-gold hover:text-yellow-600 transition-colors"
@@ -338,20 +343,24 @@ const AdminProductList = () => {
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end space-x-1">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); navigate(`/products/${product.id}/edit`); }}
-                            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                            title="Edit"
-                          >
-                            <Edit3 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setDeleteId(product.id); }}
-                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          {hasPermission(Permissions.PRODUCT_UPDATE) && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); navigate(`/products/${product.id}/edit`); }}
+                              className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                              title="Edit"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+                          )}
+                          {hasPermission(Permissions.PRODUCT_DELETE) && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setDeleteId(product.id); }}
+                              className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </motion.tr>,

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { authService } from '../services/authService';
+import { ADMIN_ROLES } from '../constants/rolePermissions';
 
 const AuthContext = createContext(null);
 
@@ -25,7 +26,7 @@ export function AuthProvider({ children }) {
 
     try {
       const res = await authService.getCurrentUser();
-      if (res.data.role !== 'admin') {
+      if (!ADMIN_ROLES.includes(res.data.role)) {
         clearSession();
         setIsLoading(false);
         return;
@@ -47,7 +48,7 @@ export function AuthProvider({ children }) {
     const res = await authService.login({ email, password });
     const { access_token, refresh_token, user: userData } = res.data;
 
-    if (userData.role !== 'admin') {
+    if (!ADMIN_ROLES.includes(userData.role)) {
       throw new Error('Administrator access required');
     }
 
