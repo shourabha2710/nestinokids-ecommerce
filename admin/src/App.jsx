@@ -21,6 +21,7 @@ import SupportTickets from './pages/admin/SupportTickets';
 import FAQs from './pages/admin/FAQs';
 import Announcements from './pages/admin/Announcements';
 import WebsiteSettings from './pages/admin/WebsiteSettings';
+import AdminActivityLogs from './pages/admin/AdminActivityLogs';
 
 function App() {
   return (
@@ -55,6 +56,7 @@ function App() {
           <Route path="faqs" element={<FAQs />} />
           <Route path="announcements" element={<Announcements />} />
           <Route path="settings" element={<WebsiteSettings />} />
+          <Route path="activity-logs" element={<AdminActivityLogs />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
         <Route path="*" element={<Navigate to="/login" replace />} />
