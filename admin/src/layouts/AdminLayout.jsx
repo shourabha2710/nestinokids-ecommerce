@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { NotificationProvider } from '../context/NotificationContext';
 import NotificationBell from '../components/notifications/NotificationBell';
 import GlobalSearch from '../components/search/GlobalSearch';
+import CommandPalette from '../components/command/CommandPalette';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard,
@@ -257,6 +258,7 @@ const AdminLayout = () => {
         </main>
       </div>
     </div>
+    <CommandPalette />
     </NotificationProvider>
   );
 };
