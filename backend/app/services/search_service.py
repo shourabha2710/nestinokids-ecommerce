@@ -68,7 +68,7 @@ class SearchService:
                 id=p.id,
                 title=p.name,
                 subtitle=f"SKU: {p.sku}",
-                url=f"/products/{p.id}",
+                url=f"/products/{p.id}/edit",
             )
             for p in rows
         ]
@@ -91,7 +91,7 @@ class SearchService:
                 id=o.id,
                 title=f"Order #{o.order_number}",
                 subtitle=f"Total: ${o.final_amount:.2f}" if o.final_amount else "",
-                url=f"/orders/{o.id}",
+                url="/orders",
             )
             for o in rows
         ]
@@ -116,7 +116,7 @@ class SearchService:
                 id=u.id,
                 title=f"{u.first_name} {u.last_name}",
                 subtitle=u.email,
-                url=f"/users/{u.id}",
+                url=f"/orders",
             )
             for u in rows
         ]
@@ -142,7 +142,7 @@ class SearchService:
                     id=t.id,
                     title=f"Ticket #{t.id}",
                     subtitle=f"{status_tag} {t.subject}".strip(),
-                    url=f"/support-tickets/{t.id}",
+                    url="/support-tickets",
                 )
             )
         return results

@@ -70,7 +70,7 @@ const GlobalSearch = () => {
       {/* Mobile search icon */}
       <button
         onClick={openMobile}
-        className="md:hidden text-gray-500 hover:text-gray-700 p-1.5"
+        className="md:hidden w-10 h-10 flex items-center justify-center text-gray-500 hover:text-gray-700"
         aria-label="Open search"
       >
         <Search className="w-5 h-5" />
