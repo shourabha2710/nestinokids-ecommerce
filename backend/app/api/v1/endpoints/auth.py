@@ -1,12 +1,14 @@
 import string
 import secrets
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.schemas.schemas import UserCreate, UserResponse, LoginRequest, TokenResponse, UserUpdate, RefreshTokenRequest
 from app.models.models import User, RoleEnum, LoyaltyTransaction
 from app.core.security import hash_password, verify_password, create_access_token, create_refresh_token
+from app.core.constants import AuditAction, AuditEntityType
+from app.services.audit_service import audit_service
 from datetime import timedelta
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
@@ -90,7 +92,7 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(credentials: LoginRequest, db: Session = Depends(get_db)):
+def login(credentials: LoginRequest, request: Request, db: Session = Depends(get_db)):
     """Login user and return tokens"""
     user = db.query(User).filter(User.email == credentials.email).first()
     
@@ -109,6 +111,17 @@ def login(credentials: LoginRequest, db: Session = Depends(get_db)):
     # Create tokens
     access_token = create_access_token(data={"sub": str(user.id), "email": user.email})
     refresh_token = create_refresh_token(data={"sub": str(user.id)})
+    
+    if user.role == RoleEnum.ADMIN:
+        audit_service.create_log(
+            db=db,
+            user=user,
+            action=AuditAction.LOGIN,
+            entity_type=AuditEntityType.USER,
+            entity_id=user.id,
+            description="Admin logged in",
+            request=request,
+        )
     
     return TokenResponse(
         access_token=access_token,
