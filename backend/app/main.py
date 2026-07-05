@@ -14,6 +14,7 @@ from app.api.v1.endpoints import coupons as coupons_router
 from app.api.v1.endpoints import engagement as engagement_router
 from app.api.v1.endpoints import support as support_router
 from app.api.v1.endpoints import notifications as notifications_router
+from app.api.v1.endpoints import audit as audit_router
 from app.db.database import Base, engine
 
 # Create tables in development only; production relies on Alembic migrations
@@ -58,6 +59,7 @@ app.include_router(engagement_router.router)
 app.include_router(support_router.router)
 app.include_router(notifications_router.router)
 app.include_router(search_router.router)
+app.include_router(audit_router.router)
 
 # Serve uploaded files
 app.mount(f"/{settings.UPLOAD_DIR}", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
