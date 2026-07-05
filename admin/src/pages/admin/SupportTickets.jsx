@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { adminAPI } from '../../services/adminApi';
+import { usePermissions } from '../../hooks/usePermissions';
+import { Permissions } from '../../constants/permissions';
 import {
   MessageSquare, Search, X, AlertTriangle, ChevronDown, Trash2,
 } from 'lucide-react';
@@ -20,6 +22,7 @@ const PRIORITY_COLORS = {
 };
 
 const SupportTickets = () => {
+  const { hasPermission } = usePermissions();
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('');
@@ -165,20 +168,24 @@ const SupportTickets = () => {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <button
-                          onClick={() => openEdit(ticket)}
-                          className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-                          title="Edit"
-                        >
-                          <ChevronDown className="w-4 h-4 text-text-muted" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(ticket.id)}
-                          className="p-1.5 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4 text-red-400" />
-                        </button>
+                        {hasPermission(Permissions.SUPPORT_REPLY) && (
+                          <button
+                            onClick={() => openEdit(ticket)}
+                            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+                            title="Edit"
+                          >
+                            <ChevronDown className="w-4 h-4 text-text-muted" />
+                          </button>
+                        )}
+                        {hasPermission(Permissions.SUPPORT_REPLY) && (
+                          <button
+                            onClick={() => handleDelete(ticket.id)}
+                            className="p-1.5 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4 text-red-400" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { adminAPI } from '../../services/adminApi';
+import { usePermissions } from '../../hooks/usePermissions';
+import { Permissions } from '../../constants/permissions';
 import {
   ClipboardList,
   Search,
@@ -14,6 +16,7 @@ import {
 } from 'lucide-react';
 
 const AdminInventoryList = () => {
+  const { hasPermission } = usePermissions();
   const [inventory, setInventory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -217,22 +220,24 @@ const AdminInventoryList = () => {
                         : '-'}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      {item.has_variants ? (
-                        <span
-                          className="inline-flex p-2 text-gray-300 cursor-not-allowed rounded-lg"
-                          title="Inventory is managed via variant CRUD for products with variants"
-                        >
-                          <Edit3 className="w-4 h-4" />
-                        </span>
-                      ) : (
-                        <button
-                          onClick={() => openEdit(item)}
-                          className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                          title="Edit"
-                        >
-                          <Edit3 className="w-4 h-4" />
-                        </button>
-                      )}
+                      {hasPermission(Permissions.INVENTORY_UPDATE) ? (
+                        item.has_variants ? (
+                          <span
+                            className="inline-flex p-2 text-gray-300 cursor-not-allowed rounded-lg"
+                            title="Inventory is managed via variant CRUD for products with variants"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => openEdit(item)}
+                            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                            title="Edit"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </button>
+                        )
+                      ) : null}
                     </td>
                   </motion.tr>
                 ))

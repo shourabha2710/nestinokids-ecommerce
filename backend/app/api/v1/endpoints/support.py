@@ -23,6 +23,8 @@ from app.models.models import (
     User, Order, OrderTrackingEvent, SupportTicket, FAQ, AnnouncementBar, Notification,
 )
 from app.api.v1.endpoints.auth import get_current_user, require_admin
+from app.core.rbac import require_permission
+from app.core.permissions import Permissions
 from app.services.notification_event_service import notification_event_service
 from typing import List, Optional
 from datetime import datetime
@@ -124,7 +126,7 @@ def admin_get_tickets(
     status: Optional[str] = Query(None),
     priority: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_permission(Permissions.SUPPORT_VIEW)),
 ):
     query = db.query(SupportTicket, User).join(User, SupportTicket.user_id == User.id)
     if status:
@@ -153,7 +155,7 @@ def admin_update_ticket(
     ticket_id: int,
     data: SupportTicketUpdate,
     db: Session = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_permission(Permissions.SUPPORT_REPLY)),
 ):
     ticket = db.query(SupportTicket).filter(SupportTicket.id == ticket_id).first()
     if not ticket:
@@ -183,7 +185,7 @@ def admin_update_ticket(
 def admin_delete_ticket(
     ticket_id: int,
     db: Session = Depends(get_db),
-    admin: User = Depends(require_admin),
+    admin: User = Depends(require_permission(Permissions.SUPPORT_REPLY)),
 ):
     ticket = db.query(SupportTicket).filter(SupportTicket.id == ticket_id).first()
     if not ticket:

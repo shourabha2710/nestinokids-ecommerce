@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { usePermissions } from '../hooks/usePermissions';
+import { Permissions } from '../constants/permissions';
 import { NotificationProvider } from '../context/NotificationContext';
 import NotificationBell from '../components/notifications/NotificationBell';
 import GlobalSearch from '../components/search/GlobalSearch';
@@ -31,29 +33,35 @@ import {
   History,
 } from 'lucide-react';
 
-const navItems = [
-  { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/notifications', label: 'Notifications', icon: Bell },
-  { path: '/products', label: 'Products', icon: Package },
-  { path: '/categories', label: 'Categories', icon: FolderTree },
-  { path: '/inventory', label: 'Inventory', icon: ClipboardList },
-  { path: '/orders', label: 'Orders', icon: ShoppingCart },
-  { path: '/coupons', label: 'Coupons', icon: Tag },
-  { path: '/banners', label: 'Banners', icon: Image },
-  { path: '/hero-slides', label: 'Hero Slides', icon: Monitor },
-  { path: '/instagram', label: 'Instagram', icon: Camera },
-  { path: '/reviews', label: 'Reviews', icon: Star },
-  { path: '/support-tickets', label: 'Support Tickets', icon: MessageSquare },
-  { path: '/faqs', label: 'FAQs', icon: HelpCircle },
-  { path: '/announcements', label: 'Announcements', icon: Megaphone },
-  { path: '/activity-logs', label: 'Activity Logs', icon: History },
-  { path: '/settings', label: 'Website Settings', icon: Settings },
-];
-
 const AdminLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { hasPermission } = usePermissions();
+
+  const navItems = [
+    { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: null },
+    { path: '/notifications', label: 'Notifications', icon: Bell, permission: null },
+    { path: '/products', label: 'Products', icon: Package, permission: Permissions.PRODUCT_VIEW },
+    { path: '/categories', label: 'Categories', icon: FolderTree, permission: null },
+    { path: '/inventory', label: 'Inventory', icon: ClipboardList, permission: Permissions.INVENTORY_VIEW },
+    { path: '/orders', label: 'Orders', icon: ShoppingCart, permission: Permissions.ORDER_VIEW },
+    { path: '/coupons', label: 'Coupons', icon: Tag, permission: null },
+    { path: '/banners', label: 'Banners', icon: Image, permission: null },
+    { path: '/hero-slides', label: 'Hero Slides', icon: Monitor, permission: null },
+    { path: '/instagram', label: 'Instagram', icon: Camera, permission: null },
+    { path: '/reviews', label: 'Reviews', icon: Star, permission: null },
+    { path: '/support-tickets', label: 'Support Tickets', icon: MessageSquare, permission: Permissions.SUPPORT_VIEW },
+    { path: '/faqs', label: 'FAQs', icon: HelpCircle, permission: null },
+    { path: '/announcements', label: 'Announcements', icon: Megaphone, permission: null },
+    { path: '/activity-logs', label: 'Activity Logs', icon: History, permission: Permissions.AUDIT_VIEW },
+    { path: '/settings', label: 'Website Settings', icon: Settings, permission: null },
+  ];
+
+  const visibleNavItems = navItems.filter(
+    (item) => !item.permission || hasPermission(item.permission)
+  );
+
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
@@ -140,7 +148,7 @@ const AdminLayout = () => {
 
         {/* Navigation - scrollable */}
         <nav className="flex-1 overflow-y-auto py-3 space-y-0.5 px-2 admin-sidebar-scroll">
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
             return (
