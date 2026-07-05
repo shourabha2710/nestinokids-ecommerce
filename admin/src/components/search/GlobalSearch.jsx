@@ -40,6 +40,12 @@ const GlobalSearch = () => {
             placeholder="Search products, orders, customers..."
             className="w-full h-12 pl-11 pr-10 text-sm bg-white border border-gray-200 rounded-xl shadow-sm focus:ring-2 focus:ring-yellow-400/20 focus:border-yellow-400 focus:outline-none transition-colors placeholder:text-gray-400"
           />
+          {!query && (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none flex items-center gap-1">
+              <kbd className="hidden sm:inline-flex px-1.5 py-0.5 text-[10px] font-medium text-gray-400 bg-gray-100 rounded">Ctrl</kbd>
+              <kbd className="hidden sm:inline-flex px-1.5 py-0.5 text-[10px] font-medium text-gray-400 bg-gray-100 rounded">K</kbd>
+            </div>
+          )}
           {query && (
             <button
               onClick={handleClear}
