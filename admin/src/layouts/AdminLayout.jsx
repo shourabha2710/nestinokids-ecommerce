@@ -28,6 +28,7 @@ import {
   MessageSquare,
   HelpCircle,
   Megaphone,
+  History,
 } from 'lucide-react';
 
 const navItems = [
@@ -45,6 +46,7 @@ const navItems = [
   { path: '/support-tickets', label: 'Support Tickets', icon: MessageSquare },
   { path: '/faqs', label: 'FAQs', icon: HelpCircle },
   { path: '/announcements', label: 'Announcements', icon: Megaphone },
+  { path: '/activity-logs', label: 'Activity Logs', icon: History },
   { path: '/settings', label: 'Website Settings', icon: Settings },
 ];
 
