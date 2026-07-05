@@ -43,6 +43,7 @@ from app.models.models import (
     FAQ,
     AnnouncementBar,
     Notification,
+    AuditLog,
 )
 
 # Import settings for database URL
