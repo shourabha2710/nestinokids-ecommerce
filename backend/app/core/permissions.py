@@ -46,6 +46,7 @@ ROLE_PERMISSIONS = {
     ],
     RoleEnum.SUPPORT: [
         Permissions.ORDER_VIEW,
+        Permissions.USER_VIEW,
         Permissions.SUPPORT_VIEW,
         Permissions.SUPPORT_REPLY,
     ],
