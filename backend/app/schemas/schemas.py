@@ -935,3 +935,38 @@ class GlobalSearchResponse(BaseModel):
     query: str
     results: dict[str, list[GlobalSearchResult]]
     total_results: int
+
+
+# ─── Staff Management ───
+
+
+class StaffUserResponse(BaseModel):
+    id: int
+    email: str
+    first_name: str
+    last_name: str
+    role: str
+    is_active: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class StaffCreateRequest(BaseModel):
+    email: str
+    password: str = Field(..., min_length=8, max_length=100)
+    first_name: str = Field(..., min_length=1, max_length=100)
+    last_name: str = Field(..., min_length=1, max_length=100)
+    role: str
+
+
+class StaffUpdateRequest(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    role: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class StaffPasswordResetRequest(BaseModel):
+    password: str = Field(..., min_length=8, max_length=100)

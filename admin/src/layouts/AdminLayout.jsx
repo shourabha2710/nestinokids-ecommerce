@@ -31,6 +31,7 @@ import {
   HelpCircle,
   Megaphone,
   History,
+  Users,
 } from 'lucide-react';
 
 const AdminLayout = () => {
@@ -55,6 +56,7 @@ const AdminLayout = () => {
     { path: '/faqs', label: 'FAQs', icon: HelpCircle, permission: null },
     { path: '/announcements', label: 'Announcements', icon: Megaphone, permission: null },
     { path: '/activity-logs', label: 'Activity Logs', icon: History, permission: Permissions.AUDIT_VIEW },
+    { path: '/staff', label: 'Staff Management', icon: Users, permission: Permissions.USER_VIEW },
     { path: '/settings', label: 'Website Settings', icon: Settings, permission: null },
   ];
 

@@ -25,6 +25,7 @@ import FAQs from './pages/admin/FAQs';
 import Announcements from './pages/admin/Announcements';
 import WebsiteSettings from './pages/admin/WebsiteSettings';
 import AdminActivityLogs from './pages/admin/AdminActivityLogs';
+import AdminStaff from './pages/admin/AdminStaff';
 
 function App() {
   return (
@@ -87,6 +88,11 @@ function App() {
           <Route path="activity-logs" element={
             <PermissionRoute permission={Permissions.AUDIT_VIEW}>
               <AdminActivityLogs />
+            </PermissionRoute>
+          } />
+          <Route path="staff" element={
+            <PermissionRoute permission={Permissions.USER_VIEW}>
+              <AdminStaff />
             </PermissionRoute>
           } />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
