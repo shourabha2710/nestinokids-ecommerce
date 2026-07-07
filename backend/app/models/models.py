@@ -431,6 +431,30 @@ class SiteSettings(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
 
+class StoreSetting(Base):
+    __tablename__ = "store_settings"
+
+    id = Column(Integer, primary_key=True)
+    store_name = Column(String(255), nullable=False, default="NestinoKids")
+    store_email = Column(String(255), nullable=True)
+    store_phone = Column(String(20), nullable=True)
+    store_address = Column(Text, nullable=True)
+    logo_url = Column(String(500), nullable=True)
+    favicon_url = Column(String(500), nullable=True)
+    currency = Column(String(10), nullable=False, default="INR")
+    timezone = Column(String(50), nullable=False, default="Asia/Kolkata")
+    gst_number = Column(String(50), nullable=True)
+    tax_enabled = Column(Boolean, default=False)
+    tax_percentage = Column(Float, default=0)
+    free_shipping_enabled = Column(Boolean, default=False)
+    free_shipping_min = Column(Float, default=0)
+    cod_enabled = Column(Boolean, default=True)
+    online_payment_enabled = Column(Boolean, default=True)
+    maintenance_mode = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+
 class CustomerReview(Base):
     __tablename__ = "customer_reviews"
 

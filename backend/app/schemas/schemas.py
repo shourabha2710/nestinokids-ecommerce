@@ -970,3 +970,50 @@ class StaffUpdateRequest(BaseModel):
 
 class StaffPasswordResetRequest(BaseModel):
     password: str = Field(..., min_length=8, max_length=100)
+
+
+# ─── Store Settings ───
+
+
+class StoreSettingResponse(BaseModel):
+    id: int
+    store_name: str = "NestinoKids"
+    store_email: Optional[str] = None
+    store_phone: Optional[str] = None
+    store_address: Optional[str] = None
+    logo_url: Optional[str] = None
+    favicon_url: Optional[str] = None
+    currency: str = "INR"
+    timezone: str = "Asia/Kolkata"
+    gst_number: Optional[str] = None
+    tax_enabled: bool = False
+    tax_percentage: float = 0
+    free_shipping_enabled: bool = False
+    free_shipping_min: float = 0
+    cod_enabled: bool = True
+    online_payment_enabled: bool = True
+    maintenance_mode: bool = False
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class StoreSettingUpdate(BaseModel):
+    store_name: Optional[str] = None
+    store_email: Optional[str] = None
+    store_phone: Optional[str] = None
+    store_address: Optional[str] = None
+    logo_url: Optional[str] = None
+    favicon_url: Optional[str] = None
+    currency: Optional[str] = None
+    timezone: Optional[str] = None
+    gst_number: Optional[str] = None
+    tax_enabled: Optional[bool] = None
+    tax_percentage: Optional[float] = None
+    free_shipping_enabled: Optional[bool] = None
+    free_shipping_min: Optional[float] = None
+    cod_enabled: Optional[bool] = None
+    online_payment_enabled: Optional[bool] = None
+    maintenance_mode: Optional[bool] = None
