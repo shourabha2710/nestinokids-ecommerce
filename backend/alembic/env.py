@@ -44,6 +44,7 @@ from app.models.models import (
     AnnouncementBar,
     Notification,
     AuditLog,
+    StoreSetting,
 )
 
 # Import settings for database URL

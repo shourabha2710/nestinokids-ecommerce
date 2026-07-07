@@ -90,13 +90,16 @@ def root():
 
 @app.on_event("startup")
 def create_default_settings():
-    """Auto-create default site settings on startup if none exist."""
+    """Auto-create default site settings and store settings on startup if none exist."""
     from app.db.database import SessionLocal
-    from app.models.models import SiteSettings
+    from app.models.models import SiteSettings, StoreSetting
     db = SessionLocal()
     try:
         if not db.query(SiteSettings).first():
             db.add(SiteSettings())
+            db.commit()
+        if not db.query(StoreSetting).first():
+            db.add(StoreSetting())
             db.commit()
     finally:
         db.close()

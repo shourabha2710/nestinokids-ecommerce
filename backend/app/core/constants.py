@@ -11,3 +11,4 @@ class AuditEntityType:
     ORDER = "ORDER"
     INVENTORY = "INVENTORY"
     USER = "USER"
+    SETTINGS = "SETTINGS"
