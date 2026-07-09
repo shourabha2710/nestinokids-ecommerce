@@ -7,6 +7,7 @@ import SalesTrendChart from '../../components/analytics/SalesTrendChart';
 import OrderStatusChart from '../../components/analytics/OrderStatusChart';
 import TopProductsTable from '../../components/analytics/TopProductsTable';
 import LowStockTable from '../../components/analytics/LowStockTable';
+import ExportReports from '../../components/analytics/ExportReports';
 
 const LOADING_STATE = () => (
   <div className="min-h-screen flex items-center justify-center">
@@ -77,10 +78,13 @@ const AdminReports = () => {
     <div className="max-w-7xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Analytics Reports</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Reports & Analytics</h1>
           <p className="text-sm text-gray-500 mt-0.5">Track your store performance and metrics</p>
         </div>
-        <DateRangeFilter value={days} onChange={setDays} />
+        <div className="flex items-center gap-3">
+          <DateRangeFilter value={days} onChange={setDays} />
+          <ExportReports />
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-4">
