@@ -22,6 +22,7 @@ class Permissions:
     AUDIT_VIEW = "audit:view"
 
     SETTINGS_MANAGE = "settings:manage"
+    REPORT_VIEW = "report:view"
 
 
 ALL_PERMISSIONS = [
@@ -43,6 +44,7 @@ ROLE_PERMISSIONS = {
         Permissions.INVENTORY_UPDATE,
         Permissions.SUPPORT_VIEW,
         Permissions.SUPPORT_REPLY,
+        Permissions.REPORT_VIEW,
     ],
     RoleEnum.SUPPORT: [
         Permissions.ORDER_VIEW,

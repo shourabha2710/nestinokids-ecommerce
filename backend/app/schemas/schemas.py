@@ -1002,6 +1002,44 @@ class StoreSettingResponse(BaseModel):
 
 class StoreSettingUpdate(BaseModel):
     store_name: Optional[str] = None
+
+
+# ─── Analytics ───
+
+
+class AnalyticsSummaryResponse(BaseModel):
+    total_revenue: float = 0
+    total_orders: int = 0
+    average_order_value: float = 0
+    total_customers: int = 0
+    pending_orders: int = 0
+
+
+class SalesTrendItem(BaseModel):
+    date: str
+    revenue: float = 0
+    orders: int = 0
+
+
+class TopProductItem(BaseModel):
+    product_id: int
+    name: str = ""
+    image: Optional[str] = None
+    sold_quantity: int = 0
+    revenue: float = 0
+
+
+class OrderStatusItem(BaseModel):
+    status: str
+    count: int = 0
+
+
+class LowStockItem(BaseModel):
+    product_id: int
+    name: str = ""
+    image: Optional[str] = None
+    available_quantity: int = 0
+    low_stock_threshold: int = 0
     store_email: Optional[str] = None
     store_phone: Optional[str] = None
     store_address: Optional[str] = None

@@ -16,6 +16,7 @@ from app.api.v1.endpoints import support as support_router
 from app.api.v1.endpoints import notifications as notifications_router
 from app.api.v1.endpoints import audit as audit_router
 from app.api.v1.endpoints import staff as staff_router
+from app.api.v1.endpoints import analytics as analytics_router
 from app.db.database import Base, engine
 
 # Create tables in development only; production relies on Alembic migrations
@@ -62,6 +63,7 @@ app.include_router(notifications_router.router)
 app.include_router(search_router.router)
 app.include_router(audit_router.router)
 app.include_router(staff_router.router)
+app.include_router(analytics_router.router)
 
 # Serve uploaded files
 app.mount(f"/{settings.UPLOAD_DIR}", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
