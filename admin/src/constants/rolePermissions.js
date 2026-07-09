@@ -26,6 +26,7 @@ export const ROLE_PERMISSIONS = {
     Permissions.INVENTORY_UPDATE,
     Permissions.SUPPORT_VIEW,
     Permissions.SUPPORT_REPLY,
+    Permissions.REPORT_VIEW,
   ],
   [Roles.SUPPORT]: [
     Permissions.ORDER_VIEW,

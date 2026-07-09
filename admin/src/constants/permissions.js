@@ -19,4 +19,5 @@ export const Permissions = {
   AUDIT_VIEW: 'audit:view',
 
   SETTINGS_MANAGE: 'settings:manage',
+  REPORT_VIEW: 'report:view',
 };
