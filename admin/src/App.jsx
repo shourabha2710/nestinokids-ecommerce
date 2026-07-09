@@ -25,6 +25,7 @@ import FAQs from './pages/admin/FAQs';
 import Announcements from './pages/admin/Announcements';
 import WebsiteSettings from './pages/admin/WebsiteSettings';
 import AdminActivityLogs from './pages/admin/AdminActivityLogs';
+import AdminReports from './pages/admin/AdminReports';
 import AdminStaff from './pages/admin/AdminStaff';
 import AdminSettings from './pages/admin/AdminSettings';
 
@@ -88,6 +89,11 @@ function App() {
           <Route path="settings" element={
             <PermissionRoute permission={Permissions.SETTINGS_MANAGE}>
               <AdminSettings />
+            </PermissionRoute>
+          } />
+          <Route path="reports" element={
+            <PermissionRoute permission={Permissions.REPORT_VIEW}>
+              <AdminReports />
             </PermissionRoute>
           } />
           <Route path="activity-logs" element={
