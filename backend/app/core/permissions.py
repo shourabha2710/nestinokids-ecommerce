@@ -23,6 +23,8 @@ class Permissions:
 
     SETTINGS_MANAGE = "settings:manage"
     REPORT_VIEW = "report:view"
+    MEDIA_VIEW = "media:view"
+    MEDIA_MANAGE = "media:manage"
 
 
 ALL_PERMISSIONS = [
@@ -45,6 +47,8 @@ ROLE_PERMISSIONS = {
         Permissions.SUPPORT_VIEW,
         Permissions.SUPPORT_REPLY,
         Permissions.REPORT_VIEW,
+        Permissions.MEDIA_VIEW,
+        Permissions.MEDIA_MANAGE,
     ],
     RoleEnum.SUPPORT: [
         Permissions.ORDER_VIEW,

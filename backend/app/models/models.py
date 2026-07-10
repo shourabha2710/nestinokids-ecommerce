@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Text, DateTime, Boolean, ForeignKey, Table, Enum, JSON, UniqueConstraint, Index
+from sqlalchemy import Column, Integer, String, Float, Text, DateTime, Boolean, ForeignKey, Table, Enum, JSON, UniqueConstraint, Index, BigInteger
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.db.database import Base
@@ -642,4 +642,29 @@ class AuditLog(Base):
         Index("idx_audit_entity_type", "entity_type"),
         Index("idx_audit_action", "action"),
         Index("idx_audit_user_id", "user_id"),
+    )
+
+
+class MediaAsset(Base):
+    __tablename__ = "media_assets"
+
+    id = Column(Integer, primary_key=True)
+    filename = Column(String(255), nullable=False)
+    original_filename = Column(String(255), nullable=False)
+    file_url = Column(String(500), nullable=False)
+    file_type = Column(String(50), nullable=False, index=True)
+    file_size = Column(BigInteger, default=0)
+    width = Column(Integer, nullable=True)
+    height = Column(Integer, nullable=True)
+    alt_text = Column(String(255), nullable=True)
+    folder = Column(String(100), nullable=True, index=True)
+    uploaded_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+    uploader = relationship("User", foreign_keys=[uploaded_by])
+
+    __table_args__ = (
+        Index("idx_media_folder", "folder"),
+        Index("idx_media_file_type", "file_type"),
+        Index("idx_media_created_at", "created_at"),
     )

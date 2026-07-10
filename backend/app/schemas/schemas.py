@@ -1055,3 +1055,34 @@ class LowStockItem(BaseModel):
     cod_enabled: Optional[bool] = None
     online_payment_enabled: Optional[bool] = None
     maintenance_mode: Optional[bool] = None
+
+
+# ─── Media ───
+
+
+class MediaAssetResponse(BaseModel):
+    id: int
+    filename: str
+    original_filename: str
+    file_url: str
+    file_type: str
+    file_size: int = 0
+    width: Optional[int] = None
+    height: Optional[int] = None
+    alt_text: Optional[str] = None
+    folder: Optional[str] = None
+    uploaded_by: Optional[int] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class MediaListResponse(BaseModel):
+    items: list[MediaAssetResponse]
+    total: int
+
+
+class MediaUpdateRequest(BaseModel):
+    alt_text: Optional[str] = None
+    folder: Optional[str] = None
