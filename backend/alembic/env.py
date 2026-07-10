@@ -45,6 +45,7 @@ from app.models.models import (
     Notification,
     AuditLog,
     StoreSetting,
+    MediaAsset,
 )
 
 # Import settings for database URL
