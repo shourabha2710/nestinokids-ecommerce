@@ -16,6 +16,8 @@ export const ROLE_PERMISSIONS = {
   [Roles.SUPER_ADMIN]: ALL_PERMISSIONS,
   [Roles.ADMIN]: ALL_PERMISSIONS,
   [Roles.MANAGER]: [
+    Permissions.MEDIA_VIEW,
+    Permissions.MEDIA_MANAGE,
     Permissions.PRODUCT_VIEW,
     Permissions.PRODUCT_CREATE,
     Permissions.PRODUCT_UPDATE,
