@@ -99,6 +99,12 @@ class Category(Base):
     image = Column(String(255), nullable=True)
     parent_id = Column(Integer, ForeignKey('categories.id'), nullable=True)
     is_active = Column(Boolean, default=True, index=True)
+    
+    # SEO
+    meta_title = Column(String(255), nullable=True)
+    meta_description = Column(String(500), nullable=True)
+    meta_keywords = Column(String(500), nullable=True)
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
@@ -451,6 +457,14 @@ class StoreSetting(Base):
     cod_enabled = Column(Boolean, default=True)
     online_payment_enabled = Column(Boolean, default=True)
     maintenance_mode = Column(Boolean, default=False)
+    
+    # SEO defaults
+    default_meta_title = Column(String(255), nullable=True)
+    default_meta_description = Column(String(500), nullable=True)
+    default_meta_keywords = Column(String(500), nullable=True)
+    default_og_image = Column(String(500), nullable=True)
+    default_canonical_url = Column(String(500), nullable=True)
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
