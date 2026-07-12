@@ -5,15 +5,18 @@ import SettingsSection from '../../components/settings/SettingsSection';
 import SettingsInput from '../../components/settings/SettingsInput';
 import SettingsToggle from '../../components/settings/SettingsToggle';
 import SettingsTabs from '../../components/settings/SettingsTabs';
+import CharCounter from '../../components/settings/CharCounter';
+import SeoPreview from '../../components/settings/SeoPreview';
 import {
   Save, RotateCcw, CheckCircle, AlertTriangle, Store,
   Palette, Receipt, Truck, CreditCard, Settings2,
-  Globe, Clock, Wrench,
+  Globe, Clock, Wrench, Search,
 } from 'lucide-react';
 
 const TABS = [
   { id: 'general', label: 'General', icon: Store },
   { id: 'branding', label: 'Branding', icon: Palette },
+  { id: 'seo', label: 'SEO', icon: Search },
   { id: 'tax', label: 'Tax', icon: Receipt },
   { id: 'shipping', label: 'Shipping', icon: Truck },
   { id: 'payments', label: 'Payments', icon: CreditCard },
@@ -159,6 +162,65 @@ const AdminSettings = () => {
     </SettingsSection>
   );
 
+  const renderSeoTab = () => (
+    <SettingsSection title="Default SEO" description="Fallback meta tags for pages without custom SEO" icon={Search}>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+          Default Meta Title <CharCounter current={form.default_meta_title || ''} max={60} />
+        </label>
+        <input
+          type="text"
+          name="default_meta_title"
+          value={form.default_meta_title || ''}
+          onChange={handleChange}
+          className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold transition-all text-sm"
+          placeholder="e.g. NestinoKids - Premium Kids Fashion"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+          Default Meta Description <CharCounter current={form.default_meta_description || ''} max={160} />
+        </label>
+        <textarea
+          name="default_meta_description"
+          value={form.default_meta_description || ''}
+          onChange={handleChange}
+          rows={3}
+          className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold transition-all text-sm resize-y"
+          placeholder="Shop premium kids clothing and accessories at NestinoKids..."
+        />
+      </div>
+      <SettingsInput
+        label="Default Meta Keywords"
+        name="default_meta_keywords"
+        value={form.default_meta_keywords}
+        onChange={handleChange}
+        placeholder="kids fashion, children clothing, baby products"
+      />
+      <SettingsInput
+        label="Default OG Image URL"
+        name="default_og_image"
+        value={form.default_og_image}
+        onChange={handleChange}
+        placeholder="https://example.com/og-image.jpg"
+      />
+      <SettingsInput
+        label="Canonical URL"
+        name="default_canonical_url"
+        value={form.default_canonical_url}
+        onChange={handleChange}
+        placeholder="https://www.nestinokids.com"
+      />
+      <div className="mt-2">
+        <SeoPreview
+          title={form.default_meta_title || ''}
+          url={form.default_canonical_url || 'nestinokids.com'}
+          description={form.default_meta_description || ''}
+        />
+      </div>
+    </SettingsSection>
+  );
+
   const renderTaxTab = () => (
     <SettingsSection title="Tax Configuration" description="GST and tax settings" icon={Receipt}>
       <SettingsInput label="GST Number" name="gst_number" value={form.gst_number} onChange={handleChange} placeholder="22AAAAA0000A1Z5" />
@@ -271,6 +333,7 @@ const AdminSettings = () => {
     switch (activeTab) {
       case 'general': return renderGeneralTab();
       case 'branding': return renderBrandingTab();
+      case 'seo': return renderSeoTab();
       case 'tax': return renderTaxTab();
       case 'shipping': return renderShippingTab();
       case 'payments': return renderPaymentsTab();
