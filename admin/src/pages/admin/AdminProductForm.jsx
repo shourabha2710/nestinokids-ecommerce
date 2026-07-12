@@ -12,7 +12,10 @@ import {
   AlertTriangle,
   Plus,
   Pencil,
+  Search,
 } from 'lucide-react';
+import CharCounter from '../../components/settings/CharCounter';
+import SeoPreview from '../../components/settings/SeoPreview';
 
 const PREDEFINED_SIZES = [
   'Newborn',
@@ -86,6 +89,9 @@ const AdminProductForm = () => {
     sku: '',
     is_featured: false,
     is_active: true,
+    meta_title: '',
+    meta_description: '',
+    meta_keywords: '',
   });
 
   const [images, setImages] = useState([]);
@@ -128,6 +134,9 @@ const AdminProductForm = () => {
             sku: p.sku,
             is_featured: p.is_featured,
             is_active: p.is_active,
+            meta_title: p.meta_title || '',
+            meta_description: p.meta_description || '',
+            meta_keywords: p.meta_keywords || '',
           });
           setImages(p.images || []);
           const loadedVariants = (p.variants || []).map((v) => ({
@@ -335,6 +344,9 @@ const AdminProductForm = () => {
         quantity: hasVariants ? 0 : Number(form.quantity),
         is_featured: form.is_featured,
         is_active: form.is_active,
+        meta_title: form.meta_title || undefined,
+        meta_description: form.meta_description || undefined,
+        meta_keywords: form.meta_keywords || undefined,
       };
 
       if (isEditing) {
@@ -1080,6 +1092,64 @@ const AdminProductForm = () => {
                 Variants will be saved when the product is created
               </p>
             )}
+          </div>
+
+          {/* SEO card */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">SEO</h2>
+                <p className="text-sm text-gray-500 mt-0.5">Search engine optimization settings</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Meta Title <CharCounter current={form.meta_title} max={60} />
+                  </label>
+                  <input
+                    type="text"
+                    name="meta_title"
+                    value={form.meta_title}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold transition-all text-sm"
+                    placeholder="e.g. Summer Floral Dress for Kids | NestinoKids"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Meta Description <CharCounter current={form.meta_description} max={160} />
+                  </label>
+                  <textarea
+                    name="meta_description"
+                    value={form.meta_description}
+                    onChange={handleChange}
+                    rows={3}
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold transition-all text-sm resize-y"
+                    placeholder="Brief description for search engine results..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Meta Keywords</label>
+                  <input
+                    type="text"
+                    name="meta_keywords"
+                    value={form.meta_keywords}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold transition-all text-sm"
+                    placeholder="kids dress, summer collection, floral"
+                  />
+                </div>
+              </div>
+              <div>
+                <SeoPreview
+                  title={form.meta_title}
+                  url={`nestinokids.com/products/${form.name ? form.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') : '...'}`}
+                  description={form.meta_description}
+                />
+              </div>
+            </div>
           </div>
         </div>
       </form>

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { adminAPI } from '../../services/adminApi';
 import { ArrowLeft, Save } from 'lucide-react';
+import CharCounter from '../../components/settings/CharCounter';
+import SeoPreview from '../../components/settings/SeoPreview';
 
 const AdminCategoryForm = () => {
   const navigate = useNavigate();
@@ -18,6 +20,9 @@ const AdminCategoryForm = () => {
     description: '',
     is_active: true,
     parent_id: null,
+    meta_title: '',
+    meta_description: '',
+    meta_keywords: '',
   });
 
   const [slug, setSlug] = useState('');
@@ -50,6 +55,9 @@ const AdminCategoryForm = () => {
               description: cat.description || '',
               is_active: cat.is_active,
               parent_id: cat.parent_id,
+              meta_title: cat.meta_title || '',
+              meta_description: cat.meta_description || '',
+              meta_keywords: cat.meta_keywords || '',
             });
             setSlug(cat.slug);
           } else {
@@ -99,6 +107,9 @@ const AdminCategoryForm = () => {
         description: form.description || undefined,
         is_active: form.is_active,
         parent_id: form.parent_id || undefined,
+        meta_title: form.meta_title || undefined,
+        meta_description: form.meta_description || undefined,
+        meta_keywords: form.meta_keywords || undefined,
       };
 
       if (isEditing) {
@@ -163,94 +174,149 @@ const AdminCategoryForm = () => {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-gray-100 p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Category Name <span className="text-red-400">*</span>
-            </label>
-            <input
-              type="text"
-              name="name"
-              value={form.name}
-              onChange={(e) => {
-                const value = e.target.value;
-                setForm((prev) => ({ ...prev, name: value }));
-                if (!isEditing || slug === '') {
-                  setSlug(value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''));
-                }
-                if (error) setError('');
-              }}
-              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold transition-all text-sm"
-              placeholder="e.g. Summer Collection"
-            />
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Slug</label>
-            <input
-              type="text"
-              name="slug"
-              value={slug}
-              onChange={(e) => setSlug(e.target.value)}
-              placeholder="Auto-generated from name"
-              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold transition-all text-sm font-mono"
-            />
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
-            <textarea
-              name="description"
-              value={form.description}
-              onChange={handleChange}
-              rows={3}
-              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold transition-all text-sm resize-y"
-              placeholder="Brief description of this category"
-            />
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Parent Category
-            </label>
-            <select
-              name="parent_id"
-              value={form.parent_id != null ? String(form.parent_id) : ''}
-              onChange={(e) => {
-                const val = e.target.value;
-                setForm((prev) => ({
-                  ...prev,
-                  parent_id: val ? Number(val) : null,
-                }));
-                if (error) setError('');
-              }}
-              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold transition-all text-sm"
-            >
-              <option value="">None (Top Level)</option>
-              {parentCategories.map((cat) => (
-                <option key={cat.id} value={String(cat.id)}>
-                  {cat.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="flex items-center space-x-2.5 cursor-pointer py-2">
+      <form onSubmit={handleSubmit}>
+        <div className="bg-white rounded-2xl border border-gray-100 p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Category Name <span className="text-red-400">*</span>
+              </label>
               <input
-                type="checkbox"
-                name="is_active"
-                checked={form.is_active}
-                onChange={handleChange}
-                className="w-4 h-4 rounded border-gray-300 text-gold focus:ring-gold/40"
+                type="text"
+                name="name"
+                value={form.name}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setForm((prev) => ({ ...prev, name: value }));
+                  if (!isEditing || slug === '') {
+                    setSlug(value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''));
+                  }
+                  if (error) setError('');
+                }}
+                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold transition-all text-sm"
+                placeholder="e.g. Summer Collection"
               />
-              <span className="text-sm font-medium text-gray-700">Active</span>
-            </label>
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Slug</label>
+              <input
+                type="text"
+                name="slug"
+                value={slug}
+                onChange={(e) => setSlug(e.target.value)}
+                placeholder="Auto-generated from name"
+                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold transition-all text-sm font-mono"
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
+              <textarea
+                name="description"
+                value={form.description}
+                onChange={handleChange}
+                rows={3}
+                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold transition-all text-sm resize-y"
+                placeholder="Brief description of this category"
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Parent Category
+              </label>
+              <select
+                name="parent_id"
+                value={form.parent_id != null ? String(form.parent_id) : ''}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setForm((prev) => ({
+                    ...prev,
+                    parent_id: val ? Number(val) : null,
+                  }));
+                  if (error) setError('');
+                }}
+                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold transition-all text-sm"
+              >
+                <option value="">None (Top Level)</option>
+                {parentCategories.map((cat) => (
+                  <option key={cat.id} value={String(cat.id)}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="flex items-center space-x-2.5 cursor-pointer py-2">
+                <input
+                  type="checkbox"
+                  name="is_active"
+                  checked={form.is_active}
+                  onChange={handleChange}
+                  className="w-4 h-4 rounded border-gray-300 text-gold focus:ring-gold/40"
+                />
+                <span className="text-sm font-medium text-gray-700">Active</span>
+              </label>
+            </div>
           </div>
         </div>
 
-        <div className="mt-8 pt-6 border-t border-gray-100 flex items-center space-x-3">
+        <div className="bg-white rounded-2xl border border-gray-100 p-6 mt-6">
+          <h2 className="text-lg font-bold text-gray-900 mb-1">SEO</h2>
+          <p className="text-sm text-gray-500 mb-4">Search engine optimization settings</p>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Meta Title <CharCounter current={form.meta_title} max={60} />
+                </label>
+                <input
+                  type="text"
+                  name="meta_title"
+                  value={form.meta_title}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold transition-all text-sm"
+                  placeholder="e.g. Kids Summer Collection | NestinoKids"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Meta Description <CharCounter current={form.meta_description} max={160} />
+                </label>
+                <textarea
+                  name="meta_description"
+                  value={form.meta_description}
+                  onChange={handleChange}
+                  rows={3}
+                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold transition-all text-sm resize-y"
+                  placeholder="Brief description for search engine results..."
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Meta Keywords</label>
+                <input
+                  type="text"
+                  name="meta_keywords"
+                  value={form.meta_keywords}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold transition-all text-sm"
+                  placeholder="kids clothing, summer, collection"
+                />
+              </div>
+            </div>
+            <div>
+              <SeoPreview
+                title={form.meta_title}
+                url={`nestinokids.com/categories/${slug || '...'}`}
+                description={form.meta_description}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 flex items-center space-x-3">
           <button
             type="submit"
             disabled={loading}
