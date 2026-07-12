@@ -69,6 +69,9 @@ class CategoryBase(BaseModel):
     image: Optional[str] = None
     parent_id: Optional[int] = None
     is_active: bool = True
+    meta_title: Optional[str] = None
+    meta_description: Optional[str] = None
+    meta_keywords: Optional[str] = None
 
 
 class CategoryCreate(CategoryBase):
@@ -82,6 +85,9 @@ class CategoryUpdate(BaseModel):
     image: Optional[str] = None
     parent_id: Optional[int] = None
     is_active: Optional[bool] = None
+    meta_title: Optional[str] = None
+    meta_description: Optional[str] = None
+    meta_keywords: Optional[str] = None
 
 
 class CategoryResponse(CategoryBase):
@@ -173,6 +179,9 @@ class ProductUpdate(BaseModel):
     quantity: Optional[int] = None
     is_featured: Optional[bool] = None
     is_active: Optional[bool] = None
+    meta_title: Optional[str] = None
+    meta_description: Optional[str] = None
+    meta_keywords: Optional[str] = None
 
 
 class ProductResponse(ProductBase):
@@ -993,6 +1002,11 @@ class StoreSettingResponse(BaseModel):
     cod_enabled: bool = True
     online_payment_enabled: bool = True
     maintenance_mode: bool = False
+    default_meta_title: Optional[str] = None
+    default_meta_description: Optional[str] = None
+    default_meta_keywords: Optional[str] = None
+    default_og_image: Optional[str] = None
+    default_canonical_url: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
 
@@ -1002,6 +1016,26 @@ class StoreSettingResponse(BaseModel):
 
 class StoreSettingUpdate(BaseModel):
     store_name: Optional[str] = None
+    store_email: Optional[str] = None
+    store_phone: Optional[str] = None
+    store_address: Optional[str] = None
+    logo_url: Optional[str] = None
+    favicon_url: Optional[str] = None
+    currency: Optional[str] = None
+    timezone: Optional[str] = None
+    gst_number: Optional[str] = None
+    tax_enabled: Optional[bool] = None
+    tax_percentage: Optional[float] = None
+    free_shipping_enabled: Optional[bool] = None
+    free_shipping_min: Optional[float] = None
+    cod_enabled: Optional[bool] = None
+    online_payment_enabled: Optional[bool] = None
+    maintenance_mode: Optional[bool] = None
+    default_meta_title: Optional[str] = None
+    default_meta_description: Optional[str] = None
+    default_meta_keywords: Optional[str] = None
+    default_og_image: Optional[str] = None
+    default_canonical_url: Optional[str] = None
 
 
 # ─── Analytics ───

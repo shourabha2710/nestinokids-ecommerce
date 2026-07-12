@@ -1067,6 +1067,7 @@ def admin_get_categories(
 
 @router.post("/categories", response_model=CategoryResponse, status_code=status.HTTP_201_CREATED)
 def admin_create_category(
+    request: Request,
     category_data: CategoryCreate,
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin),
@@ -1088,16 +1089,38 @@ def admin_create_category(
         image=category_data.image,
         parent_id=category_data.parent_id,
         is_active=category_data.is_active,
+        meta_title=category_data.meta_title,
+        meta_description=category_data.meta_description,
+        meta_keywords=category_data.meta_keywords,
     )
     db.add(category)
     db.commit()
     db.refresh(category)
+
+    audit_service.create_log(
+        db=db,
+        user=admin,
+        action=AuditAction.CREATE,
+        entity_type=AuditEntityType.SETTINGS,
+        entity_id=category.id,
+        description=f"Created category: {category.name}",
+        new_values={
+            "name": category.name,
+            "slug": category.slug,
+            "meta_title": category.meta_title,
+            "meta_description": category.meta_description,
+            "meta_keywords": category.meta_keywords,
+        },
+        request=request,
+    )
+
     return category
 
 
 @router.put("/categories/{category_id}", response_model=CategoryResponse)
 def admin_update_category(
     category_id: int,
+    request: Request,
     category_data: CategoryUpdate,
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin),
@@ -1105,6 +1128,17 @@ def admin_update_category(
     category = db.query(Category).filter(Category.id == category_id).first()
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
+
+    old_values = {
+        "name": category.name,
+        "slug": category.slug,
+        "description": category.description,
+        "is_active": category.is_active,
+        "parent_id": category.parent_id,
+        "meta_title": category.meta_title,
+        "meta_description": category.meta_description,
+        "meta_keywords": category.meta_keywords,
+    }
 
     update_data = category_data.dict(exclude_unset=True)
 
@@ -1138,12 +1172,35 @@ def admin_update_category(
     db.add(category)
     db.commit()
     db.refresh(category)
+
+    audit_service.create_log(
+        db=db,
+        user=admin,
+        action=AuditAction.UPDATE,
+        entity_type=AuditEntityType.SETTINGS,
+        entity_id=category.id,
+        description=f"Updated category: {category.name}",
+        old_values=old_values,
+        new_values={
+            "name": category.name,
+            "slug": category.slug,
+            "description": category.description,
+            "is_active": category.is_active,
+            "parent_id": category.parent_id,
+            "meta_title": category.meta_title,
+            "meta_description": category.meta_description,
+            "meta_keywords": category.meta_keywords,
+        },
+        request=request,
+    )
+
     return category
 
 
 @router.delete("/categories/{category_id}")
 def admin_delete_category(
     category_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
@@ -1161,8 +1218,25 @@ def admin_delete_category(
             detail=f"Cannot delete category because it contains {product_count} products.",
         )
 
+    old_values = {
+        "name": category.name,
+        "slug": category.slug,
+    }
+
     db.delete(category)
     db.commit()
+
+    audit_service.create_log(
+        db=db,
+        user=admin,
+        action=AuditAction.DELETE,
+        entity_type=AuditEntityType.SETTINGS,
+        entity_id=category_id,
+        description=f"Deleted category: {old_values['name']}",
+        old_values=old_values,
+        request=request,
+    )
+
     return {"message": "Category deleted successfully"}
 
 

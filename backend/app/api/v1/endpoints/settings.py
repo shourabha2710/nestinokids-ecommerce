@@ -46,6 +46,11 @@ def update_admin_settings(
         "cod_enabled": old_settings.cod_enabled,
         "online_payment_enabled": old_settings.online_payment_enabled,
         "maintenance_mode": old_settings.maintenance_mode,
+        "default_meta_title": old_settings.default_meta_title,
+        "default_meta_description": old_settings.default_meta_description,
+        "default_meta_keywords": old_settings.default_meta_keywords,
+        "default_og_image": old_settings.default_og_image,
+        "default_canonical_url": old_settings.default_canonical_url,
     }
 
     update_data = data.model_dump(exclude_unset=True)
@@ -68,6 +73,11 @@ def update_admin_settings(
         "cod_enabled": updated.cod_enabled,
         "online_payment_enabled": updated.online_payment_enabled,
         "maintenance_mode": updated.maintenance_mode,
+        "default_meta_title": updated.default_meta_title,
+        "default_meta_description": updated.default_meta_description,
+        "default_meta_keywords": updated.default_meta_keywords,
+        "default_og_image": updated.default_og_image,
+        "default_canonical_url": updated.default_canonical_url,
     }
 
     audit_service.create_log(
