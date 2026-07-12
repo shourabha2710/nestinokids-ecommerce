@@ -28,6 +28,7 @@ import AdminActivityLogs from './pages/admin/AdminActivityLogs';
 import AdminReports from './pages/admin/AdminReports';
 import AdminStaff from './pages/admin/AdminStaff';
 import AdminSettings from './pages/admin/AdminSettings';
+import AdminMedia from './pages/admin/AdminMedia';
 
 function App() {
   return (
@@ -104,6 +105,11 @@ function App() {
           <Route path="staff" element={
             <PermissionRoute permission={Permissions.USER_VIEW}>
               <AdminStaff />
+            </PermissionRoute>
+          } />
+          <Route path="media" element={
+            <PermissionRoute permission={Permissions.MEDIA_VIEW}>
+              <AdminMedia />
             </PermissionRoute>
           } />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

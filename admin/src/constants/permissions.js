@@ -20,4 +20,7 @@ export const Permissions = {
 
   SETTINGS_MANAGE: 'settings:manage',
   REPORT_VIEW: 'report:view',
+
+  MEDIA_VIEW: 'media:view',
+  MEDIA_MANAGE: 'media:manage',
 };

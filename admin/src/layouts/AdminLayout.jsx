@@ -57,6 +57,7 @@ const AdminLayout = () => {
     { path: '/support-tickets', label: 'Support Tickets', icon: MessageSquare, permission: Permissions.SUPPORT_VIEW },
     { path: '/faqs', label: 'FAQs', icon: HelpCircle, permission: null },
     { path: '/announcements', label: 'Announcements', icon: Megaphone, permission: null },
+    { path: '/media', label: 'Media Library', icon: Image, permission: Permissions.MEDIA_VIEW },
     { path: '/activity-logs', label: 'Activity Logs', icon: History, permission: Permissions.AUDIT_VIEW },
     { path: '/staff', label: 'Staff Management', icon: Users, permission: Permissions.USER_VIEW },
     { path: '/settings', label: 'Settings', icon: Settings, permission: Permissions.SETTINGS_MANAGE },
