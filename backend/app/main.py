@@ -9,6 +9,7 @@ from app.api.v1.endpoints import auth, products, shopping, admin
 from app.api.v1.endpoints import search as search_router
 from app.api.v1.endpoints import reviews as reviews_router
 from app.api.v1.endpoints import settings as site_settings_router
+from app.api.v1.endpoints import settings_public as public_settings_router
 from app.api.v1.endpoints import hero as hero_router
 from app.api.v1.endpoints import coupons as coupons_router
 from app.api.v1.endpoints import engagement as engagement_router
@@ -57,6 +58,7 @@ app.include_router(products.router)
 app.include_router(shopping.router)
 app.include_router(admin.router)
 app.include_router(site_settings_router.router)
+app.include_router(public_settings_router.router)
 app.include_router(reviews_router.router)
 app.include_router(hero_router.router)
 app.include_router(coupons_router.router)
