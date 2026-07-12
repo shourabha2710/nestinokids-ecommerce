@@ -54,7 +54,7 @@ export const instagramAPI = {
 
 // Settings APIs
 export const settingsAPI = {
-  getPublic: () => api.get('/settings'),
+  getPublic: () => api.get('/settings/public'),
 };
 
 // Customer Reviews APIs

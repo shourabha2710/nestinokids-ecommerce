@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { productsAPI } from '../api/endpoints';
 import MobilePageHeader from '../components/MobilePageHeader';
 import Breadcrumb from '../components/Breadcrumb';
+import Seo from '../components/seo/Seo';
 import { motion } from 'framer-motion';
 import { FolderTree, ChevronRight } from 'lucide-react';
 
@@ -36,6 +37,21 @@ const CategoryListPage = () => {
 
   return (
     <div className="min-h-screen bg-white">
+      <Seo
+        title="Categories"
+        description="Browse our collection of premium kids clothing by category. Find the perfect outfits for newborns, toddlers, and growing kids."
+        keywords="kids categories, children clothing categories, baby products"
+        type="collection"
+      />
+      <script type="application/ld+json">
+        {JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'CollectionPage',
+          name: 'NestinoKids Categories',
+          description: 'Browse our collection of premium kids clothing by category.',
+          url: 'https://www.nestinokids.com/categories',
+        })}
+      </script>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <MobilePageHeader title="Categories" />
         <Breadcrumb className="hidden md:flex mb-6" />

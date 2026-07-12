@@ -6,6 +6,7 @@ import { addToCart } from '../store/slices/cartSlice';
 import { addWishlistItem, removeWishlistItem } from '../store/slices/wishlistSlice';
 import MobilePageHeader from '../components/MobilePageHeader';
 import Breadcrumb from '../components/Breadcrumb';
+import Seo from '../components/seo/Seo';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, ShoppingBag, Star, Shield, Truck, RefreshCw, ChevronLeft, ChevronRight, Minus, Plus } from 'lucide-react';
 import RelatedProducts from '../components/RelatedProducts';
@@ -181,6 +182,36 @@ const ProductDetailPage = () => {
 
   return (
     <div className="min-h-screen bg-[#FFFCF7]">
+      <Seo
+        title={product.meta_title || product.name}
+        description={product.meta_description || product.description?.substring(0, 160)}
+        keywords={product.meta_keywords || 'kids fashion, children clothing'}
+        image={product.images?.[0]?.image_url}
+        type="product"
+      />
+      <script type="application/ld+json">
+        {JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'Product',
+          name: product.name,
+          description: product.description,
+          image: product.images?.map((img) => img.image_url),
+          sku: product.sku,
+          brand: { '@type': 'Brand', name: 'NestinoKids' },
+          offers: {
+            '@type': 'Offer',
+            priceCurrency: 'INR',
+            price: product.discount_price || product.price,
+            availability: product.is_active ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+            url: `https://www.nestinokids.com/products/${product.slug}`,
+          },
+          aggregateRating: product.rating ? {
+            '@type': 'AggregateRating',
+            ratingValue: product.rating,
+            reviewCount: product.review_count || 0,
+          } : undefined,
+        })}
+      </script>
       <MobilePageHeader title={product.name} className="mb-4 -mx-4 -mt-2" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-10">

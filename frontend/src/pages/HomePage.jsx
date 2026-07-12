@@ -4,6 +4,7 @@ import { productsAPI, instagramAPI, settingsAPI, customerReviewsAPI, heroAPI } f
 import ProductCard from '../components/ProductCard';
 import RecentlyViewedCarousel from '../components/RecentlyViewedCarousel';
 import RecommendedSection from '../components/RecommendedSection';
+import Seo from '../components/seo/Seo';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowRight,
@@ -910,6 +911,22 @@ const HomePage = () => {
 
   return (
     <div className="min-h-screen bg-[#FFFCF7]">
+      <Seo
+        title="NestinoKids - Premium Kids Fashion"
+        description="Shop premium kids clothing and accessories at NestinoKids. Soft, safe, and stylish outfits for newborns, toddlers, and growing kids."
+        keywords="kids fashion, children clothing, baby products, kids wear, NestinoKids"
+        type="website"
+      />
+      <script type="application/ld+json">
+        {JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'Organization',
+          name: 'NestinoKids',
+          url: 'https://www.nestinokids.com',
+          logo: 'https://www.nestinokids.com/images/logo.png',
+          description: 'Premium kids clothing and accessories for newborns, toddlers, and growing kids.',
+        })}
+      </script>
       {/* 1. Hero */}
       <HeroSection />
 
