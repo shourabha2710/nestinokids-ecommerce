@@ -53,6 +53,11 @@ class PaymentStatusEnum(str, PyEnum):
     REFUNDED = "refunded"
 
 
+class PromotionTypeEnum(str, PyEnum):
+    PERCENTAGE = "PERCENTAGE"
+    FIXED_AMOUNT = "FIXED_AMOUNT"
+
+
 class User(Base):
     __tablename__ = "users"
     
@@ -681,4 +686,40 @@ class MediaAsset(Base):
         Index("idx_media_folder", "folder"),
         Index("idx_media_file_type", "file_type"),
         Index("idx_media_created_at", "created_at"),
+    )
+
+
+class Promotion(Base):
+    __tablename__ = "promotions"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    promotion_type = Column(Enum(PromotionTypeEnum), nullable=False)
+    discount_value = Column(Float, nullable=False)
+    minimum_order_amount = Column(Float, default=0.0)
+    maximum_discount_amount = Column(Float, nullable=True)
+    priority = Column(Integer, default=0)
+    is_stackable = Column(Boolean, default=False)
+    is_active = Column(Boolean, default=True, index=True)
+    start_date = Column(DateTime(timezone=True), nullable=False)
+    end_date = Column(DateTime(timezone=True), nullable=False)
+    banner_text = Column(String(500), nullable=True)
+    badge_text = Column(String(100), nullable=True)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Future support — not fully implemented yet
+    category_id = Column(Integer, ForeignKey("categories.id"), nullable=True)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=True)
+
+    creator = relationship("User", foreign_keys=[created_by])
+    category = relationship("Category", foreign_keys=[category_id])
+    product = relationship("Product", foreign_keys=[product_id])
+
+    __table_args__ = (
+        Index("idx_promotion_active", "is_active"),
+        Index("idx_promotion_dates", "start_date", "end_date"),
+        Index("idx_promotion_priority", "priority"),
     )

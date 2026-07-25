@@ -1120,3 +1120,97 @@ class MediaListResponse(BaseModel):
 class MediaUpdateRequest(BaseModel):
     alt_text: Optional[str] = None
     folder: Optional[str] = None
+
+
+# ─── Promotions ───
+
+
+class PromotionCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    description: Optional[str] = None
+    promotion_type: str  # PERCENTAGE or FIXED_AMOUNT
+    discount_value: float = Field(..., gt=0)
+    minimum_order_amount: float = 0.0
+    maximum_discount_amount: Optional[float] = None
+    priority: int = 0
+    is_stackable: bool = False
+    is_active: bool = True
+    start_date: datetime
+    end_date: datetime
+    banner_text: Optional[str] = None
+    badge_text: Optional[str] = None
+    category_id: Optional[int] = None
+    product_id: Optional[int] = None
+
+    @field_validator('minimum_order_amount')
+    def validate_minimum_order_amount(cls, v):
+        if v < 0:
+            raise ValueError('minimum_order_amount must be >= 0')
+        return v
+
+    @field_validator('maximum_discount_amount')
+    def validate_maximum_discount_amount(cls, v):
+        if v is not None and v < 0:
+            raise ValueError('maximum_discount_amount must be >= 0')
+        return v
+
+    @field_validator('priority')
+    def validate_priority(cls, v):
+        if v < 0:
+            raise ValueError('priority must be >= 0')
+        return v
+
+    @field_validator('end_date')
+    def validate_dates(cls, v, info):
+        start = info.data.get('start_date')
+        if start and v < start:
+            raise ValueError('end_date must be >= start_date')
+        return v
+
+
+class PromotionUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    promotion_type: Optional[str] = None
+    discount_value: Optional[float] = None
+    minimum_order_amount: Optional[float] = None
+    maximum_discount_amount: Optional[float] = None
+    priority: Optional[int] = None
+    is_stackable: Optional[bool] = None
+    is_active: Optional[bool] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    banner_text: Optional[str] = None
+    badge_text: Optional[str] = None
+    category_id: Optional[int] = None
+    product_id: Optional[int] = None
+
+
+class PromotionResponse(BaseModel):
+    id: int
+    name: str
+    description: Optional[str] = None
+    promotion_type: str
+    discount_value: float
+    minimum_order_amount: float
+    maximum_discount_amount: Optional[float] = None
+    priority: int
+    is_stackable: bool
+    is_active: bool
+    start_date: datetime
+    end_date: datetime
+    banner_text: Optional[str] = None
+    badge_text: Optional[str] = None
+    created_by: Optional[int] = None
+    category_id: Optional[int] = None
+    product_id: Optional[int] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class PromotionListResponse(BaseModel):
+    items: list[PromotionResponse]
+    total: int

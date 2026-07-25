@@ -12,3 +12,4 @@ class AuditEntityType:
     INVENTORY = "INVENTORY"
     USER = "USER"
     SETTINGS = "SETTINGS"
+    PROMOTION = "PROMOTION"
