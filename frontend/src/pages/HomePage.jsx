@@ -1,10 +1,12 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { productsAPI, instagramAPI, settingsAPI, customerReviewsAPI, heroAPI } from '../api/endpoints';
 import ProductCard from '../components/ProductCard';
 import RecentlyViewedCarousel from '../components/RecentlyViewedCarousel';
 import RecommendedSection from '../components/RecommendedSection';
 import Seo from '../components/seo/Seo';
+import PromotionBanner from '../components/promotions/PromotionBanner';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowRight,
@@ -898,6 +900,11 @@ const HomePage = () => {
   const nav = useNavigate();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const promotions = useSelector((state) => state.promotions.items);
+
+  const bannerPromotions = useMemo(() => {
+    return promotions.filter((p) => !p.product_id && !p.category_id);
+  }, [promotions]);
 
   useEffect(() => {
     productsAPI.getProducts({ limit: 12, sort: 'created_at' })
@@ -929,6 +936,9 @@ const HomePage = () => {
       </script>
       {/* 1. Hero */}
       <HeroSection />
+
+      {/* 1a. Promotion Banner */}
+      <PromotionBanner promotions={bannerPromotions} />
 
       {/* 1b. Conversion Trust Strip */}
       <ConversionStrip />

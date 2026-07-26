@@ -108,6 +108,10 @@ export const faqAPI = {
 export const announcementAPI = {
   getAnnouncements: () => api.get('/announcements'),
 };
+export const promotionAPI = {
+  getActivePromotions: (params) => api.get('/promotions/active', { params }),
+};
+
 // Notification APIs
 export const notificationAPI = {
   getNotifications: (params) => api.get('/notifications', { params }),
