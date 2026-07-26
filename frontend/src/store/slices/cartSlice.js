@@ -11,6 +11,7 @@ const initialState = {
   promotion: null,
   promotionDiscount: 0,
   freeShipping: false,
+  calculation: null,
 };
 
 const cartSlice = createSlice({
@@ -63,6 +64,7 @@ const cartSlice = createSlice({
       state.promotion = null;
       state.promotionDiscount = 0;
       state.freeShipping = false;
+      state.calculation = null;
     },
     setCartItems: (state, action) => {
       state.items = action.payload;
@@ -88,8 +90,26 @@ const cartSlice = createSlice({
       state.promotionDiscount = 0;
       state.freeShipping = false;
     },
+    setCalculation: (state, action) => {
+      state.calculation = action.payload;
+      if (action.payload) {
+        state.couponDiscount = action.payload.coupon_discount || 0;
+        state.promotionDiscount = action.payload.promotion_discount || 0;
+        state.freeShipping = action.payload.free_shipping || false;
+        if (action.payload.applied_coupon) {
+          state.coupon = action.payload.applied_coupon;
+        } else if (!action.payload.coupon_error) {
+          state.coupon = null;
+        }
+        if (action.payload.applied_promotions?.length) {
+          state.promotion = action.payload.applied_promotions[0];
+        } else {
+          state.promotion = null;
+        }
+      }
+    },
   },
 });
 
-export const { addToCart, removeFromCart, updateQuantity, clearCart, setCartItems, applyCoupon, removeCoupon, setPromotion, clearPromotion } = cartSlice.actions;
+export const { addToCart, removeFromCart, updateQuantity, clearCart, setCartItems, applyCoupon, removeCoupon, setPromotion, clearPromotion, setCalculation } = cartSlice.actions;
 export default cartSlice.reducer;

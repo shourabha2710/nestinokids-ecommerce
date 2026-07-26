@@ -1323,3 +1323,55 @@ class PromotionEvaluateResponse(BaseModel):
     best_promotion: Optional[EligiblePromotion] = None
     discount_amount: float = 0.0
     free_shipping: bool = False
+
+
+# Order Calculation Engine Schemas
+class CalculationNotification(BaseModel):
+    type: str  # promotion, coupon, shipping, warning, info
+    text: str
+
+
+class CartCalculateRequest(BaseModel):
+    coupon_code: Optional[str] = None
+
+
+class AppliedPromotionInfo(BaseModel):
+    id: int
+    name: str
+    badge_text: Optional[str] = None
+    discount_amount: float = 0.0
+
+
+class AppliedCouponInfo(BaseModel):
+    code: str
+    discount_type: str
+    discount_value: float
+    discount_amount: float
+
+
+class CalculationResponse(BaseModel):
+    subtotal: float
+    item_count: int
+
+    promotion_discount: float = 0.0
+    applied_promotions: list[AppliedPromotionInfo] = []
+    free_shipping: bool = False
+
+    coupon_discount: float = 0.0
+    applied_coupon: Optional[AppliedCouponInfo] = None
+    coupon_error: Optional[str] = None
+
+    shipping: float = 0.0
+    free_shipping_threshold: float = 500.0
+
+    tax: float = 0.0
+
+    wallet_discount: float = 0.0
+    loyalty_discount: float = 0.0
+    gift_card_discount: float = 0.0
+
+    grand_total: float
+    currency: str = "INR"
+    calculated_at: datetime
+
+    notifications: list[CalculationNotification] = []

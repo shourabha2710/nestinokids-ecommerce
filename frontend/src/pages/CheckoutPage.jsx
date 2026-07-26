@@ -1,9 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { shoppingAPI } from '../api/endpoints';
 import { clearCart } from '../store/slices/cartSlice';
-import promotionService from '../services/promotionService';
 import { motion } from 'framer-motion';
 import { ShieldCheck, Truck, RotateCcw, Sparkles, Check, Tag, X, CheckCircle, Zap } from 'lucide-react';
 import ProductImage from '../components/ProductImage';
@@ -25,21 +24,26 @@ const CheckoutPage = () => {
   const [cartItems, setCartItems] = useState([]);
   const [selectedAddressId, setSelectedAddressId] = useState(null);
   const [couponCode, setCouponCode] = useState('');
-  const [coupon, setCoupon] = useState(null);
-  const [couponError, setCouponError] = useState(null);
+  const [calc, setCalc] = useState(null);
   const [loading, setLoading] = useState(true);
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState(null);
   const [showAddressForm, setShowAddressForm] = useState(false);
-  const [promotion, setPromotion] = useState(null);
-  const [promotionDiscount, setPromotionDiscount] = useState(0);
-  const [freeShipping, setFreeShipping] = useState(false);
   const [addressForm, setAddressForm] = useState({
     first_name: '', last_name: '', email: '', phone: '',
     address_line_1: '', address_line_2: '',
     city: '', state: '', postal_code: '',
     country: 'India', address_type: 'residential', is_default: false,
   });
+
+  const runCalculation = useCallback(async (code) => {
+    try {
+      const res = await shoppingAPI.calculateCart({ coupon_code: code || null });
+      setCalc(res.data);
+    } catch {
+      setCalc(null);
+    }
+  }, []);
 
   useEffect(() => {
     if (!isAuthenticated) { navigate('/login'); return; }
@@ -58,18 +62,7 @@ const CheckoutPage = () => {
       const defaultAddr = addressesRes.data.find((a) => a.is_default);
       if (defaultAddr) setSelectedAddressId(defaultAddr.id);
       else if (addressesRes.data.length > 0) setSelectedAddressId(addressesRes.data[0].id);
-      const subtotal = cartRes.data.reduce((sum, item) => sum + (item.total || item.price * item.quantity), 0);
-      try {
-        const promoRes = await promotionService.evaluateCart(cartRes.data, subtotal);
-        const pd = promoRes.data;
-        if (pd.eligible) {
-          setPromotion(pd);
-          setPromotionDiscount(pd.discount_amount || 0);
-          setFreeShipping(!!pd.free_shipping);
-        }
-      } catch {
-        // silently fail — no promotion
-      }
+      await runCalculation(null);
     } catch {
       setError('Failed to load checkout data');
     } finally {
@@ -79,22 +72,12 @@ const CheckoutPage = () => {
 
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) return;
-    try {
-      setCouponError(null);
-      const subtotal = cartItems.reduce((sum, item) => sum + item.total, 0);
-      const res = await shoppingAPI.validateCoupon(couponCode.trim(), { total_amount: subtotal });
-      setCoupon(res.data);
-      setCouponError(null);
-    } catch (err) {
-      setCoupon(null);
-      setCouponError(err.response?.data?.detail || 'Invalid coupon');
-    }
+    await runCalculation(couponCode.trim());
   };
 
-  const handleRemoveCoupon = () => {
-    setCoupon(null);
+  const handleRemoveCoupon = async () => {
     setCouponCode('');
-    setCouponError(null);
+    await runCalculation(null);
   };
 
   const handleCreateAddress = async (e) => {
@@ -117,7 +100,7 @@ const CheckoutPage = () => {
       setError(null);
       const res = await shoppingAPI.checkout({
         shipping_address_id: selectedAddressId,
-        coupon_code: coupon?.code || null,
+        coupon_code: calc?.applied_coupon?.code || null,
       });
       dispatch(clearCart());
       navigate(`/orders/${res.data.id}`);
@@ -127,18 +110,6 @@ const CheckoutPage = () => {
       setPlacing(false);
     }
   };
-
-  const subtotal = cartItems.reduce((sum, item) => sum + item.total, 0);
-  const couponDiscountAmount = coupon
-    ? (coupon.discount_type === 'percentage'
-      ? Math.min((subtotal * coupon.discount_value) / 100, coupon.maximum_discount || Infinity)
-      : coupon.discount_value)
-    : 0;
-  const totalDiscount = couponDiscountAmount + promotionDiscount;
-  const shippingAmount = freeShipping ? 0 : (subtotal >= 500 ? 0 : 50);
-  const taxable = Math.max(subtotal - totalDiscount, 0);
-  const taxAmount = taxable * 0.05;
-  const finalAmount = taxable + taxAmount + shippingAmount;
 
   if (loading) {
     return (
@@ -265,12 +236,12 @@ const CheckoutPage = () => {
               <Tag className="w-4 h-4 text-gold" />
               <h2 className="text-lg font-semibold text-text">Coupon Code</h2>
             </div>
-            {coupon ? (
+            {calc?.applied_coupon ? (
               <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-3 py-2">
                 <div className="flex items-center gap-2">
                   <CheckCircle className="w-4 h-4 text-green-600" />
-                  <span className="text-sm font-mono font-bold text-green-700">{coupon.code}</span>
-                  {couponDiscountAmount > 0 && <span className="text-sm text-green-600">-₹{couponDiscountAmount} applied</span>}
+                  <span className="text-sm font-mono font-bold text-green-700">{calc.applied_coupon.code}</span>
+                  {calc.coupon_discount > 0 && <span className="text-sm text-green-600">-₹{calc.coupon_discount} applied</span>}
                 </div>
                 <button onClick={handleRemoveCoupon} className="text-gray-400 hover:text-red-500 transition-colors">
                   <X className="w-4 h-4" />
@@ -282,7 +253,7 @@ const CheckoutPage = () => {
                   <input
                     type="text"
                     value={couponCode}
-                    onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setCouponError(null); }}
+                    onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                     placeholder="Enter coupon code"
                     className="flex-1 p-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold/40 font-mono uppercase"
                   />
@@ -295,13 +266,13 @@ const CheckoutPage = () => {
                     Apply
                   </motion.button>
                 </div>
-                {couponError && <p className="text-red-500 text-xs mt-1.5">{couponError}</p>}
+                {calc?.coupon_error && <p className="text-red-500 text-xs mt-1.5">{calc.coupon_error}</p>}
               </>
             )}
           </div>
 
           {/* Free Shipping Badge */}
-          {freeShipping && (
+          {calc?.free_shipping && (
             <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-2">
               <Truck className="w-4 h-4 text-green-600" />
               <span className="text-sm font-medium text-green-700">Free shipping applied from active promotion!</span>
@@ -337,37 +308,39 @@ const CheckoutPage = () => {
             <div className="border-t pt-4 space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-600">Subtotal</span>
-                <span>₹{subtotal}</span>
+                <span>₹{calc?.subtotal || 0}</span>
               </div>
-              {promotionDiscount > 0 && (
+              {calc?.promotion_discount > 0 && (
                 <div className="flex justify-between text-indigo-600">
                   <div className="flex items-center gap-1">
                     <Zap className="w-3 h-3" />
-                    <span>Promotion ({promotion?.name})</span>
+                    <span>Promotion ({calc?.applied_promotions?.[0]?.name})</span>
                   </div>
-                  <span>-₹{promotionDiscount}</span>
+                  <span>-₹{calc.promotion_discount}</span>
                 </div>
               )}
-              {couponDiscountAmount > 0 && (
+              {calc?.coupon_discount > 0 && (
                 <div className="flex justify-between text-green-600">
                   <div className="flex items-center gap-1">
                     <Tag className="w-3 h-3" />
-                    <span>Coupon ({coupon?.code})</span>
+                    <span>Coupon ({calc?.applied_coupon?.code})</span>
                   </div>
-                  <span>-₹{couponDiscountAmount}</span>
+                  <span>-₹{calc.coupon_discount}</span>
                 </div>
               )}
               <div className="flex justify-between">
                 <span className="text-gray-600">Shipping</span>
-                <span>{shippingAmount === 0 ? 'FREE' : `₹${shippingAmount}`}</span>
+                <span>{calc?.shipping === 0 ? 'FREE' : `₹${calc?.shipping || 0}`}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Tax (5%)</span>
-                <span>₹{taxAmount}</span>
-              </div>
+              {(calc?.tax || 0) > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Tax</span>
+                  <span>₹{calc.tax}</span>
+                </div>
+              )}
               <div className="flex justify-between font-bold text-lg border-t pt-2">
                 <span>Total</span>
-                <span className="text-gold">₹{finalAmount}</span>
+                <span className="text-gold">₹{calc?.grand_total || 0}</span>
               </div>
             </div>
 
