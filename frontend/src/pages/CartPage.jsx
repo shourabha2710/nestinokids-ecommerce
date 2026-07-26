@@ -2,11 +2,12 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { shoppingAPI } from '../api/endpoints';
-import { clearCart, setCartItems, applyCoupon, removeCoupon } from '../store/slices/cartSlice';
+import { clearCart, setCartItems, applyCoupon, removeCoupon, setPromotion } from '../store/slices/cartSlice';
+import promotionService from '../services/promotionService';
 import MobilePageHeader from '../components/MobilePageHeader';
 import { motion, AnimatePresence } from 'framer-motion';
 import ProductImage from '../components/ProductImage';
-import { Tag, X, CheckCircle } from 'lucide-react';
+import { Tag, X, CheckCircle, Zap, Truck } from 'lucide-react';
 
 const PLACEHOLDER = '/images/placeholder-product.svg';
 
@@ -16,6 +17,9 @@ const CartPage = () => {
   const { isAuthenticated } = useSelector((state) => state.auth);
   const cartCoupon = useSelector((state) => state.cart.coupon);
   const cartCouponDiscount = useSelector((state) => state.cart.couponDiscount);
+  const cartPromotion = useSelector((state) => state.cart.promotion);
+  const cartPromotionDiscount = useSelector((state) => state.cart.promotionDiscount);
+  const cartFreeShipping = useSelector((state) => state.cart.freeShipping);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -42,6 +46,24 @@ const CartPage = () => {
     if (!isAuthenticated) return;
     fetchCart();
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!items.length) return;
+    let cancelled = false;
+    const subtotal = items.reduce((sum, item) => sum + (item.total || item.price * item.quantity), 0);
+    promotionService.evaluateCart(items, subtotal).then((res) => {
+      if (cancelled) return;
+      const d = res.data;
+      dispatch(setPromotion({
+        promotion: d.eligible ? d : null,
+        discount: d.discount_amount || 0,
+        freeShipping: d.free_shipping || false,
+      }));
+    }).catch(() => {
+      if (!cancelled) dispatch(setPromotion(null));
+    });
+    return () => { cancelled = true; };
+  }, [items]);
 
   const getProductId = (item) => item.product_id || item.id;
   const getItemKey = (item) => `${item.product_id || item.id}_${item.variant_id ?? 'null'}`;
@@ -231,7 +253,44 @@ const CartPage = () => {
               )}
             </div>
 
-            <p className="text-sm text-gray-500 mt-1">Shipping calculated at checkout</p>
+            {/* Active Promotion */}
+            {cartPromotion?.eligible && (
+              <div className="border-t pt-4 mb-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <Zap className="w-4 h-4 text-indigo-500" />
+                  <span className="text-sm font-semibold text-text">Active Promotion</span>
+                </div>
+                <div className="bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-bold text-indigo-700">{cartPromotion.name}</p>
+                      {cartPromotion.badge_text && (
+                        <p className="text-xs text-indigo-500">{cartPromotion.badge_text}</p>
+                      )}
+                    </div>
+                    {cartPromotionDiscount > 0 && (
+                      <span className="text-sm font-bold text-green-600">-₹{cartPromotionDiscount}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Free Shipping Badge */}
+            {cartFreeShipping && (
+              <div className="flex items-center gap-2 text-green-600 text-sm font-semibold mb-2">
+                <Truck className="w-4 h-4" />
+                <span>Free shipping on this order!</span>
+              </div>
+            )}
+
+            <p className="text-sm text-gray-500 mt-1">
+              {cartFreeShipping ? (
+                <span className="text-green-600 font-medium">Free shipping applied</span>
+              ) : (
+                'Shipping calculated at checkout'
+              )}
+            </p>
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}

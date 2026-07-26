@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { shoppingAPI } from '../api/endpoints';
 import { clearCart } from '../store/slices/cartSlice';
+import promotionService from '../services/promotionService';
 import { motion } from 'framer-motion';
-import { ShieldCheck, Truck, RotateCcw, Sparkles, Check, Tag, X, CheckCircle } from 'lucide-react';
+import { ShieldCheck, Truck, RotateCcw, Sparkles, Check, Tag, X, CheckCircle, Zap } from 'lucide-react';
 import ProductImage from '../components/ProductImage';
 
 const PLACEHOLDER = '/images/placeholder-product.svg';
@@ -30,6 +31,9 @@ const CheckoutPage = () => {
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState(null);
   const [showAddressForm, setShowAddressForm] = useState(false);
+  const [promotion, setPromotion] = useState(null);
+  const [promotionDiscount, setPromotionDiscount] = useState(0);
+  const [freeShipping, setFreeShipping] = useState(false);
   const [addressForm, setAddressForm] = useState({
     first_name: '', last_name: '', email: '', phone: '',
     address_line_1: '', address_line_2: '',
@@ -54,6 +58,18 @@ const CheckoutPage = () => {
       const defaultAddr = addressesRes.data.find((a) => a.is_default);
       if (defaultAddr) setSelectedAddressId(defaultAddr.id);
       else if (addressesRes.data.length > 0) setSelectedAddressId(addressesRes.data[0].id);
+      const subtotal = cartRes.data.reduce((sum, item) => sum + (item.total || item.price * item.quantity), 0);
+      try {
+        const promoRes = await promotionService.evaluateCart(cartRes.data, subtotal);
+        const pd = promoRes.data;
+        if (pd.eligible) {
+          setPromotion(pd);
+          setPromotionDiscount(pd.discount_amount || 0);
+          setFreeShipping(!!pd.free_shipping);
+        }
+      } catch {
+        // silently fail — no promotion
+      }
     } catch {
       setError('Failed to load checkout data');
     } finally {
@@ -113,13 +129,14 @@ const CheckoutPage = () => {
   };
 
   const subtotal = cartItems.reduce((sum, item) => sum + item.total, 0);
-  const discountAmount = coupon
+  const couponDiscountAmount = coupon
     ? (coupon.discount_type === 'percentage'
       ? Math.min((subtotal * coupon.discount_value) / 100, coupon.maximum_discount || Infinity)
       : coupon.discount_value)
     : 0;
-  const shippingAmount = subtotal >= 500 ? 0 : 50;
-  const taxable = subtotal - discountAmount;
+  const totalDiscount = couponDiscountAmount + promotionDiscount;
+  const shippingAmount = freeShipping ? 0 : (subtotal >= 500 ? 0 : 50);
+  const taxable = Math.max(subtotal - totalDiscount, 0);
   const taxAmount = taxable * 0.05;
   const finalAmount = taxable + taxAmount + shippingAmount;
 
@@ -253,7 +270,7 @@ const CheckoutPage = () => {
                 <div className="flex items-center gap-2">
                   <CheckCircle className="w-4 h-4 text-green-600" />
                   <span className="text-sm font-mono font-bold text-green-700">{coupon.code}</span>
-                  {discountAmount > 0 && <span className="text-sm text-green-600">-₹{discountAmount} applied</span>}
+                  {couponDiscountAmount > 0 && <span className="text-sm text-green-600">-₹{couponDiscountAmount} applied</span>}
                 </div>
                 <button onClick={handleRemoveCoupon} className="text-gray-400 hover:text-red-500 transition-colors">
                   <X className="w-4 h-4" />
@@ -282,6 +299,14 @@ const CheckoutPage = () => {
               </>
             )}
           </div>
+
+          {/* Free Shipping Badge */}
+          {freeShipping && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-2">
+              <Truck className="w-4 h-4 text-green-600" />
+              <span className="text-sm font-medium text-green-700">Free shipping applied from active promotion!</span>
+            </div>
+          )}
         </div>
 
         {/* Order Summary */}
@@ -314,10 +339,22 @@ const CheckoutPage = () => {
                 <span className="text-gray-600">Subtotal</span>
                 <span>₹{subtotal}</span>
               </div>
-              {discountAmount > 0 && (
+              {promotionDiscount > 0 && (
+                <div className="flex justify-between text-indigo-600">
+                  <div className="flex items-center gap-1">
+                    <Zap className="w-3 h-3" />
+                    <span>Promotion ({promotion?.name})</span>
+                  </div>
+                  <span>-₹{promotionDiscount}</span>
+                </div>
+              )}
+              {couponDiscountAmount > 0 && (
                 <div className="flex justify-between text-green-600">
-                  <span>Discount</span>
-                  <span>-₹{discountAmount}</span>
+                  <div className="flex items-center gap-1">
+                    <Tag className="w-3 h-3" />
+                    <span>Coupon ({coupon?.code})</span>
+                  </div>
+                  <span>-₹{couponDiscountAmount}</span>
                 </div>
               )}
               <div className="flex justify-between">

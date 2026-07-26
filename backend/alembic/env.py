@@ -46,6 +46,8 @@ from app.models.models import (
     AuditLog,
     StoreSetting,
     MediaAsset,
+    Promotion,
+    PromotionRule,
 )
 
 # Import settings for database URL

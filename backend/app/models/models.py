@@ -58,6 +58,15 @@ class PromotionTypeEnum(str, PyEnum):
     FIXED_AMOUNT = "FIXED_AMOUNT"
 
 
+class PromotionRuleTypeEnum(str, PyEnum):
+    MINIMUM_CART_VALUE = "MINIMUM_CART_VALUE"
+    BUY_X_GET_Y = "BUY_X_GET_Y"
+    QUANTITY_BASED = "QUANTITY_BASED"
+    CATEGORY_BASED = "CATEGORY_BASED"
+    PRODUCT_BASED = "PRODUCT_BASED"
+    FREE_SHIPPING = "FREE_SHIPPING"
+
+
 class User(Base):
     __tablename__ = "users"
     
@@ -729,9 +738,46 @@ class Promotion(Base):
     creator = relationship("User", foreign_keys=[created_by])
     category = relationship("Category", foreign_keys=[category_id])
     product = relationship("Product", foreign_keys=[product_id])
+    rules = relationship("PromotionRule", back_populates="promotion", cascade="all, delete-orphan")
 
     __table_args__ = (
         Index("idx_promotion_active", "is_active"),
         Index("idx_promotion_dates", "start_date", "end_date"),
         Index("idx_promotion_priority", "priority"),
+    )
+
+
+class PromotionRule(Base):
+    __tablename__ = "promotion_rules"
+
+    id = Column(Integer, primary_key=True)
+    promotion_id = Column(Integer, ForeignKey("promotions.id"), nullable=False, index=True)
+    rule_type = Column(Enum(PromotionRuleTypeEnum), nullable=False)
+
+    # Condition parameters (varies by rule_type)
+    minimum_cart_amount = Column(Float, nullable=True)
+    minimum_quantity = Column(Integer, nullable=True)
+    buy_quantity = Column(Integer, nullable=True)
+    get_quantity = Column(Integer, nullable=True)
+    category_id = Column(Integer, ForeignKey("categories.id"), nullable=True)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=True)
+    target_product_id = Column(Integer, ForeignKey("products.id"), nullable=True)
+
+    # Optional rule-level discount override
+    discount_type = Column(String(20), nullable=True)
+    discount_value = Column(Float, nullable=True)
+
+    priority = Column(Integer, default=0)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    promotion = relationship("Promotion", back_populates="rules")
+    category = relationship("Category", foreign_keys=[category_id])
+    product = relationship("Product", foreign_keys=[product_id])
+    target_product = relationship("Product", foreign_keys=[target_product_id])
+
+    __table_args__ = (
+        Index("idx_promotion_rule_promo", "promotion_id"),
+        Index("idx_promotion_rule_type", "rule_type"),
     )
