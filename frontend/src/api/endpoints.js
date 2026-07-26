@@ -111,6 +111,7 @@ export const announcementAPI = {
 };
 export const promotionAPI = {
   getActivePromotions: (params) => api.get('/promotions/active', { params }),
+  evaluate: (data) => api.post('/promotions/evaluate', data),
 };
 
 // Notification APIs

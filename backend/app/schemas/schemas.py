@@ -1164,6 +1164,43 @@ class MediaUpdateRequest(BaseModel):
 # ─── Promotions ───
 
 
+class PromotionRuleCreate(BaseModel):
+    rule_type: str
+    minimum_cart_amount: Optional[float] = None
+    minimum_quantity: Optional[int] = None
+    buy_quantity: Optional[int] = None
+    get_quantity: Optional[int] = None
+    category_id: Optional[int] = None
+    product_id: Optional[int] = None
+    target_product_id: Optional[int] = None
+    discount_type: Optional[str] = None
+    discount_value: Optional[float] = None
+    priority: int = 0
+    is_active: bool = True
+
+
+class PromotionRuleResponse(BaseModel):
+    id: int
+    promotion_id: int
+    rule_type: str
+    minimum_cart_amount: Optional[float] = None
+    minimum_quantity: Optional[int] = None
+    buy_quantity: Optional[int] = None
+    get_quantity: Optional[int] = None
+    category_id: Optional[int] = None
+    product_id: Optional[int] = None
+    target_product_id: Optional[int] = None
+    discount_type: Optional[str] = None
+    discount_value: Optional[float] = None
+    priority: int
+    is_active: bool
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
 class PromotionCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
@@ -1180,6 +1217,7 @@ class PromotionCreate(BaseModel):
     badge_text: Optional[str] = None
     category_id: Optional[int] = None
     product_id: Optional[int] = None
+    rules: list[PromotionRuleCreate] = []
 
     @field_validator('minimum_order_amount')
     def validate_minimum_order_amount(cls, v):
@@ -1223,6 +1261,7 @@ class PromotionUpdate(BaseModel):
     badge_text: Optional[str] = None
     category_id: Optional[int] = None
     product_id: Optional[int] = None
+    rules: Optional[list[PromotionRuleCreate]] = None
 
 
 class PromotionResponse(BaseModel):
@@ -1245,6 +1284,7 @@ class PromotionResponse(BaseModel):
     product_id: Optional[int] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
+    rules: list[PromotionRuleResponse] = []
 
     class Config:
         from_attributes = True
@@ -1253,3 +1293,33 @@ class PromotionResponse(BaseModel):
 class PromotionListResponse(BaseModel):
     items: list[PromotionResponse]
     total: int
+
+
+# Promotion Rule Evaluation Schemas
+class CartItemEvaluation(BaseModel):
+    product_id: int
+    category_id: Optional[int] = None
+    quantity: int
+    price: float
+
+
+class PromotionEvaluateRequest(BaseModel):
+    cart_total: float
+    items: list[CartItemEvaluation]
+
+
+class EligiblePromotion(BaseModel):
+    id: int
+    name: str
+    description: Optional[str] = None
+    promotion_type: str
+    discount_value: float
+    badge_text: Optional[str] = None
+    banner_text: Optional[str] = None
+
+
+class PromotionEvaluateResponse(BaseModel):
+    eligible_promotions: list[EligiblePromotion]
+    best_promotion: Optional[EligiblePromotion] = None
+    discount_amount: float = 0.0
+    free_shipping: bool = False

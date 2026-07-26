@@ -72,6 +72,7 @@ const PromotionTable = ({ promotions, sortField, sortDir, onSort, onEdit, onDele
               <th className="text-left px-4 py-3.5 font-semibold text-gray-600 whitespace-nowrap">Name</th>
               <th className="text-left px-4 py-3.5 font-semibold text-gray-600 whitespace-nowrap">Type</th>
               <th className="text-left px-4 py-3.5 font-semibold text-gray-600 whitespace-nowrap">Discount</th>
+              <th className="text-left px-4 py-3.5 font-semibold text-gray-600 whitespace-nowrap">Rules</th>
               <th className="text-left px-4 py-3.5 font-semibold text-gray-600 whitespace-nowrap">Scope</th>
               <th
                 className="text-left px-4 py-3.5 font-semibold text-gray-600 cursor-pointer select-none whitespace-nowrap"
@@ -125,7 +126,7 @@ const PromotionTable = ({ promotions, sortField, sortDir, onSort, onEdit, onDele
           <tbody>
             {promotions.length === 0 ? (
               <tr>
-                <td colSpan={11}>
+                <td colSpan={12}>
                   <div className="flex flex-col items-center justify-center py-16 text-gray-400">
                     <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
                       <Calendar className="w-8 h-8 text-gray-300" />
@@ -167,6 +168,13 @@ const PromotionTable = ({ promotions, sortField, sortDir, onSort, onEdit, onDele
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span className="font-semibold text-gray-900">
                         {p.promotion_type === 'PERCENTAGE' ? `${p.discount_value}%` : `\u20B9${p.discount_value}`}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-medium whitespace-nowrap ${
+                        p.rules?.length ? 'bg-indigo-50 text-indigo-600' : 'bg-gray-50 text-gray-400'
+                      }`}>
+                        {p.rules?.length || 0} rule{(p.rules?.length || 0) !== 1 ? 's' : ''}
                       </span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">

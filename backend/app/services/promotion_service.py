@@ -3,9 +3,9 @@ from typing import Optional
 
 from fastapi import HTTPException, status
 from sqlalchemy import asc, desc
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
-from app.models.models import Promotion, PromotionTypeEnum, User
+from app.models.models import Promotion, PromotionRule, PromotionRuleTypeEnum, PromotionTypeEnum, User
 from app.schemas.schemas import PromotionCreate, PromotionUpdate
 
 
@@ -43,6 +43,27 @@ def create_promotion(db: Session, data: PromotionCreate, current_user: User) -> 
         product_id=data.product_id,
     )
     db.add(promotion)
+    db.flush()
+
+    # Create rules
+    for rule_data in data.rules:
+        rule = PromotionRule(
+            promotion_id=promotion.id,
+            rule_type=PromotionRuleTypeEnum(rule_data.rule_type),
+            minimum_cart_amount=rule_data.minimum_cart_amount,
+            minimum_quantity=rule_data.minimum_quantity,
+            buy_quantity=rule_data.buy_quantity,
+            get_quantity=rule_data.get_quantity,
+            category_id=rule_data.category_id,
+            product_id=rule_data.product_id,
+            target_product_id=rule_data.target_product_id,
+            discount_type=rule_data.discount_type,
+            discount_value=rule_data.discount_value,
+            priority=rule_data.priority,
+            is_active=rule_data.is_active,
+        )
+        db.add(rule)
+
     db.commit()
     db.refresh(promotion)
     return promotion
@@ -105,6 +126,29 @@ def update_promotion(db: Session, promotion_id: int, data: PromotionUpdate) -> P
             detail="end_date must be >= start_date",
         )
 
+    # Replace rules if provided
+    if data.rules is not None:
+        db.query(PromotionRule).filter(
+            PromotionRule.promotion_id == promotion_id
+        ).delete()
+        for rule_data in data.rules:
+            rule = PromotionRule(
+                promotion_id=promotion_id,
+                rule_type=PromotionRuleTypeEnum(rule_data.rule_type),
+                minimum_cart_amount=rule_data.minimum_cart_amount,
+                minimum_quantity=rule_data.minimum_quantity,
+                buy_quantity=rule_data.buy_quantity,
+                get_quantity=rule_data.get_quantity,
+                category_id=rule_data.category_id,
+                product_id=rule_data.product_id,
+                target_product_id=rule_data.target_product_id,
+                discount_type=rule_data.discount_type,
+                discount_value=rule_data.discount_value,
+                priority=rule_data.priority,
+                is_active=rule_data.is_active,
+            )
+            db.add(rule)
+
     db.commit()
     db.refresh(promotion)
     return promotion
@@ -123,7 +167,13 @@ def delete_promotion(db: Session, promotion_id: int) -> Promotion:
 
 
 def get_promotion(db: Session, promotion_id: int) -> Promotion:
-    promotion = db.query(Promotion).filter(Promotion.id == promotion_id).first()
+    from sqlalchemy.orm import joinedload
+    promotion = (
+        db.query(Promotion)
+        .options(joinedload(Promotion.rules))
+        .filter(Promotion.id == promotion_id)
+        .first()
+    )
     if not promotion:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -142,7 +192,7 @@ def list_promotions(
     sort_by: str = "created_at",
     sort_order: str = "desc",
 ) -> tuple[list[Promotion], int]:
-    query = db.query(Promotion)
+    query = db.query(Promotion).options(joinedload(Promotion.rules))
 
     if search:
         query = query.filter(

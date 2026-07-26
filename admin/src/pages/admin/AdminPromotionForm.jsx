@@ -1,9 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { ArrowLeft, Save, AlertTriangle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowLeft, Save, AlertTriangle, Plus, Trash2, GripVertical } from 'lucide-react';
 import promotionService from '../../services/promotionService';
 import { validatePromotionForm } from '../../utils/PromotionFormValidation';
+
+const RULE_TYPES = [
+  { value: 'MINIMUM_CART_VALUE', label: 'Minimum Cart Value' },
+  { value: 'BUY_X_GET_Y', label: 'Buy X Get Y' },
+  { value: 'QUANTITY_BASED', label: 'Quantity Based' },
+  { value: 'CATEGORY_BASED', label: 'Category Based' },
+  { value: 'PRODUCT_BASED', label: 'Product Based' },
+  { value: 'FREE_SHIPPING', label: 'Free Shipping' },
+];
+
+const emptyRule = () => ({
+  _key: Date.now() + Math.random(),
+  rule_type: 'MINIMUM_CART_VALUE',
+  minimum_cart_amount: '',
+  minimum_quantity: '',
+  buy_quantity: '',
+  get_quantity: '',
+  category_id: '',
+  product_id: '',
+  target_product_id: '',
+  discount_type: '',
+  discount_value: '',
+  priority: '0',
+  is_active: true,
+});
 
 const AdminPromotionForm = () => {
   const navigate = useNavigate();
@@ -19,6 +44,7 @@ const AdminPromotionForm = () => {
 
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
+  const [rules, setRules] = useState([]);
 
   const [form, setForm] = useState({
     name: '',
@@ -81,6 +107,21 @@ const AdminPromotionForm = () => {
           category_id: duplicateData.category_id ? String(duplicateData.category_id) : '',
           product_id: duplicateData.product_id ? String(duplicateData.product_id) : '',
         });
+        if (duplicateData.rules?.length) {
+          setRules(duplicateData.rules.map((r) => ({
+            ...r,
+            _key: Date.now() + Math.random(),
+            minimum_cart_amount: r.minimum_cart_amount != null ? String(r.minimum_cart_amount) : '',
+            minimum_quantity: r.minimum_quantity != null ? String(r.minimum_quantity) : '',
+            buy_quantity: r.buy_quantity != null ? String(r.buy_quantity) : '',
+            get_quantity: r.get_quantity != null ? String(r.get_quantity) : '',
+            category_id: r.category_id != null ? String(r.category_id) : '',
+            product_id: r.product_id != null ? String(r.product_id) : '',
+            target_product_id: r.target_product_id != null ? String(r.target_product_id) : '',
+            discount_value: r.discount_value != null ? String(r.discount_value) : '',
+            priority: String(r.priority ?? 0),
+          })));
+        }
         return;
       }
 
@@ -110,6 +151,21 @@ const AdminPromotionForm = () => {
             category_id: p.category_id ? String(p.category_id) : '',
             product_id: p.product_id ? String(p.product_id) : '',
           });
+          if (p.rules?.length) {
+            setRules(p.rules.map((r) => ({
+              ...r,
+              _key: Date.now() + Math.random(),
+              minimum_cart_amount: r.minimum_cart_amount != null ? String(r.minimum_cart_amount) : '',
+              minimum_quantity: r.minimum_quantity != null ? String(r.minimum_quantity) : '',
+              buy_quantity: r.buy_quantity != null ? String(r.buy_quantity) : '',
+              get_quantity: r.get_quantity != null ? String(r.get_quantity) : '',
+              category_id: r.category_id != null ? String(r.category_id) : '',
+              product_id: r.product_id != null ? String(r.product_id) : '',
+              target_product_id: r.target_product_id != null ? String(r.target_product_id) : '',
+              discount_value: r.discount_value != null ? String(r.discount_value) : '',
+              priority: String(r.priority ?? 0),
+            })));
+          }
         } catch (err) {
           setError('Failed to load promotion');
         }
@@ -133,6 +189,20 @@ const AdminPromotionForm = () => {
       });
     }
     if (error) setError('');
+  };
+
+  const handleRuleChange = (key, field, value) => {
+    setRules((prev) =>
+      prev.map((r) => (r._key === key ? { ...r, [field]: value } : r))
+    );
+  };
+
+  const addRule = () => {
+    setRules((prev) => [...prev, emptyRule()]);
+  };
+
+  const removeRule = (key) => {
+    setRules((prev) => prev.filter((r) => r._key !== key));
   };
 
   const handleSubmit = async (e) => {
@@ -164,6 +234,20 @@ const AdminPromotionForm = () => {
         badge_text: form.badge_text.trim() || null,
         category_id: form.scope === 'category' && form.category_id ? Number(form.category_id) : null,
         product_id: form.scope === 'product' && form.product_id ? Number(form.product_id) : null,
+        rules: rules.map((r) => ({
+          rule_type: r.rule_type,
+          minimum_cart_amount: r.rule_type === 'MINIMUM_CART_VALUE' || r.rule_type === 'FREE_SHIPPING' ? (r.minimum_cart_amount ? Number(r.minimum_cart_amount) : null) : null,
+          minimum_quantity: r.rule_type === 'QUANTITY_BASED' ? (r.minimum_quantity ? Number(r.minimum_quantity) : null) : null,
+          buy_quantity: r.rule_type === 'BUY_X_GET_Y' ? (r.buy_quantity ? Number(r.buy_quantity) : null) : null,
+          get_quantity: r.rule_type === 'BUY_X_GET_Y' ? (r.get_quantity ? Number(r.get_quantity) : null) : null,
+          category_id: r.rule_type === 'CATEGORY_BASED' && r.category_id ? Number(r.category_id) : null,
+          product_id: (r.rule_type === 'PRODUCT_BASED' || r.rule_type === 'BUY_X_GET_Y') && r.product_id ? Number(r.product_id) : null,
+          target_product_id: r.rule_type === 'BUY_X_GET_Y' && r.target_product_id ? Number(r.target_product_id) : null,
+          discount_type: r.discount_type || null,
+          discount_value: r.discount_value ? Number(r.discount_value) : null,
+          priority: Number(r.priority) || 0,
+          is_active: r.is_active,
+        })),
       };
 
       if (isEditing) {
@@ -562,6 +646,246 @@ const AdminPromotionForm = () => {
                 <p className="text-xs text-gray-400 mt-1">{form.badge_text.length}/100</p>
               </div>
             </div>
+          </div>
+
+          {/* Promotion Rules */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">Promotion Rules</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Define conditions that must be met for this promotion to apply. All rules must pass (AND logic).</p>
+              </div>
+              <button
+                type="button"
+                onClick={addRule}
+                className="inline-flex items-center space-x-1.5 bg-gold text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-gold/90 transition-all"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Rule</span>
+              </button>
+            </div>
+
+            {rules.length === 0 ? (
+              <div className="text-center py-8 text-gray-400 text-sm">
+                <p>No rules added. This promotion will apply to all carts when active.</p>
+                <p className="text-xs mt-1">Click "Add Rule" to set specific conditions.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <AnimatePresence mode="popLayout">
+                  {rules.map((rule, idx) => (
+                    <motion.div
+                      key={rule._key}
+                      initial={{ opacity: 0, y: -8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      className="border border-gray-200 rounded-xl p-4 bg-gray-50/50"
+                    >
+                      <div className="flex items-start gap-3 mb-3">
+                        <GripVertical className="w-4 h-4 text-gray-300 mt-2 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-3">
+                            <span className="text-xs font-medium text-gray-500 bg-gray-200 px-2 py-0.5 rounded">Rule {idx + 1}</span>
+                            <label className="flex items-center space-x-1.5 cursor-pointer ml-auto">
+                              <input
+                                type="checkbox"
+                                checked={rule.is_active}
+                                onChange={(e) => handleRuleChange(rule._key, 'is_active', e.target.checked)}
+                                className="w-3.5 h-3.5 rounded border-gray-300 text-gold focus:ring-gold/40"
+                              />
+                              <span className="text-xs text-gray-600">Active</span>
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => removeRule(rule._key)}
+                              className="text-gray-400 hover:text-red-500 transition-colors p-1"
+                              aria-label="Remove rule"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {/* Rule Type */}
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">Rule Type</label>
+                              <select
+                                value={rule.rule_type}
+                                onChange={(e) => handleRuleChange(rule._key, 'rule_type', e.target.value)}
+                                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold/40"
+                              >
+                                {RULE_TYPES.map((rt) => (
+                                  <option key={rt.value} value={rt.value}>{rt.label}</option>
+                                ))}
+                              </select>
+                            </div>
+
+                            {/* MINIMUM_CART_VALUE / FREE_SHIPPING fields */}
+                            {(rule.rule_type === 'MINIMUM_CART_VALUE' || rule.rule_type === 'FREE_SHIPPING') && (
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Minimum Cart Amount</label>
+                                <input
+                                  type="number"
+                                  value={rule.minimum_cart_amount}
+                                  onChange={(e) => handleRuleChange(rule._key, 'minimum_cart_amount', e.target.value)}
+                                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold/40"
+                                  placeholder="999"
+                                  min="0"
+                                  step="0.01"
+                                />
+                              </div>
+                            )}
+
+                            {/* QUANTITY_BASED fields */}
+                            {rule.rule_type === 'QUANTITY_BASED' && (
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Minimum Quantity</label>
+                                <input
+                                  type="number"
+                                  value={rule.minimum_quantity}
+                                  onChange={(e) => handleRuleChange(rule._key, 'minimum_quantity', e.target.value)}
+                                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold/40"
+                                  placeholder="5"
+                                  min="1"
+                                />
+                              </div>
+                            )}
+
+                            {/* CATEGORY_BASED fields */}
+                            {rule.rule_type === 'CATEGORY_BASED' && (
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Category</label>
+                                <select
+                                  value={rule.category_id}
+                                  onChange={(e) => handleRuleChange(rule._key, 'category_id', e.target.value)}
+                                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold/40"
+                                >
+                                  <option value="">Select category</option>
+                                  {categories.map((cat) => (
+                                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            )}
+
+                            {/* PRODUCT_BASED fields */}
+                            {rule.rule_type === 'PRODUCT_BASED' && (
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Product</label>
+                                <select
+                                  value={rule.product_id}
+                                  onChange={(e) => handleRuleChange(rule._key, 'product_id', e.target.value)}
+                                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold/40"
+                                >
+                                  <option value="">Select product</option>
+                                  {products.map((prod) => (
+                                    <option key={prod.id} value={prod.id}>{prod.name}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            )}
+
+                            {/* BUY_X_GET_Y fields */}
+                            {rule.rule_type === 'BUY_X_GET_Y' && (
+                              <>
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">Buy Quantity</label>
+                                  <input
+                                    type="number"
+                                    value={rule.buy_quantity}
+                                    onChange={(e) => handleRuleChange(rule._key, 'buy_quantity', e.target.value)}
+                                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold/40"
+                                    placeholder="2"
+                                    min="1"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">Get Quantity (Free)</label>
+                                  <input
+                                    type="number"
+                                    value={rule.get_quantity}
+                                    onChange={(e) => handleRuleChange(rule._key, 'get_quantity', e.target.value)}
+                                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold/40"
+                                    placeholder="1"
+                                    min="1"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">Buy Product</label>
+                                  <select
+                                    value={rule.product_id}
+                                    onChange={(e) => handleRuleChange(rule._key, 'product_id', e.target.value)}
+                                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold/40"
+                                  >
+                                    <option value="">Select product</option>
+                                    {products.map((prod) => (
+                                      <option key={prod.id} value={prod.id}>{prod.name}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">Get Product (Free)</label>
+                                  <select
+                                    value={rule.target_product_id}
+                                    onChange={(e) => handleRuleChange(rule._key, 'target_product_id', e.target.value)}
+                                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold/40"
+                                  >
+                                    <option value="">Select product</option>
+                                    {products.map((prod) => (
+                                      <option key={prod.id} value={prod.id}>{prod.name}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                              </>
+                            )}
+
+                            {/* Priority */}
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">Priority</label>
+                              <input
+                                type="number"
+                                value={rule.priority}
+                                onChange={(e) => handleRuleChange(rule._key, 'priority', e.target.value)}
+                                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold/40"
+                                min="0"
+                              />
+                            </div>
+
+                            {/* Optional discount override */}
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">Override Discount Type</label>
+                              <select
+                                value={rule.discount_type}
+                                onChange={(e) => handleRuleChange(rule._key, 'discount_type', e.target.value)}
+                                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold/40"
+                              >
+                                <option value="">Inherit from promotion</option>
+                                <option value="percentage">Percentage</option>
+                                <option value="fixed">Fixed Amount</option>
+                              </select>
+                            </div>
+                            {rule.discount_type && (
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Override Discount Value</label>
+                                <input
+                                  type="number"
+                                  value={rule.discount_value}
+                                  onChange={(e) => handleRuleChange(rule._key, 'discount_value', e.target.value)}
+                                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold/40"
+                                  placeholder={rule.discount_type === 'percentage' ? '20' : '100'}
+                                  min="0"
+                                  step="0.01"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
+            )}
           </div>
         </div>
       </form>
