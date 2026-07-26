@@ -1,17 +1,31 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { productsAPI } from '../api/endpoints';
 import MobilePageHeader from '../components/MobilePageHeader';
 import Breadcrumb from '../components/Breadcrumb';
 import Seo from '../components/seo/Seo';
+import PromotionBadge from '../components/promotions/PromotionBadge';
 import { motion } from 'framer-motion';
-import { FolderTree, ChevronRight } from 'lucide-react';
+import { FolderTree, ChevronRight, Tag } from 'lucide-react';
 
 const CategoryListPage = () => {
   const navigate = useNavigate();
   const [categories, setCategories] = useState([]);
   const [categoryTree, setCategoryTree] = useState([]);
   const [loading, setLoading] = useState(true);
+  const promotions = useSelector((state) => state.promotions.items);
+
+  const categoryPromotions = useMemo(() => {
+    const map = {};
+    promotions.forEach((p) => {
+      if (p.category_id) {
+        if (!map[p.category_id]) map[p.category_id] = [];
+        map[p.category_id].push(p);
+      }
+    });
+    return map;
+  }, [promotions]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -99,20 +113,28 @@ const CategoryListPage = () => {
                 )}
                 {parent.children?.length > 0 ? (
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                    {parent.children.map((child) => (
-                      <motion.button
-                        key={child.id}
-                        whileHover={{ scale: 1.03 }}
-                        whileTap={{ scale: 0.97 }}
-                        onClick={() => navigate(`/products?category=${child.id}`)}
-                        className="bg-gray-50 hover:bg-gold/10 rounded-xl p-4 text-left border border-gray-100 hover:border-gold/30 transition-all"
-                      >
-                        <div className="w-10 h-10 rounded-lg bg-gold/10 flex items-center justify-center mb-2">
-                          <FolderTree className="w-5 h-5 text-gold" />
-                        </div>
-                        <h4 className="font-medium text-text text-sm">{child.name}</h4>
-                      </motion.button>
-                    ))}
+                    {parent.children.map((child) => {
+                      const childPromo = categoryPromotions[child.id]?.[0];
+                      return (
+                        <motion.button
+                          key={child.id}
+                          whileHover={{ scale: 1.03 }}
+                          whileTap={{ scale: 0.97 }}
+                          onClick={() => navigate(`/products?category=${child.id}`)}
+                          className="bg-gray-50 hover:bg-gold/10 rounded-xl p-4 text-left border border-gray-100 hover:border-gold/30 transition-all relative"
+                        >
+                          <div className="w-10 h-10 rounded-lg bg-gold/10 flex items-center justify-center mb-2">
+                            <FolderTree className="w-5 h-5 text-gold" />
+                          </div>
+                          <h4 className="font-medium text-text text-sm">{child.name}</h4>
+                          {childPromo && (
+                            <div className="mt-2">
+                              <PromotionBadge promotion={childPromo} />
+                            </div>
+                          )}
+                        </motion.button>
+                      );
+                    })}
                   </div>
                 ) : (
                   <p className="text-sm text-gray-400 italic">No subcategories</p>

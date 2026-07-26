@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { productsAPI } from '../api/endpoints';
 import ProductCard from '../components/ProductCard';
 import MobilePageHeader from '../components/MobilePageHeader';
 import Breadcrumb from '../components/Breadcrumb';
+import CategoryPromotionBanner from '../components/promotions/CategoryPromotionBanner';
 import { motion } from 'framer-motion';
 import { Search, SlidersHorizontal, X, ChevronDown } from 'lucide-react';
 
@@ -15,6 +17,7 @@ const ProductsListingPage = ({ filter, sort: sortProp }) => {
   const [totalCount, setTotalCount] = useState(0);
   const [catMap, setCatMap] = useState({});
   const [expandedParents, setExpandedParents] = useState({});
+  const promotions = useSelector((state) => state.promotions.items);
 
   const search = searchParams.get('search') || '';
   const categoryId = searchParams.get('category') || '';
@@ -123,6 +126,12 @@ const ProductsListingPage = ({ filter, sort: sortProp }) => {
         {breadcrumbItems.length > 0 && (
           <Breadcrumb items={breadcrumbItems} className="hidden md:flex mb-4" />
         )}
+
+        {/* Category Promotion Banner */}
+        {categoryId && (
+          <CategoryPromotionBanner promotions={promotions} categoryId={categoryId} />
+        )}
+
         {/* Header */}
         <div className="hidden md:flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>

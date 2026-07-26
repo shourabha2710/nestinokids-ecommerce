@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { productsAPI, shoppingAPI, recentlyViewedAPI } from '../api/endpoints';
@@ -7,6 +7,7 @@ import { addWishlistItem, removeWishlistItem } from '../store/slices/wishlistSli
 import MobilePageHeader from '../components/MobilePageHeader';
 import Breadcrumb from '../components/Breadcrumb';
 import Seo from '../components/seo/Seo';
+import ProductPromotionSection from '../components/promotions/ProductPromotionSection';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, ShoppingBag, Star, Shield, Truck, RefreshCw, ChevronLeft, ChevronRight, Minus, Plus } from 'lucide-react';
 import RelatedProducts from '../components/RelatedProducts';
@@ -41,6 +42,7 @@ const ProductDetailPage = () => {
   const [wishlistLoading, setWishlistLoading] = useState(false);
   const { isAuthenticated } = useSelector((state) => state.auth);
   const wishlistIds = useSelector((state) => state.wishlist.ids);
+  const promotions = useSelector((state) => state.promotions.items);
   const isInWishlist = product ? wishlistIds.includes(product.id) : false;
 
   useEffect(() => {
@@ -331,6 +333,15 @@ const ProductDetailPage = () => {
                   Base price ₹{basePrice} + size adjustment ₹{selectedVariant.price_modifier}
                 </p>
               ) : null}
+            </motion.div>
+
+            {/* Promotions */}
+            <motion.div variants={fadeUp} className="mb-6">
+              <ProductPromotionSection
+                promotions={promotions}
+                productId={product.id}
+                categoryId={product.category?.id}
+              />
             </motion.div>
 
             {/* Size Selector */}

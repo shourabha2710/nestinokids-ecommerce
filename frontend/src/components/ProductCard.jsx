@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { shoppingAPI } from '../api/endpoints';
@@ -7,6 +7,7 @@ import { addWishlistItem, removeWishlistItem } from '../store/slices/wishlistSli
 import { motion } from 'framer-motion';
 import { Heart, ShoppingBag, Star } from 'lucide-react';
 import ProductImage from './ProductImage';
+import PromotionBadge from './promotions/PromotionBadge';
 
 const PLACEHOLDER = '/images/placeholder-product.svg';
 
@@ -18,7 +19,17 @@ const ProductCard = ({ product, index = 0 }) => {
   const [wishlistLoading, setWishlistLoading] = useState(false);
   const { isAuthenticated } = useSelector((state) => state.auth);
   const wishlistIds = useSelector((state) => state.wishlist.ids);
+  const promotions = useSelector((state) => state.promotions.items);
   const isInWishlist = wishlistIds.includes(product.id);
+
+  const productPromotion = useMemo(() => {
+    return promotions.find(
+      (p) =>
+        (p.product_id && p.product_id === product.id) ||
+        (p.category_id && p.category_id === product.category?.id && !p.product_id) ||
+        (!p.product_id && !p.category_id)
+    );
+  }, [promotions, product.id, product.category?.id]);
 
   const primaryImage = product.images?.find((img) => img.is_primary)?.image_url;
   const fallbackImage = product.images?.[0]?.image_url;
@@ -94,6 +105,13 @@ const ProductCard = ({ product, index = 0 }) => {
         {product.is_featured && !discount && (
           <div className="absolute top-3 left-3 bg-gold text-white text-xs font-bold px-2.5 py-1 rounded-full">
             Featured
+          </div>
+        )}
+
+        {/* Promotion badge */}
+        {!discount && !product.is_featured && productPromotion && (
+          <div className="absolute top-3 left-3">
+            <PromotionBadge promotion={productPromotion} />
           </div>
         )}
 
