@@ -16,26 +16,23 @@ import {
   Truck,
   CheckCircle,
   AlertCircle,
+  RotateCcw,
+  DollarSign,
 } from 'lucide-react';
-
-const STATUS_TRANSITIONS = {
-  pending: ['confirmed', 'cancelled'],
-  confirmed: ['packed', 'cancelled'],
-  packed: ['shipped'],
-  shipped: ['delivered'],
-  delivered: [],
-  cancelled: [],
-  returned: [],
-};
 
 const STATUS_CONFIG = {
   pending: { icon: Clock, bg: 'bg-yellow-50', text: 'text-yellow-700', dot: 'bg-yellow-500', label: 'Pending' },
   confirmed: { icon: CheckCircle, bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-500', label: 'Confirmed' },
   packed: { icon: Package, bg: 'bg-indigo-50', text: 'text-indigo-700', dot: 'bg-indigo-500', label: 'Packed' },
   shipped: { icon: Truck, bg: 'bg-purple-50', text: 'text-purple-700', dot: 'bg-purple-500', label: 'Shipped' },
+  out_for_delivery: { icon: Truck, bg: 'bg-cyan-50', text: 'text-cyan-700', dot: 'bg-cyan-500', label: 'Out for Delivery' },
   delivered: { icon: CheckCircle, bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500', label: 'Delivered' },
   cancelled: { icon: AlertCircle, bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500', label: 'Cancelled' },
-  returned: { icon: AlertCircle, bg: 'bg-gray-50', text: 'text-gray-700', dot: 'bg-gray-500', label: 'Returned' },
+  return_requested: { icon: RotateCcw, bg: 'bg-orange-50', text: 'text-orange-700', dot: 'bg-orange-500', label: 'Return Requested' },
+  returned: { icon: RotateCcw, bg: 'bg-gray-50', text: 'text-gray-700', dot: 'bg-gray-500', label: 'Returned' },
+  refund_initiated: { icon: DollarSign, bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500', label: 'Refund Initiated' },
+  refunded: { icon: DollarSign, bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500', label: 'Refunded' },
+  failed: { icon: AlertCircle, bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500', label: 'Failed' },
 };
 
 const AdminOrderList = () => {
@@ -47,6 +44,8 @@ const AdminOrderList = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [detailOrder, setDetailOrder] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [transitionRemarks, setTransitionRemarks] = useState('');
+  const [transitioning, setTransitioning] = useState(false);
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -79,6 +78,7 @@ const AdminOrderList = () => {
     try {
       setError('');
       setDetailLoading(true);
+      setTransitionRemarks('');
       const res = await adminAPI.getOrder(orderId);
       setDetailOrder(res.data);
     } catch (err) {
@@ -88,16 +88,21 @@ const AdminOrderList = () => {
     }
   };
 
-  const updateStatus = async (orderId, newStatus) => {
+  const transitionStatus = async (orderId, newStatus) => {
     try {
       setError('');
-      await adminAPI.updateOrderStatus(orderId, { status: newStatus });
-      if (detailOrder?.id === orderId) {
-        setDetailOrder({ ...detailOrder, order_status: newStatus });
-      }
+      setTransitioning(true);
+      await adminAPI.transitionOrder(orderId, {
+        new_status: newStatus,
+        remarks: transitionRemarks || undefined,
+      });
+      setTransitionRemarks('');
+      await openDetail(orderId);
       fetchOrders();
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to update status');
+    } finally {
+      setTransitioning(false);
     }
   };
 
@@ -294,7 +299,7 @@ const AdminOrderList = () => {
                   </p>
                 </div>
                 <button
-                  onClick={() => { setDetailOrder(null); setError(''); }}
+                  onClick={() => { setDetailOrder(null); setError(''); setTransitionRemarks(''); }}
                   className="text-gray-400 hover:text-gray-600 transition-colors p-1 flex-shrink-0 ml-3"
                 >
                   <X className="w-5 h-5" />
@@ -339,25 +344,7 @@ const AdminOrderList = () => {
                           </div>
                           <div className="flex justify-between items-center text-sm gap-2">
                             <span className="text-gray-500 flex-shrink-0">Status</span>
-                            <div className="flex items-center gap-2">
-                              <StatusBadge status={detailOrder.order_status} />
-                              {hasPermission(Permissions.ORDER_UPDATE) && STATUS_TRANSITIONS[detailOrder.order_status]?.length > 0 && (
-                                <select
-                                  value=""
-                                  onChange={(e) => {
-                                    if (e.target.value) {
-                                      updateStatus(detailOrder.id, e.target.value);
-                                    }
-                                  }}
-                                  className="border border-gray-200 rounded-lg text-xs px-2 py-1 focus:outline-none focus:ring-2 focus:ring-gold/40 bg-white"
-                                >
-                                  <option value="">Change...</option>
-                                  {STATUS_TRANSITIONS[detailOrder.order_status].map((s) => (
-                                    <option key={s} value={s}>{STATUS_CONFIG[s]?.label || s}</option>
-                                  ))}
-                                </select>
-                              )}
-                            </div>
+                            <StatusBadge status={detailOrder.order_status} />
                           </div>
                           <div className="flex justify-between text-sm">
                             <span className="text-gray-500">Items</span>
@@ -366,6 +353,82 @@ const AdminOrderList = () => {
                         </div>
                       </div>
                     </div>
+
+                    {/* Transition Actions */}
+                    {hasPermission(Permissions.ORDER_UPDATE) && detailOrder.allowed_transitions?.length > 0 && (
+                      <div className="bg-blue-50 rounded-xl p-4">
+                        <h4 className="text-xs font-semibold text-blue-700 uppercase tracking-wider mb-3">Update Status</h4>
+                        <div className="space-y-3">
+                          <input
+                            type="text"
+                            placeholder="Remarks (optional)"
+                            value={transitionRemarks}
+                            onChange={(e) => setTransitionRemarks(e.target.value)}
+                            className="w-full border border-blue-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
+                          />
+                          <div className="flex flex-wrap gap-2">
+                            {detailOrder.allowed_transitions.map((s) => {
+                              const cfg = STATUS_CONFIG[s];
+                              return (
+                                <button
+                                  key={s}
+                                  onClick={() => transitionStatus(detailOrder.id, s)}
+                                  disabled={transitioning}
+                                  className={`inline-flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                                    cfg?.bg || 'bg-gray-50'
+                                  } ${cfg?.text || 'text-gray-700'} hover:opacity-80 disabled:opacity-50`}
+                                >
+                                  {cfg?.icon && <cfg.icon className="w-3 h-3" />}
+                                  <span>Move to {cfg?.label || s}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Status History / Timeline */}
+                    {detailOrder.status_history?.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Status History</h4>
+                        <div className="bg-gray-50 rounded-xl p-4">
+                          <div className="space-y-0">
+                            {detailOrder.status_history.map((entry, i) => {
+                              const cfg = STATUS_CONFIG[entry.new_status] || STATUS_CONFIG.pending;
+                              const isLatest = i === detailOrder.status_history.length - 1;
+                              return (
+                                <div key={entry.id} className="flex gap-3">
+                                  <div className="flex flex-col items-center">
+                                    <div className={`w-3 h-3 rounded-full mt-1.5 ${
+                                      isLatest ? `${cfg.dot}` : 'bg-gray-300'
+                                    }`} />
+                                    {i < detailOrder.status_history.length - 1 && (
+                                      <div className="w-0.5 flex-1 bg-gray-200 my-0.5" />
+                                    )}
+                                  </div>
+                                  <div className={`pb-4 ${isLatest ? 'pb-0' : ''}`}>
+                                    <div className="flex items-center gap-2">
+                                      <p className="text-sm font-medium text-gray-900">{entry.label}</p>
+                                      {isLatest && <span className="text-[10px] text-gray-400">(current)</span>}
+                                    </div>
+                                    {entry.old_status && (
+                                      <p className="text-[10px] text-gray-400">
+                                        from {STATUS_CONFIG[entry.old_status]?.label || entry.old_status}
+                                      </p>
+                                    )}
+                                    {entry.remarks && <p className="text-xs text-gray-500 mt-0.5">{entry.remarks}</p>}
+                                    <p className="text-[10px] text-gray-400 mt-0.5">
+                                      {entry.timestamp ? new Date(entry.timestamp).toLocaleString('en-IN') : ''}
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Order items */}
                     <div>

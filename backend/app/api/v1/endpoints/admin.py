@@ -288,6 +288,28 @@ def admin_delete_banner(
 
 
 def _build_admin_order(order: Order) -> dict:
+    from app.services.order_state_machine import order_state_machine, STATUS_LABELS
+
+    current_status = order.status.value if hasattr(order.status, 'value') else order.status
+    allowed = order_state_machine.get_allowed_transitions(current_status)
+
+    # Build status_history from the loaded relationship (if eagerly loaded)
+    status_history_list = []
+    if hasattr(order, 'status_history') and order.status_history:
+        for r in order.status_history:
+            ns = r.new_status.value if hasattr(r.new_status, "value") else r.new_status
+            status_history_list.append({
+                "id": r.id,
+                "old_status": r.old_status.value if r.old_status else None,
+                "new_status": ns,
+                "label": STATUS_LABELS.get(ns, ns),
+                "changed_by_admin_id": r.changed_by_admin_id,
+                "changed_by_user_id": r.changed_by_user_id,
+                "remarks": r.remarks,
+                "metadata": r.metadata_json,
+                "timestamp": r.created_at.isoformat() if r.created_at else None,
+            })
+
     return {
         "id": order.id,
         "order_number": order.order_number,
@@ -299,7 +321,7 @@ def _build_admin_order(order: Order) -> dict:
         "shipping_amount": order.shipping_amount,
         "final_amount": order.final_amount,
         "payment_status": order.payment_status.value if hasattr(order.payment_status, 'value') else order.payment_status,
-        "order_status": order.status.value if hasattr(order.status, 'value') else order.status,
+        "order_status": current_status,
         "item_count": len(order.items),
         "created_at": order.created_at,
         "items": [
@@ -320,18 +342,10 @@ def _build_admin_order(order: Order) -> dict:
             }
             for item in order.items
         ],
+        "allowed_transitions": allowed,
+        "status_history": status_history_list,
     }
 
-
-VALID_STATUS_TRANSITIONS = {
-    "pending": ["confirmed", "cancelled"],
-    "confirmed": ["packed", "cancelled"],
-    "packed": ["shipped"],
-    "shipped": ["delivered"],
-    "delivered": [],
-    "cancelled": [],
-    "returned": [],
-}
 
 
 @router.get("/orders", response_model=List[AdminOrderResponse])
@@ -377,6 +391,7 @@ def admin_get_order(
         .options(
             joinedload(Order.items).joinedload(OrderItem.product),
             joinedload(Order.items).joinedload(OrderItem.variant),
+            joinedload(Order.status_history),
         )
         .filter(Order.id == order_id)
         .first()
@@ -402,51 +417,16 @@ def admin_update_order_status(
     current_status = order.status.value if hasattr(order.status, 'value') else order.status
     new_status = data.status.lower()
 
-    if new_status == current_status:
-        raise HTTPException(status_code=400, detail="Order is already in this status")
+    from app.services.order_state_machine import order_state_machine
 
-    valid_next = VALID_STATUS_TRANSITIONS.get(current_status, [])
-    if new_status not in valid_next:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Cannot transition from '{current_status}' to '{new_status}'. Valid transitions: {valid_next}",
+    try:
+        order_state_machine.transition(
+            db, order, new_status,
+            admin_id=admin.id,
+            remarks=data.note,
         )
-
-    order.status = new_status
-
-    if new_status == "shipped":
-        order.shipped_at = datetime.utcnow()
-    elif new_status == "delivered":
-        order.delivered_at = datetime.utcnow()
-
-    db.add(order)
-    db.flush()
-
-    # Create tracking event for status change
-    from app.models.models import OrderTrackingEvent
-    tracking_note = data.note if hasattr(data, 'note') and data.note else f"Order status updated to {new_status}"
-    tracking = OrderTrackingEvent(
-        order_id=order_id,
-        status=new_status.title(),
-        note=tracking_note,
-    )
-    db.add(tracking)
-
-    # Restore inventory and variant stock on cancellation or return
-    if new_status in ("cancelled", "returned"):
-        _restore_order_stock(order, db)
-
-    # Notify admins on cancellation
-    if new_status == "cancelled":
-        try:
-            notification_event_service.notify_order_cancelled(db, order)
-        except Exception:
-            pass
-
-    # Award loyalty points on delivery
-    if new_status == "delivered":
-        from app.api.v1.endpoints.engagement import award_loyalty_points_for_order
-        award_loyalty_points_for_order(order_id, db)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     db.commit()
     db.refresh(order)

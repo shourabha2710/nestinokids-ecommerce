@@ -95,6 +95,7 @@ export const referralAPI = {
 // Order Tracking APIs
 export const orderTrackingAPI = {
   getTracking: (orderId) => api.get(`/orders/${orderId}/tracking`),
+  getTimeline: (orderId) => api.get(`/orders/${orderId}/timeline`),
 };
 // Support Ticket APIs
 export const supportTicketAPI = {

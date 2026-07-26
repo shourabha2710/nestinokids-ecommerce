@@ -41,9 +41,14 @@ class OrderStatusEnum(str, PyEnum):
     CONFIRMED = "confirmed"
     PACKED = "packed"
     SHIPPED = "shipped"
+    OUT_FOR_DELIVERY = "out_for_delivery"
     DELIVERED = "delivered"
     CANCELLED = "cancelled"
+    RETURN_REQUESTED = "return_requested"
     RETURNED = "returned"
+    REFUND_INITIATED = "refund_initiated"
+    REFUNDED = "refunded"
+    FAILED = "failed"
 
 
 class PaymentStatusEnum(str, PyEnum):
@@ -302,6 +307,7 @@ class Order(Base):
     user = relationship("User", back_populates="orders")
     items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
     coupon = relationship("Coupon", back_populates="orders")
+    status_history = relationship("OrderStatusHistory", back_populates="order", cascade="all, delete-orphan", order_by="OrderStatusHistory.created_at")
     
     __table_args__ = (
         Index('idx_order_user', 'user_id'),
@@ -524,6 +530,29 @@ class OrderTrackingEvent(Base):
 
     __table_args__ = (
         Index('idx_tracking_order', 'order_id'),
+    )
+
+
+class OrderStatusHistory(Base):
+    __tablename__ = "order_status_history"
+
+    id = Column(Integer, primary_key=True)
+    order_id = Column(Integer, ForeignKey('orders.id'), nullable=False)
+    old_status = Column(Enum(OrderStatusEnum), nullable=True)
+    new_status = Column(Enum(OrderStatusEnum), nullable=False)
+    changed_by_user_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    changed_by_admin_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    remarks = Column(Text, nullable=True)
+    metadata_json = Column(JSON, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    order = relationship("Order", back_populates="status_history")
+    changed_by_user = relationship("User", foreign_keys=[changed_by_user_id])
+    changed_by_admin = relationship("User", foreign_keys=[changed_by_admin_id])
+
+    __table_args__ = (
+        Index('idx_status_history_order', 'order_id'),
+        Index('idx_status_history_new_status', 'new_status'),
     )
 
 
