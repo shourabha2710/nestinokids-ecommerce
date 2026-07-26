@@ -37,6 +37,7 @@ export const shoppingAPI = {
   addToCart: (productId, params) => api.post(`/cart/${productId}`, null, { params }),
   updateCartItem: (productId, quantity, variantId = null) => api.put(`/cart/${productId}`, null, { params: { quantity, variant_id: variantId } }),
   removeFromCart: (productId, variantId = null) => api.delete(`/cart/${productId}`, { params: { variant_id: variantId } }),
+  calculateCart: (data) => api.post('/cart/calculate', data),
   
   checkout: (data) => api.post('/checkout', data),
   createOrder: (data) => api.post('/orders', data),

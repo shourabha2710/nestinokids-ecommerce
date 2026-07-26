@@ -120,6 +120,13 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:3000"
     ADMIN_URL: str = "http://localhost:3001"
 
+    # ----------------------------------------------------
+    # Shipping
+    # ----------------------------------------------------
+
+    FREE_SHIPPING_THRESHOLD: float = 500.0
+    FLAT_SHIPPING_RATE: float = 50.0
+
     @property
     def ALLOWED_ORIGINS_LIST(self) -> List[str]:
         origins = [

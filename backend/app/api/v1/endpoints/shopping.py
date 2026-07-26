@@ -14,6 +14,7 @@ from app.models.models import (
 from app.api.v1.endpoints.auth import get_current_user
 from app.utils.helpers import generate_order_number
 from app.services.notification_event_service import notification_event_service
+from app.services.order_calculation_service import calculate_for_order_creation
 from typing import List, Optional
 from datetime import datetime
 
@@ -438,41 +439,33 @@ def create_order(
             "variant_id": item_data.variant_id
         })
 
-    # Apply coupon
-    discount_amount = 0
+    # --- Centralized calculation ---
+    calc_items = [
+        {
+            "product_id": item["product"].id,
+            "category_id": getattr(item["product"], "category_id", None),
+            "quantity": item["quantity"],
+            "price": item["price"],
+            "total": item["total"],
+        }
+        for item in order_items_list
+    ]
+    calc = calculate_for_order_creation(
+        db, calc_items, coupon_code=order_data.coupon_code, user_id=current_user.id,
+    )
+    discount_amount = calc.coupon_discount
     coupon_id = None
-    if order_data.coupon_code:
+    if calc.applied_coupon:
         coupon = db.query(Coupon).filter(
-            Coupon.code == order_data.coupon_code,
-            Coupon.is_active == True
+            Coupon.code == calc.applied_coupon.code, Coupon.is_active == True
         ).first()
-
         if coupon:
-            if total_amount < coupon.minimum_order_value:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Minimum order value is {coupon.minimum_order_value}"
-                )
-            if coupon.max_usage and coupon.usage_count >= coupon.max_usage:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Coupon usage limit exceeded"
-                )
-            if coupon.discount_type == "percentage":
-                discount_amount = (total_amount * coupon.discount_value) / 100
-                if coupon.maximum_discount:
-                    discount_amount = min(discount_amount, coupon.maximum_discount)
-            else:
-                discount_amount = coupon.discount_value
-
             coupon_id = coupon.id
             coupon.usage_count += 1
             db.add(coupon)
-
-    shipping_amount = 0 if total_amount >= 500 else 50
-    taxable = total_amount - discount_amount
-    tax_amount = taxable * 0.05
-    final_amount = taxable + tax_amount + shipping_amount
+    shipping_amount = calc.shipping
+    tax_amount = calc.tax
+    final_amount = calc.grand_total
 
     db_order = Order(
         user_id=current_user.id,
@@ -631,42 +624,33 @@ def checkout(
             "variant_id": variant_id,
         })
 
-    # Apply coupon
-    discount_amount = 0
+    # --- Centralized calculation ---
+    calc_items = [
+        {
+            "product_id": item["product"].id,
+            "category_id": getattr(item["product"], "category_id", None),
+            "quantity": item["quantity"],
+            "price": item["price"],
+            "total": item["total"],
+        }
+        for item in order_items_list
+    ]
+    calc = calculate_for_order_creation(
+        db, calc_items, coupon_code=data.coupon_code, user_id=current_user.id,
+    )
+    discount_amount = calc.coupon_discount
     coupon_id = None
-    if data.coupon_code:
+    if calc.applied_coupon:
         coupon = db.query(Coupon).filter(
-            Coupon.code == data.coupon_code,
-            Coupon.is_active == True
+            Coupon.code == calc.applied_coupon.code, Coupon.is_active == True
         ).first()
-
-        if not coupon:
-            raise HTTPException(status_code=404, detail="Coupon not found or expired")
-        if total_amount < coupon.minimum_order_value:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Minimum order value is {coupon.minimum_order_value}"
-            )
-        if coupon.max_usage and coupon.usage_count >= coupon.max_usage:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Coupon usage limit exceeded"
-            )
-        if coupon.discount_type == "percentage":
-            discount_amount = (total_amount * coupon.discount_value) / 100
-            if coupon.maximum_discount:
-                discount_amount = min(discount_amount, coupon.maximum_discount)
-        else:
-            discount_amount = coupon.discount_value
-
-        coupon_id = coupon.id
-        coupon.usage_count += 1
-        db.add(coupon)
-
-    shipping_amount = 0 if total_amount >= 500 else 50
-    taxable = total_amount - discount_amount
-    tax_amount = taxable * 0.05
-    final_amount = taxable + tax_amount + shipping_amount
+        if coupon:
+            coupon_id = coupon.id
+            coupon.usage_count += 1
+            db.add(coupon)
+    shipping_amount = calc.shipping
+    tax_amount = calc.tax
+    final_amount = calc.grand_total
 
     db_order = Order(
         user_id=current_user.id,
