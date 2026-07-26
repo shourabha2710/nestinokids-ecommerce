@@ -23,4 +23,9 @@ export const Permissions = {
 
   MEDIA_VIEW: 'media:view',
   MEDIA_MANAGE: 'media:manage',
+
+  PROMOTION_VIEW: 'promotion:view',
+  PROMOTION_CREATE: 'promotion:create',
+  PROMOTION_UPDATE: 'promotion:update',
+  PROMOTION_DELETE: 'promotion:delete',
 };

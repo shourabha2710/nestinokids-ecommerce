@@ -29,6 +29,8 @@ import AdminReports from './pages/admin/AdminReports';
 import AdminStaff from './pages/admin/AdminStaff';
 import AdminSettings from './pages/admin/AdminSettings';
 import AdminMedia from './pages/admin/AdminMedia';
+import AdminPromotionList from './pages/admin/AdminPromotionList';
+import AdminPromotionForm from './pages/admin/AdminPromotionForm';
 
 function App() {
   return (
@@ -110,6 +112,21 @@ function App() {
           <Route path="media" element={
             <PermissionRoute permission={Permissions.MEDIA_VIEW}>
               <AdminMedia />
+            </PermissionRoute>
+          } />
+          <Route path="promotions" element={
+            <PermissionRoute permission={Permissions.PROMOTION_VIEW}>
+              <AdminPromotionList />
+            </PermissionRoute>
+          } />
+          <Route path="promotions/new" element={
+            <PermissionRoute permission={Permissions.PROMOTION_CREATE}>
+              <AdminPromotionForm />
+            </PermissionRoute>
+          } />
+          <Route path="promotions/:id/edit" element={
+            <PermissionRoute permission={Permissions.PROMOTION_UPDATE}>
+              <AdminPromotionForm />
             </PermissionRoute>
           } />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

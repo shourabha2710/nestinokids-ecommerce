@@ -29,6 +29,10 @@ export const ROLE_PERMISSIONS = {
     Permissions.SUPPORT_VIEW,
     Permissions.SUPPORT_REPLY,
     Permissions.REPORT_VIEW,
+    Permissions.PROMOTION_VIEW,
+    Permissions.PROMOTION_CREATE,
+    Permissions.PROMOTION_UPDATE,
+    Permissions.PROMOTION_DELETE,
   ],
   [Roles.SUPPORT]: [
     Permissions.ORDER_VIEW,

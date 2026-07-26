@@ -33,6 +33,7 @@ import {
   Megaphone,
   History,
   Users,
+  Percent,
 } from 'lucide-react';
 
 const AdminLayout = () => {
@@ -57,6 +58,7 @@ const AdminLayout = () => {
     { path: '/support-tickets', label: 'Support Tickets', icon: MessageSquare, permission: Permissions.SUPPORT_VIEW },
     { path: '/faqs', label: 'FAQs', icon: HelpCircle, permission: null },
     { path: '/announcements', label: 'Announcements', icon: Megaphone, permission: null },
+    { path: '/promotions', label: 'Promotions', icon: Percent, permission: Permissions.PROMOTION_VIEW },
     { path: '/media', label: 'Media Library', icon: Image, permission: Permissions.MEDIA_VIEW },
     { path: '/activity-logs', label: 'Activity Logs', icon: History, permission: Permissions.AUDIT_VIEW },
     { path: '/staff', label: 'Staff Management', icon: Users, permission: Permissions.USER_VIEW },
