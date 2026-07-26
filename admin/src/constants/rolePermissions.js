@@ -33,6 +33,10 @@ export const ROLE_PERMISSIONS = {
     Permissions.PROMOTION_CREATE,
     Permissions.PROMOTION_UPDATE,
     Permissions.PROMOTION_DELETE,
+    Permissions.COUPON_VIEW,
+    Permissions.COUPON_CREATE,
+    Permissions.COUPON_UPDATE,
+    Permissions.COUPON_DELETE,
   ],
   [Roles.SUPPORT]: [
     Permissions.ORDER_VIEW,

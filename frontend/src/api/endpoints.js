@@ -44,6 +44,7 @@ export const shoppingAPI = {
   getOrder: (id) => api.get(`/orders/${id}`),
   
   validateCoupon: (code, params) => api.get(`/coupons/${code}`, { params }),
+  validateCouponV2: (data) => api.post('/coupons/validate', data),
 };
 
 // Instragram APIs

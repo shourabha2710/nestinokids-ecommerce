@@ -4,7 +4,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { shoppingAPI } from '../api/endpoints';
 import { clearCart } from '../store/slices/cartSlice';
 import { motion } from 'framer-motion';
-import { ShieldCheck, Truck, RotateCcw, Sparkles, Check } from 'lucide-react';
+import { ShieldCheck, Truck, RotateCcw, Sparkles, Check, Tag, X, CheckCircle } from 'lucide-react';
 import ProductImage from '../components/ProductImage';
 
 const PLACEHOLDER = '/images/placeholder-product.svg';
@@ -68,10 +68,17 @@ const CheckoutPage = () => {
       const subtotal = cartItems.reduce((sum, item) => sum + item.total, 0);
       const res = await shoppingAPI.validateCoupon(couponCode.trim(), { total_amount: subtotal });
       setCoupon(res.data);
+      setCouponError(null);
     } catch (err) {
       setCoupon(null);
       setCouponError(err.response?.data?.detail || 'Invalid coupon');
     }
+  };
+
+  const handleRemoveCoupon = () => {
+    setCoupon(null);
+    setCouponCode('');
+    setCouponError(null);
   };
 
   const handleCreateAddress = async (e) => {
@@ -237,29 +244,42 @@ const CheckoutPage = () => {
 
           {/* Coupon */}
           <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold text-text mb-4">Coupon Code</h2>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={couponCode}
-                onChange={(e) => setCouponCode(e.target.value)}
-                placeholder="Enter coupon code"
-                className="flex-1 p-2 border rounded"
-              />
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={handleApplyCoupon}
-                className="bg-text text-white px-4 py-2 rounded-lg font-semibold"
-              >
-                Apply
-              </motion.button>
+            <div className="flex items-center gap-2 mb-4">
+              <Tag className="w-4 h-4 text-gold" />
+              <h2 className="text-lg font-semibold text-text">Coupon Code</h2>
             </div>
-            {coupon && (
-              <p className="text-green-600 text-sm mt-2">Coupon applied! {coupon.description}</p>
-            )}
-            {couponError && (
-              <p className="text-red-600 text-sm mt-2">{couponError}</p>
+            {coupon ? (
+              <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-green-600" />
+                  <span className="text-sm font-mono font-bold text-green-700">{coupon.code}</span>
+                  {discountAmount > 0 && <span className="text-sm text-green-600">-₹{discountAmount} applied</span>}
+                </div>
+                <button onClick={handleRemoveCoupon} className="text-gray-400 hover:text-red-500 transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={couponCode}
+                    onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setCouponError(null); }}
+                    placeholder="Enter coupon code"
+                    className="flex-1 p-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold/40 font-mono uppercase"
+                  />
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleApplyCoupon}
+                    className="bg-text text-white px-4 py-2 rounded-lg font-semibold text-sm"
+                  >
+                    Apply
+                  </motion.button>
+                </div>
+                {couponError && <p className="text-red-500 text-xs mt-1.5">{couponError}</p>}
+              </>
             )}
           </div>
         </div>

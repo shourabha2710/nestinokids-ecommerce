@@ -28,4 +28,9 @@ export const Permissions = {
   PROMOTION_CREATE: 'promotion:create',
   PROMOTION_UPDATE: 'promotion:update',
   PROMOTION_DELETE: 'promotion:delete',
+
+  COUPON_VIEW: 'coupon:view',
+  COUPON_CREATE: 'coupon:create',
+  COUPON_UPDATE: 'coupon:update',
+  COUPON_DELETE: 'coupon:delete',
 };

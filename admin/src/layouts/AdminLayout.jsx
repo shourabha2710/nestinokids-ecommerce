@@ -50,7 +50,7 @@ const AdminLayout = () => {
     { path: '/inventory', label: 'Inventory', icon: ClipboardList, permission: Permissions.INVENTORY_VIEW },
     { path: '/orders', label: 'Orders', icon: ShoppingCart, permission: Permissions.ORDER_VIEW },
     { path: '/reports', label: 'Reports', icon: BarChart3, permission: Permissions.REPORT_VIEW },
-    { path: '/coupons', label: 'Coupons', icon: Tag, permission: null },
+    { path: '/coupons', label: 'Coupons', icon: Tag, permission: Permissions.COUPON_VIEW },
     { path: '/banners', label: 'Banners', icon: Image, permission: null },
     { path: '/hero-slides', label: 'Hero Slides', icon: Monitor, permission: null },
     { path: '/instagram', label: 'Instagram', icon: Camera, permission: null },

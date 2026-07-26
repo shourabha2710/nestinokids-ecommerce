@@ -324,9 +324,10 @@ class OrderItem(Base):
 
 class Coupon(Base):
     __tablename__ = "coupons"
-    
+
     id = Column(Integer, primary_key=True)
     code = Column(String(50), unique=True, nullable=False, index=True)
+    name = Column(String(255), nullable=True)
     description = Column(String(500), nullable=True)
     discount_type = Column(String(20), nullable=False)  # percentage or fixed
     discount_value = Column(Float, nullable=False)
@@ -334,16 +335,27 @@ class Coupon(Base):
     maximum_discount = Column(Float, nullable=True)
     max_usage = Column(Integer, nullable=True)
     usage_count = Column(Integer, default=0)
+    per_user_limit = Column(Integer, nullable=True)
+    applicable_scope = Column(String(20), default='GLOBAL', nullable=False, index=True)  # GLOBAL, CATEGORY, PRODUCT
+    priority = Column(Integer, default=0)
+    category_id = Column(Integer, ForeignKey('categories.id'), nullable=True)
+    product_id = Column(Integer, ForeignKey('products.id'), nullable=True)
     start_date = Column(DateTime(timezone=True), nullable=False)
     end_date = Column(DateTime(timezone=True), nullable=False)
     is_active = Column(Boolean, default=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
     # Relationships
     orders = relationship("Order", back_populates="coupon")
-    
+    category = relationship("Category", foreign_keys=[category_id])
+    product = relationship("Product", foreign_keys=[product_id])
+
     __table_args__ = (
         Index('idx_coupon_code', 'code'),
+        Index('idx_coupon_active', 'is_active'),
+        Index('idx_coupon_dates', 'start_date', 'end_date'),
+        Index('idx_coupon_scope', 'applicable_scope'),
     )
 
 
