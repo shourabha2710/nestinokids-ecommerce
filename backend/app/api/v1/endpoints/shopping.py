@@ -517,7 +517,11 @@ def create_order(
                 variant.quantity -= item["quantity"]
                 db.add(variant)
 
-    # Create initial tracking event
+    # Record initial Pending status via state machine
+    from app.services.order_state_machine import order_state_machine
+    order_state_machine.record_initial_status(db, db_order)
+
+    # Create legacy tracking event (backward-compatible)
     from app.models.models import OrderTrackingEvent
     tracking = OrderTrackingEvent(
         order_id=db_order.id,
@@ -702,7 +706,11 @@ def checkout(
                 variant.quantity -= item["quantity"]
                 db.add(variant)
 
-    # Create initial tracking event
+    # Record initial Pending status via state machine
+    from app.services.order_state_machine import order_state_machine
+    order_state_machine.record_initial_status(db, db_order)
+
+    # Create legacy tracking event (backward-compatible)
     from app.models.models import OrderTrackingEvent
     tracking = OrderTrackingEvent(
         order_id=db_order.id,

@@ -8,24 +8,44 @@ import ProductImage from '../components/ProductImage';
 
 const PLACEHOLDER = '/images/placeholder-product.svg';
 
+const STATUS_LABELS = {
+  pending: 'Pending',
+  confirmed: 'Confirmed',
+  packed: 'Packed',
+  shipped: 'Shipped',
+  out_for_delivery: 'Out for Delivery',
+  delivered: 'Delivered',
+  cancelled: 'Cancelled',
+  return_requested: 'Return Requested',
+  returned: 'Returned',
+  refund_initiated: 'Refund Initiated',
+  refunded: 'Refunded',
+  failed: 'Failed',
+};
+
 const STATUS_COLORS = {
   pending: 'bg-yellow-100 text-yellow-800',
   confirmed: 'bg-blue-100 text-blue-800',
   packed: 'bg-purple-100 text-purple-800',
   shipped: 'bg-indigo-100 text-indigo-800',
+  out_for_delivery: 'bg-cyan-100 text-cyan-800',
   delivered: 'bg-green-100 text-green-800',
   cancelled: 'bg-red-100 text-red-800',
+  return_requested: 'bg-orange-100 text-orange-800',
   returned: 'bg-gray-100 text-gray-800',
+  refund_initiated: 'bg-amber-100 text-amber-800',
+  refunded: 'bg-emerald-100 text-emerald-800',
+  failed: 'bg-red-100 text-red-800',
 };
 
-const STATUS_STEPS = ['pending', 'confirmed', 'packed', 'shipped', 'delivered'];
+const TRACKING_STEPS = ['pending', 'confirmed', 'packed', 'shipped', 'out_for_delivery', 'delivered'];
 
 const OrderDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { isAuthenticated } = useSelector((state) => state.auth);
   const [order, setOrder] = useState(null);
-  const [tracking, setTracking] = useState([]);
+  const [timeline, setTimeline] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [whatsappNumber, setWhatsappNumber] = useState('');
@@ -43,8 +63,19 @@ const OrderDetailPage = () => {
       setLoading(true);
       const res = await shoppingAPI.getOrder(id);
       setOrder(res.data);
-      const trackRes = await orderTrackingAPI.getTracking(id);
-      setTracking(trackRes.data || []);
+      try {
+        const tlRes = await orderTrackingAPI.getTimeline(id);
+        setTimeline(tlRes.data?.timeline || []);
+      } catch {
+        // Fallback to legacy tracking
+        const trackRes = await orderTrackingAPI.getTracking(id);
+        setTimeline((trackRes.data || []).map((e) => ({
+          status: e.status?.toLowerCase()?.replace(/\s+/g, '_'),
+          label: e.status,
+          timestamp: e.created_at,
+          remarks: e.note,
+        })));
+      }
     } catch {
       setError('Order not found');
     } finally {
@@ -52,8 +83,9 @@ const OrderDetailPage = () => {
     }
   };
 
-  const currentStepIndex = STATUS_STEPS.indexOf(order?.status);
-  const isTerminal = order?.status === 'cancelled' || order?.status === 'returned';
+  const currentStatus = order?.status;
+  const currentStepIndex = TRACKING_STEPS.indexOf(currentStatus);
+  const isTerminal = ['cancelled', 'return_requested', 'returned', 'refund_initiated', 'refunded', 'failed'].includes(currentStatus);
   const waNumber = whatsappNumber.replace(/[^0-9]/g, '');
 
   if (loading) {
@@ -100,15 +132,15 @@ const OrderDetailPage = () => {
           </p>
         </div>
         <span className={`px-4 py-2 rounded-full text-sm font-semibold ${STATUS_COLORS[order.status] || 'bg-gray-100 text-gray-800'}`}>
-          {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+          {STATUS_LABELS[order.status] || order.status}
         </span>
       </div>
 
-      {/* Status Tracker */}
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        {!isTerminal ? (
+      {/* Status Progress Bar */}
+      {!isTerminal && currentStepIndex >= 0 && (
+        <div className="bg-white rounded-lg shadow p-6 mb-6">
           <div className="flex justify-between">
-            {STATUS_STEPS.map((step, i) => (
+            {TRACKING_STEPS.map((step, i) => (
               <div key={step} className="flex flex-col items-center flex-1">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
                   i <= currentStepIndex ? 'bg-gold text-white' : 'bg-gray-200 text-gray-400'
@@ -116,40 +148,48 @@ const OrderDetailPage = () => {
                   {i < currentStepIndex ? '\u2713' : i + 1}
                 </div>
                 <p className={`text-xs mt-1 capitalize ${i <= currentStepIndex ? 'text-gold font-semibold' : 'text-gray-400'}`}>
-                  {step}
+                  {STATUS_LABELS[step] || step}
                 </p>
               </div>
             ))}
           </div>
-        ) : (
-          <p className="text-center text-red-600 font-semibold">
-            Order {order.status === 'cancelled' ? 'Cancelled' : 'Returned'}
-          </p>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Tracking Timeline */}
-      {tracking.length > 0 && (
+      {/* Terminal status message */}
+      {isTerminal && (
+        <div className={`rounded-lg shadow p-4 mb-6 text-center font-semibold ${
+          STATUS_COLORS[order.status] || 'bg-gray-100 text-gray-800'
+        }`}>
+          Order {STATUS_LABELS[order.status] || order.status}
+        </div>
+      )}
+
+      {/* Timeline */}
+      {timeline.length > 0 && (
         <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h2 className="text-lg font-semibold text-text mb-4">Tracking History</h2>
+          <h2 className="text-lg font-semibold text-text mb-4">Timeline</h2>
           <div className="space-y-0">
-            {tracking.map((event, i) => (
-              <div key={event.id} className="flex gap-3">
-                <div className="flex flex-col items-center">
-                  <div className={`w-3 h-3 rounded-full mt-1.5 ${
-                    i === 0 ? 'bg-gold' : 'bg-gray-300'
-                  }`} />
-                  {i < tracking.length - 1 && <div className="w-0.5 flex-1 bg-gray-200 my-0.5" />}
+            {timeline.map((entry, i) => {
+              const isLatest = i === timeline.length - 1;
+              return (
+                <div key={i} className="flex gap-3">
+                  <div className="flex flex-col items-center">
+                    <div className={`w-3 h-3 rounded-full mt-1.5 ${
+                      isLatest ? 'bg-gold' : 'bg-gray-300'
+                    }`} />
+                    {i < timeline.length - 1 && <div className="w-0.5 flex-1 bg-gray-200 my-0.5" />}
+                  </div>
+                  <div className={`pb-4 ${isLatest ? 'pb-0' : ''}`}>
+                    <p className="text-sm font-medium text-text">{entry.label || entry.status}</p>
+                    {entry.remarks && <p className="text-xs text-gray-500">{entry.remarks}</p>}
+                    <p className="text-[10px] text-gray-400 mt-0.5">
+                      {entry.timestamp ? new Date(entry.timestamp).toLocaleString('en-IN') : ''}
+                    </p>
+                  </div>
                 </div>
-                <div className={`pb-4 ${i === tracking.length - 1 ? 'pb-0' : ''}`}>
-                  <p className="text-sm font-medium text-text">{event.status}</p>
-                  {event.note && <p className="text-xs text-gray-500">{event.note}</p>}
-                  <p className="text-[10px] text-gray-400 mt-0.5">
-                    {new Date(event.created_at).toLocaleString('en-IN')}
-                  </p>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

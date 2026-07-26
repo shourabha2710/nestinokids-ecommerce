@@ -282,6 +282,41 @@ class OrderResponse(BaseModel):
         from_attributes = True
 
 
+# Order Lifecycle Schemas
+class OrderTransitionRequest(BaseModel):
+    new_status: str
+    remarks: Optional[str] = None
+
+
+class OrderStatusHistoryResponse(BaseModel):
+    id: int
+    old_status: Optional[str] = None
+    new_status: str
+    label: str = ""
+    changed_by_admin_id: Optional[int] = None
+    changed_by_user_id: Optional[int] = None
+    remarks: Optional[str] = None
+    metadata: Optional[dict] = None
+    timestamp: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class OrderTimelineEntry(BaseModel):
+    status: str
+    label: str
+    timestamp: Optional[str] = None
+    remarks: Optional[str] = None
+
+
+class OrderTimelineResponse(BaseModel):
+    order_id: int
+    current_status: str
+    allowed_transitions: list[str]
+    timeline: list[OrderTimelineEntry]
+
+
 class AdminOrderResponse(BaseModel):
     id: int
     order_number: str
@@ -297,6 +332,8 @@ class AdminOrderResponse(BaseModel):
     item_count: int
     created_at: datetime
     items: List[OrderItemResponse] = []
+    allowed_transitions: List[str] = []
+    status_history: List[OrderStatusHistoryResponse] = []
 
     class Config:
         from_attributes = True

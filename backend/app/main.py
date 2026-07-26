@@ -22,6 +22,7 @@ from app.api.v1.endpoints import media as media_router
 from app.api.v1.endpoints import promotion as promotion_router
 from app.api.v1.endpoints import promotions_public as promotions_public_router
 from app.api.v1.endpoints import cart_calculation as cart_calculation_router
+from app.api.v1.endpoints import order_lifecycle as order_lifecycle_router
 from app.db.database import Base, engine
 
 # Create tables in development only; production relies on Alembic migrations
@@ -76,6 +77,7 @@ app.include_router(media_router.router)
 app.include_router(promotion_router.router)
 app.include_router(promotions_public_router.router)
 app.include_router(cart_calculation_router.router)
+app.include_router(order_lifecycle_router.router)
 
 # Serve uploaded files
 app.mount(f"/{settings.UPLOAD_DIR}", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
