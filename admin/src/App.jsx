@@ -15,6 +15,8 @@ import AdminCategoryForm from './pages/admin/AdminCategoryForm';
 import AdminInventoryList from './pages/admin/AdminInventoryList';
 import AdminOrderList from './pages/admin/AdminOrderList';
 import Coupons from './pages/admin/Coupons';
+import AdminCouponList from './pages/admin/AdminCouponList';
+import AdminCouponForm from './pages/admin/AdminCouponForm';
 import Reviews from './pages/admin/Reviews';
 import AdminBannerList from './pages/admin/AdminBannerList';
 import HeroSlides from './pages/admin/HeroSlides';
@@ -76,7 +78,21 @@ function App() {
               <AdminOrderList />
             </PermissionRoute>
           } />
-          <Route path="coupons" element={<Coupons />} />
+          <Route path="coupons" element={
+            <PermissionRoute permission={Permissions.COUPON_VIEW}>
+              <AdminCouponList />
+            </PermissionRoute>
+          } />
+          <Route path="coupons/new" element={
+            <PermissionRoute permission={Permissions.COUPON_CREATE}>
+              <AdminCouponForm />
+            </PermissionRoute>
+          } />
+          <Route path="coupons/:id/edit" element={
+            <PermissionRoute permission={Permissions.COUPON_UPDATE}>
+              <AdminCouponForm />
+            </PermissionRoute>
+          } />
           <Route path="banners" element={<AdminBannerList />} />
           <Route path="hero-slides" element={<HeroSlides />} />
           <Route path="instagram" element={<AdminInstagramFeed />} />

@@ -13,3 +13,4 @@ class AuditEntityType:
     USER = "USER"
     SETTINGS = "SETTINGS"
     PROMOTION = "PROMOTION"
+    COUPON = "COUPON"

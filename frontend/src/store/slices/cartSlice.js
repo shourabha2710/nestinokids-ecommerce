@@ -6,6 +6,8 @@ const initialState = {
   items: [],
   total: 0,
   quantity: 0,
+  coupon: null,
+  couponDiscount: 0,
 };
 
 const cartSlice = createSlice({
@@ -53,14 +55,24 @@ const cartSlice = createSlice({
       state.items = [];
       state.quantity = 0;
       state.total = 0;
+      state.coupon = null;
+      state.couponDiscount = 0;
     },
     setCartItems: (state, action) => {
       state.items = action.payload;
       state.quantity = action.payload.reduce((sum, item) => sum + item.quantity, 0);
       state.total = action.payload.reduce((sum, item) => sum + item.total, 0);
     },
+    applyCoupon: (state, action) => {
+      state.coupon = action.payload.coupon;
+      state.couponDiscount = action.payload.discount;
+    },
+    removeCoupon: (state) => {
+      state.coupon = null;
+      state.couponDiscount = 0;
+    },
   },
 });
 
-export const { addToCart, removeFromCart, updateQuantity, clearCart, setCartItems } = cartSlice.actions;
+export const { addToCart, removeFromCart, updateQuantity, clearCart, setCartItems, applyCoupon, removeCoupon } = cartSlice.actions;
 export default cartSlice.reducer;

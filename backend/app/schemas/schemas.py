@@ -310,15 +310,32 @@ class OrderStatusUpdate(BaseModel):
 # Coupon Schemas
 class CouponBase(BaseModel):
     code: str = Field(..., min_length=3, max_length=50)
+    name: Optional[str] = None
     description: Optional[str] = None
     discount_type: str  # percentage or fixed
     discount_value: float = Field(..., gt=0)
     minimum_order_value: float = 0.0
     maximum_discount: Optional[float] = None
     max_usage: Optional[int] = None
+    per_user_limit: Optional[int] = None
+    applicable_scope: str = "GLOBAL"  # GLOBAL, CATEGORY, PRODUCT
+    priority: int = 0
+    category_id: Optional[int] = None
+    product_id: Optional[int] = None
     start_date: datetime
     end_date: datetime
     is_active: bool = True
+
+    @field_validator('end_date')
+    def validate_dates(cls, v, info):
+        start = info.data.get('start_date')
+        if start and v < start:
+            raise ValueError('end_date must be >= start_date')
+        return v
+
+    @field_validator('code')
+    def validate_code(cls, v):
+        return v.strip().upper()
 
 
 class CouponCreate(CouponBase):
@@ -329,22 +346,44 @@ class CouponResponse(CouponBase):
     id: int
     usage_count: int
     created_at: datetime
-    
+    updated_at: Optional[datetime] = None
+
     class Config:
         from_attributes = True
 
 
 class CouponUpdate(BaseModel):
     code: Optional[str] = None
+    name: Optional[str] = None
     description: Optional[str] = None
     discount_type: Optional[str] = None
     discount_value: Optional[float] = None
     minimum_order_value: Optional[float] = None
     maximum_discount: Optional[float] = None
     max_usage: Optional[int] = None
+    per_user_limit: Optional[int] = None
+    applicable_scope: Optional[str] = None
+    priority: Optional[int] = None
+    category_id: Optional[int] = None
+    product_id: Optional[int] = None
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
     is_active: Optional[bool] = None
+
+
+class CouponValidateRequest(BaseModel):
+    coupon_code: str
+    cart_total: float = 0.0
+    product_ids: list[int] = []
+    category_ids: list[int] = []
+
+
+class CouponValidateResponse(BaseModel):
+    valid: bool
+    discount: float = 0.0
+    discount_type: Optional[str] = None
+    final_total: float = 0.0
+    message: str = ""
 
 
 # Review Schemas

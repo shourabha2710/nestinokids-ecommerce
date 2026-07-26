@@ -31,6 +31,11 @@ class Permissions:
     PROMOTION_UPDATE = "promotion:update"
     PROMOTION_DELETE = "promotion:delete"
 
+    COUPON_VIEW = "coupon:view"
+    COUPON_CREATE = "coupon:create"
+    COUPON_UPDATE = "coupon:update"
+    COUPON_DELETE = "coupon:delete"
+
 
 ALL_PERMISSIONS = [
     getattr(Permissions, attr) for attr in dir(Permissions)
@@ -58,6 +63,10 @@ ROLE_PERMISSIONS = {
         Permissions.PROMOTION_CREATE,
         Permissions.PROMOTION_UPDATE,
         Permissions.PROMOTION_DELETE,
+        Permissions.COUPON_VIEW,
+        Permissions.COUPON_CREATE,
+        Permissions.COUPON_UPDATE,
+        Permissions.COUPON_DELETE,
     ],
     RoleEnum.SUPPORT: [
         Permissions.ORDER_VIEW,
