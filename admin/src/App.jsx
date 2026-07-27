@@ -33,6 +33,7 @@ import AdminSettings from './pages/admin/AdminSettings';
 import AdminMedia from './pages/admin/AdminMedia';
 import AdminPromotionList from './pages/admin/AdminPromotionList';
 import AdminPromotionForm from './pages/admin/AdminPromotionForm';
+import AdminLoyaltyList from './pages/admin/AdminLoyaltyList';
 
 function App() {
   return (
@@ -143,6 +144,11 @@ function App() {
           <Route path="promotions/:id/edit" element={
             <PermissionRoute permission={Permissions.PROMOTION_UPDATE}>
               <AdminPromotionForm />
+            </PermissionRoute>
+          } />
+          <Route path="loyalty" element={
+            <PermissionRoute permission={Permissions.USER_MANAGE}>
+              <AdminLoyaltyList />
             </PermissionRoute>
           } />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

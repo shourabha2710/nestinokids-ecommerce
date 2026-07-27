@@ -84,6 +84,7 @@ export const recommendationAPI = {
 export const loyaltyAPI = {
   getSummary: () => api.get('/loyalty'),
   getHistory: (params) => api.get('/loyalty/history', { params }),
+  getRedeemable: (orderAmount) => api.get('/loyalty/redeemable', { params: { order_amount: orderAmount } }),
 };
 // Referral APIs
 export const referralAPI = {

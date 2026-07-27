@@ -12,6 +12,9 @@ const initialState = {
   promotionDiscount: 0,
   freeShipping: false,
   calculation: null,
+  loyaltyPointsToRedeem: 0,
+  loyaltyDiscount: 0,
+  loyaltyRedeemable: null,
 };
 
 const cartSlice = createSlice({
@@ -65,6 +68,9 @@ const cartSlice = createSlice({
       state.promotionDiscount = 0;
       state.freeShipping = false;
       state.calculation = null;
+      state.loyaltyPointsToRedeem = 0;
+      state.loyaltyDiscount = 0;
+      state.loyaltyRedeemable = null;
     },
     setCartItems: (state, action) => {
       state.items = action.payload;
@@ -96,6 +102,8 @@ const cartSlice = createSlice({
         state.couponDiscount = action.payload.coupon_discount || 0;
         state.promotionDiscount = action.payload.promotion_discount || 0;
         state.freeShipping = action.payload.free_shipping || false;
+        state.loyaltyDiscount = action.payload.loyalty_discount || 0;
+        state.loyaltyPointsToRedeem = action.payload.loyalty_points_redeemed || 0;
         if (action.payload.applied_coupon) {
           state.coupon = action.payload.applied_coupon;
         } else if (!action.payload.coupon_error) {
@@ -108,8 +116,14 @@ const cartSlice = createSlice({
         }
       }
     },
+    setLoyaltyPointsToRedeem: (state, action) => {
+      state.loyaltyPointsToRedeem = action.payload;
+    },
+    setLoyaltyRedeemable: (state, action) => {
+      state.loyaltyRedeemable = action.payload;
+    },
   },
 });
 
-export const { addToCart, removeFromCart, updateQuantity, clearCart, setCartItems, applyCoupon, removeCoupon, setPromotion, clearPromotion, setCalculation } = cartSlice.actions;
+export const { addToCart, removeFromCart, updateQuantity, clearCart, setCartItems, applyCoupon, removeCoupon, setPromotion, clearPromotion, setCalculation, setLoyaltyPointsToRedeem, setLoyaltyRedeemable } = cartSlice.actions;
 export default cartSlice.reducer;

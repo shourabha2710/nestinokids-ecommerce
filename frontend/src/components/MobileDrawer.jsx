@@ -17,6 +17,7 @@ import {
   LogIn,
   UserPlus,
   ChevronDown,
+  Award,
 } from 'lucide-react';
 import { productsAPI } from '../api/endpoints';
 
@@ -31,6 +32,7 @@ const navItems = [
 const authItems = [
   { label: 'Wishlist', path: '/wishlist', icon: Heart },
   { label: 'Orders', path: '/orders', icon: ShoppingBag },
+  { label: 'Rewards', path: '/rewards', icon: Award },
   { label: 'Addresses', path: '/addresses', icon: MapPin },
   { label: 'Profile', path: '/profile', icon: User },
 ];

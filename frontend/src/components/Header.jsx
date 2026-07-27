@@ -345,6 +345,12 @@ const Header = () => {
                         My Orders
                       </button>
                       <button
+                        onClick={() => navigate('/rewards')}
+                        className="block w-full text-left px-4 py-2 hover:bg-ivory"
+                      >
+                        My Rewards
+                      </button>
+                      <button
                         onClick={() => navigate('/addresses')}
                         className="block w-full text-left px-4 py-2 hover:bg-ivory"
                       >
