@@ -158,6 +158,38 @@ class LoyaltyService:
         db.flush()
         return points, new_balance
 
+    def add_signup_bonus(self, db: Session, user_id: int) -> Tuple[int, int]:
+        if not settings.LOYALTY_ENABLED:
+            return 0, 0
+        account = self._get_or_create_account(db, user_id)
+        account.current_points += 25
+        account.lifetime_earned += 25
+        new_balance = account.current_points
+        account.current_tier = self._determine_tier(account.lifetime_earned)
+        self._record_transaction(
+            db, account, LoyaltyTransactionTypeEnum.EARN, 25, new_balance,
+            description="Welcome! 25 signup bonus points credited.",
+            reference_type="signup",
+        )
+        db.flush()
+        return 25, new_balance
+
+    def add_referral_bonus(self, db: Session, referrer_id: int) -> Tuple[int, int]:
+        if not settings.LOYALTY_ENABLED:
+            return 0, 0
+        account = self._get_or_create_account(db, referrer_id)
+        account.current_points += 50
+        account.lifetime_earned += 50
+        new_balance = account.current_points
+        account.current_tier = self._determine_tier(account.lifetime_earned)
+        self._record_transaction(
+            db, account, LoyaltyTransactionTypeEnum.REFERRAL_BONUS, 50, new_balance,
+            description="Referral bonus: 50 points for referring a new user.",
+            reference_type="referral",
+        )
+        db.flush()
+        return 50, new_balance
+
     def get_account(self, db: Session, user_id: int) -> dict:
         account = self._get_or_create_account(db, user_id)
         return {

@@ -318,44 +318,11 @@ def apply_referral(
 
     current_user.referred_by = referrer.id
     db.add(current_user)
-    _award_signup_bonus(current_user.id, db)
-    _award_referral_bonus(referrer.id, db)
+    loyalty_service.add_signup_bonus(db, current_user.id)
+    loyalty_service.add_referral_bonus(db, referrer.id)
     db.commit()
 
     return {"message": "Referral applied successfully"}
-
-
-def _award_signup_bonus(user_id: int, db: Session):
-    from app.models.models import LoyaltyTransaction
-    tx = LoyaltyTransaction(
-        user_id=user_id,
-        points=25,
-        transaction_type="signup_bonus",
-        description="Welcome! 25 signup bonus points credited.",
-    )
-    db.add(tx)
-
-
-def _award_referral_bonus(referrer_id: int, db: Session):
-    from app.models.models import LoyaltyTransaction
-    from app.models.models import LoyaltyAccount, LoyaltyTransactionTypeEnum
-    from app.core.config import settings
-    account = db.query(LoyaltyAccount).filter(LoyaltyAccount.user_id == referrer_id).first()
-    if not account:
-        account = LoyaltyAccount(user_id=referrer_id)
-        db.add(account)
-        db.flush()
-    account.current_points += 50
-    account.lifetime_earned += 50
-    tx = LoyaltyTransaction(
-        loyalty_account_id=account.id,
-        user_id=referrer_id,
-        points=50,
-        balance_after=account.current_points,
-        transaction_type=LoyaltyTransactionTypeEnum.REFERRAL_BONUS,
-        description="Referral bonus: 50 points for referring a new user.",
-    )
-    db.add(tx)
 
 
 # ─── Order-based Loyalty Earning ───
