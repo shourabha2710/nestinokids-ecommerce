@@ -127,6 +127,19 @@ class Settings(BaseSettings):
     FREE_SHIPPING_THRESHOLD: float = 500.0
     FLAT_SHIPPING_RATE: float = 50.0
 
+    # ----------------------------------------------------
+    # Loyalty & Rewards
+    # ----------------------------------------------------
+
+    LOYALTY_ENABLED: bool = True
+    POINTS_PER_CURRENCY: float = 0.1        # 1 point per ₹10 spent (1/10)
+    REDEMPTION_RATE: float = 1.0             # 1 point = ₹1
+    MAX_REDEMPTION_PERCENT: float = 50.0     # max 50% of order total
+    BRONZE_THRESHOLD: int = 0
+    SILVER_THRESHOLD: int = 1000
+    GOLD_THRESHOLD: int = 5000
+    PLATINUM_THRESHOLD: int = 15000
+
     @property
     def ALLOWED_ORIGINS_LIST(self) -> List[str]:
         origins = [

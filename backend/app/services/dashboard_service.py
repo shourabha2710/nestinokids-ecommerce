@@ -5,7 +5,8 @@ from sqlalchemy import func, desc
 from pydantic import BaseModel
 from app.models.models import (
     Product, Category, Order, OrderItem, User, Inventory, ProductVariant,
-    LoyaltyTransaction, SupportTicket, Notification,
+    LoyaltyTransaction, LoyaltyTransactionTypeEnum,
+    SupportTicket, Notification,
     OrderStatusEnum, wishlist_association,
 )
 
@@ -102,20 +103,23 @@ class DashboardService:
             .scalar() or 0
         )
 
-        # Loyalty analytics
+        # Loyalty analytics — use LoyaltyTransactionTypeEnum members
+        # so the query compiles to the PostgreSQL enum value (uppercase .name),
+        # not the old VARCHAR strings that no longer exist.
         total_loyalty_points_issued = (
             db.query(func.coalesce(func.sum(LoyaltyTransaction.points), 0))
             .filter(
-                LoyaltyTransaction.transaction_type.in_(
-                    ["earned", "signup_bonus", "referral_bonus", "admin_adjustment"]
-                ),
+                LoyaltyTransaction.transaction_type.in_([
+                    LoyaltyTransactionTypeEnum.EARN,
+                    LoyaltyTransactionTypeEnum.ADJUSTMENT,
+                ]),
                 LoyaltyTransaction.points > 0,
             )
             .scalar() or 0
         )
         total_loyalty_points_redeemed = (
             db.query(func.coalesce(func.sum(LoyaltyTransaction.points), 0))
-            .filter(LoyaltyTransaction.transaction_type == "redeemed")
+            .filter(LoyaltyTransaction.transaction_type == LoyaltyTransactionTypeEnum.REDEEM)
             .scalar() or 0
         )
 

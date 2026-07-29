@@ -10,14 +10,16 @@ from app.schemas.schemas import (
     LoyaltyHistoryResponse,
     LoyaltyTransactionResponse,
     LoyaltyAdjustRequest,
+    LoyaltyRedeemableResponse,
     ReferralResponse,
     ReferralApplyRequest,
 )
 from app.models.models import (
     User, Product, RecentlyViewed, LoyaltyTransaction, Order, OrderItem,
-    OrderStatusEnum, wishlist_association,
+    OrderStatusEnum, LoyaltyTransactionTypeEnum, wishlist_association,
 )
 from app.api.v1.endpoints.auth import get_current_user, get_optional_current_user, require_admin
+from app.services.loyalty_service import loyalty_service
 from typing import List, Optional
 import math
 
@@ -232,40 +234,13 @@ def get_recommendations(
 
 # ─── Loyalty Points ───
 
-def _get_loyalty_summary(user_id: int, db: Session) -> dict:
-    """Calculate loyalty summary for a user."""
-    earned = (
-        db.query(func.coalesce(func.sum(LoyaltyTransaction.points), 0))
-        .filter(
-            LoyaltyTransaction.user_id == user_id,
-            LoyaltyTransaction.transaction_type.in_(["earned", "signup_bonus", "referral_bonus", "admin_adjustment"]),
-            LoyaltyTransaction.points > 0,
-        )
-        .scalar() or 0
-    )
-    redeemed = (
-        db.query(func.coalesce(func.sum(LoyaltyTransaction.points), 0))
-        .filter(
-            LoyaltyTransaction.user_id == user_id,
-            LoyaltyTransaction.transaction_type == "redeemed",
-        )
-        .scalar() or 0
-    )
-    current = earned - redeemed
-    return {
-        "current_points": max(0, current),
-        "lifetime_earned": earned,
-        "lifetime_redeemed": redeemed,
-    }
-
-
 @router.get("/loyalty", response_model=LoyaltySummaryResponse)
 def get_loyalty_summary(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Get current loyalty points summary."""
-    return _get_loyalty_summary(current_user.id, db)
+    """Get current loyalty points summary with tier."""
+    return loyalty_service.get_account(db, current_user.id)
 
 
 @router.get("/loyalty/history", response_model=LoyaltyHistoryResponse)
@@ -275,20 +250,18 @@ def get_loyalty_history(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Get loyalty points history with summary."""
-    summary = _get_loyalty_summary(current_user.id, db)
-    transactions = (
-        db.query(LoyaltyTransaction)
-        .filter(LoyaltyTransaction.user_id == current_user.id)
-        .order_by(LoyaltyTransaction.created_at.desc())
-        .offset(skip)
-        .limit(limit)
-        .all()
-    )
-    return LoyaltyHistoryResponse(
-        summary=LoyaltySummaryResponse(**summary),
-        transactions=[LoyaltyTransactionResponse.from_orm(t) for t in transactions],
-    )
+    """Get loyalty points transaction history."""
+    return loyalty_service.get_transactions(db, current_user.id, skip=skip, limit=limit)
+
+
+@router.get("/loyalty/redeemable", response_model=LoyaltyRedeemableResponse)
+def get_redeemable_points(
+    order_amount: float = Query(..., gt=0),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get max redeemable points for a given order amount."""
+    return loyalty_service.get_available_redeemable_points(db, current_user.id, order_amount)
 
 
 @router.post("/admin/loyalty/adjust")
@@ -302,15 +275,11 @@ def admin_adjust_loyalty(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    tx = LoyaltyTransaction(
-        user_id=data.user_id,
-        points=data.points,
-        transaction_type="admin_adjustment",
-        description=data.description,
+    points, balance = loyalty_service.admin_adjust(
+        db, data.user_id, data.points, data.reason, admin.id
     )
-    db.add(tx)
     db.commit()
-    return {"message": f"{data.points} points adjusted for user {data.user_id}"}
+    return {"message": f"{points} points adjusted for user {data.user_id}", "new_balance": balance}
 
 
 # ─── Referral Program ───
@@ -349,33 +318,11 @@ def apply_referral(
 
     current_user.referred_by = referrer.id
     db.add(current_user)
-    _award_signup_bonus(current_user.id, db)
-    _award_referral_bonus(referrer.id, db)
+    loyalty_service.add_signup_bonus(db, current_user.id)
+    loyalty_service.add_referral_bonus(db, referrer.id)
     db.commit()
 
     return {"message": "Referral applied successfully"}
-
-
-def _award_signup_bonus(user_id: int, db: Session):
-    from app.models.models import LoyaltyTransaction
-    tx = LoyaltyTransaction(
-        user_id=user_id,
-        points=25,
-        transaction_type="signup_bonus",
-        description="Welcome! 25 signup bonus points credited.",
-    )
-    db.add(tx)
-
-
-def _award_referral_bonus(referrer_id: int, db: Session):
-    from app.models.models import LoyaltyTransaction
-    tx = LoyaltyTransaction(
-        user_id=referrer_id,
-        points=50,
-        transaction_type="referral_bonus",
-        description="Referral bonus: 50 points for referring a new user.",
-    )
-    db.add(tx)
 
 
 # ─── Order-based Loyalty Earning ───
@@ -386,27 +333,19 @@ def award_loyalty_points_for_order(order_id: int, db: Session):
     if not order or order.status != OrderStatusEnum.DELIVERED:
         return
 
-    # ₹100 spent = 1 point
-    points = math.floor(order.final_amount / 100)
-
-    # Check if already awarded for this order
     existing = db.query(LoyaltyTransaction).filter(
         LoyaltyTransaction.order_id == order_id,
-        LoyaltyTransaction.transaction_type == "earned",
+        LoyaltyTransaction.transaction_type == LoyaltyTransactionTypeEnum.EARN,
     ).first()
     if existing:
         return
 
-    if points > 0:
-        tx = LoyaltyTransaction(
-            user_id=order.user_id,
-            points=points,
-            transaction_type="earned",
-            description=f"Points earned from order #{order.order_number}",
-            order_id=order_id,
-        )
-        db.add(tx)
-        db.commit()
+    loyalty_service.earn_points(
+        db, order.user_id, order.final_amount, order_id,
+        description=f"Points earned from order #{order.order_number}",
+        reference_type="order"
+    )
+    db.commit()
 
 
 # ─── Admin Referral Analytics ───
@@ -435,7 +374,7 @@ def get_admin_referral_analytics(
 
     points_awarded = (
         db.query(func.coalesce(func.sum(LoyaltyTransaction.points), 0))
-        .filter(LoyaltyTransaction.transaction_type == "referral_bonus")
+        .filter(LoyaltyTransaction.transaction_type == LoyaltyTransactionTypeEnum.REFERRAL_BONUS)
         .scalar() or 0
     )
 

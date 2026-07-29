@@ -22,6 +22,7 @@ def calculate_order(
     cart_items: list[dict],
     coupon_code: Optional[str] = None,
     user_id: Optional[int] = None,
+    loyalty_points_to_redeem: int = 0,
 ) -> CalculationResponse:
     """Centralized order calculation engine.
 
@@ -138,8 +139,28 @@ def calculate_order(
     # --- 5. Wallet (placeholder) ---
     wallet_discount = 0.0
 
-    # --- 6. Loyalty (placeholder) ---
+    # --- 6. Loyalty ---
     loyalty_discount = 0.0
+    loyalty_points_redeemed = 0
+
+    if loyalty_points_to_redeem > 0 and user_id and settings.LOYALTY_ENABLED:
+        try:
+            subtotal_after_promos_coupons = max(subtotal - promotion_discount - coupon_discount, 0.0)
+            from app.services.loyalty_service import loyalty_service
+            points_redeemed, discount = loyalty_service.redeem_points(
+                db, user_id, loyalty_points_to_redeem, subtotal_after_promos_coupons,
+                description="Points redeemed at checkout"
+            )
+            if points_redeemed > 0:
+                loyalty_discount = round(discount, 2)
+                loyalty_points_redeemed = points_redeemed
+                notifications.append(
+                    CalculationNotification(type="loyalty", text=f"{points_redeemed} loyalty points redeemed (₹{loyalty_discount:.2f} off)")
+                )
+        except ValueError as e:
+            notifications.append(
+                CalculationNotification(type="warning", text=str(e))
+            )
 
     # --- 7. Shipping ---
     total_discount_before_shipping = promotion_discount + coupon_discount + gift_card_discount + wallet_discount + loyalty_discount
@@ -173,6 +194,7 @@ def calculate_order(
         tax=tax,
         wallet_discount=wallet_discount,
         loyalty_discount=loyalty_discount,
+        loyalty_points_redeemed=loyalty_points_redeemed,
         gift_card_discount=gift_card_discount,
         grand_total=grand_total,
         currency="INR",
@@ -186,9 +208,10 @@ def calculate_for_order_creation(
     cart_items: list[dict],
     coupon_code: Optional[str] = None,
     user_id: Optional[int] = None,
+    loyalty_points_to_redeem: int = 0,
 ) -> CalculationResponse:
     """Same as calculate_order but raises on coupon error (for order placement)."""
-    result = calculate_order(db, cart_items, coupon_code, user_id)
+    result = calculate_order(db, cart_items, coupon_code, user_id, loyalty_points_to_redeem)
     if coupon_code and result.coupon_error:
         from fastapi import HTTPException, status
         raise HTTPException(

@@ -263,6 +263,7 @@ class CheckoutRequest(BaseModel):
     shipping_address_id: int
     billing_address_id: Optional[int] = None
     coupon_code: Optional[str] = None
+    loyalty_points_to_redeem: int = 0
 
 
 class OrderResponse(BaseModel):
@@ -743,6 +744,8 @@ class LoyaltySummaryResponse(BaseModel):
     current_points: int = 0
     lifetime_earned: int = 0
     lifetime_redeemed: int = 0
+    current_tier: str = "bronze"
+    tier_progress: dict = {}
 
 
 class LoyaltyTransactionResponse(BaseModel):
@@ -751,6 +754,10 @@ class LoyaltyTransactionResponse(BaseModel):
     transaction_type: str
     description: Optional[str] = None
     order_id: Optional[int] = None
+    balance_after: int = 0
+    reference_type: Optional[str] = None
+    reference_id: Optional[int] = None
+    expires_at: Optional[str] = None
     created_at: datetime
 
     class Config:
@@ -758,14 +765,43 @@ class LoyaltyTransactionResponse(BaseModel):
 
 
 class LoyaltyHistoryResponse(BaseModel):
-    summary: LoyaltySummaryResponse
-    transactions: list[LoyaltyTransactionResponse] = []
+    total: int = 0
+    items: list[LoyaltyTransactionResponse] = []
 
 
 class LoyaltyAdjustRequest(BaseModel):
     user_id: int
     points: int
-    description: str = "Admin adjustment"
+    reason: str = "Admin adjustment"
+
+
+class LoyaltyRedeemRequest(BaseModel):
+    points: int
+    order_amount: float
+
+
+class LoyaltyRedeemableResponse(BaseModel):
+    available_points: int = 0
+    max_redeemable_points: int = 0
+    max_discount: float = 0.0
+    redemption_rate: float = 1.0
+    max_redemption_percent: float = 50.0
+
+
+class LoyaltyAccountAdminResponse(BaseModel):
+    user_id: int
+    first_name: str = ""
+    last_name: str = ""
+    email: str = ""
+    current_points: int = 0
+    lifetime_earned: int = 0
+    lifetime_redeemed: int = 0
+    current_tier: str = "bronze"
+
+
+class LoyaltyAdminListResponse(BaseModel):
+    total: int = 0
+    items: list[LoyaltyAccountAdminResponse] = []
 
 
 # Referral Schemas
@@ -1405,6 +1441,7 @@ class CalculationResponse(BaseModel):
 
     wallet_discount: float = 0.0
     loyalty_discount: float = 0.0
+    loyalty_points_redeemed: int = 0
     gift_card_discount: float = 0.0
 
     grand_total: float

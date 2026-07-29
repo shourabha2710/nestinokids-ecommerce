@@ -237,6 +237,18 @@ class OrderStateMachine:
             except Exception:
                 pass
 
+            try:
+                from app.models.models import LoyaltyTransaction, LoyaltyTransactionTypeEnum
+                earned_tx = db.query(LoyaltyTransaction).filter(
+                    LoyaltyTransaction.order_id == order.id,
+                    LoyaltyTransaction.transaction_type == LoyaltyTransactionTypeEnum.EARN,
+                ).first()
+                if earned_tx:
+                    from app.services.loyalty_service import loyalty_service
+                    loyalty_service.refund_points(db, order.user_id, order.id, earned_tx.points)
+            except Exception:
+                pass
+
         if new_status == OrderStatusEnum.DELIVERED.value:
             try:
                 from app.api.v1.endpoints.engagement import (

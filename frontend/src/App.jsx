@@ -26,6 +26,7 @@ import ShippingPolicyPage from "./pages/ShippingPolicyPage";
 import ReturnPolicyPage from "./pages/ReturnPolicyPage";
 import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
 import TermsPage from "./pages/TermsPage";
+import RewardsPage from "./pages/RewardsPage";
 import { setUser, logout } from "./store/slices/authSlice";
 import { setCartItems } from "./store/slices/cartSlice";
 import { setWishlist } from "./store/slices/wishlistSlice";
@@ -105,6 +106,7 @@ function App() {
               <Route path="/addresses" element={<ProtectedRoute><AddressListPage /></ProtectedRoute>} />
               <Route path="/wishlist" element={<ProtectedRoute><WishlistPage /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+              <Route path="/rewards" element={<ProtectedRoute><RewardsPage /></ProtectedRoute>} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />

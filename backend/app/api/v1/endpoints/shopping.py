@@ -452,8 +452,9 @@ def create_order(
     ]
     calc = calculate_for_order_creation(
         db, calc_items, coupon_code=order_data.coupon_code, user_id=current_user.id,
+        loyalty_points_to_redeem=order_data.loyalty_points_to_redeem,
     )
-    discount_amount = calc.coupon_discount
+    discount_amount = calc.coupon_discount + calc.loyalty_discount
     coupon_id = None
     if calc.applied_coupon:
         coupon = db.query(Coupon).filter(
@@ -641,8 +642,9 @@ def checkout(
     ]
     calc = calculate_for_order_creation(
         db, calc_items, coupon_code=data.coupon_code, user_id=current_user.id,
+        loyalty_points_to_redeem=data.loyalty_points_to_redeem,
     )
-    discount_amount = calc.coupon_discount
+    discount_amount = calc.coupon_discount + calc.loyalty_discount
     coupon_id = None
     if calc.applied_coupon:
         coupon = db.query(Coupon).filter(

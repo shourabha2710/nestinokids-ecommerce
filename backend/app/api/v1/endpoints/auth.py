@@ -5,7 +5,8 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.schemas.schemas import UserCreate, UserResponse, LoginRequest, TokenResponse, UserUpdate, RefreshTokenRequest
-from app.models.models import User, RoleEnum, LoyaltyTransaction
+from app.models.models import User, RoleEnum
+from app.services.loyalty_service import loyalty_service
 from app.core.security import hash_password, verify_password, create_access_token, create_refresh_token
 from app.core.constants import AuditAction, AuditEntityType
 from app.services.audit_service import audit_service
@@ -24,26 +25,7 @@ def _generate_referral_code(db: Session) -> str:
             return code
 
 
-def _award_signup_bonus(user_id: int, db: Session):
-    """Award 25 signup bonus points."""
-    tx = LoyaltyTransaction(
-        user_id=user_id,
-        points=25,
-        transaction_type="signup_bonus",
-        description="Welcome! 25 signup bonus points credited.",
-    )
-    db.add(tx)
 
-
-def _award_referral_bonus(referrer_id: int, db: Session):
-    """Award 50 points to referrer when referred user signs up."""
-    tx = LoyaltyTransaction(
-        user_id=referrer_id,
-        points=50,
-        transaction_type="referral_bonus",
-        description="Referral bonus: 50 points for referring a new user.",
-    )
-    db.add(tx)
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -80,11 +62,11 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
     db.flush()
 
     # Award signup bonus
-    _award_signup_bonus(db_user.id, db)
+    loyalty_service.add_signup_bonus(db, db_user.id)
 
     # Award referral bonus to referrer
     if referred_by_user:
-        _award_referral_bonus(referred_by_user.id, db)
+        loyalty_service.add_referral_bonus(db, referred_by_user.id)
 
     db.commit()
     db.refresh(db_user)

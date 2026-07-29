@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { shoppingAPI } from '../api/endpoints';
+import { shoppingAPI, loyaltyAPI } from '../api/endpoints';
 import { clearCart } from '../store/slices/cartSlice';
 import { motion } from 'framer-motion';
-import { ShieldCheck, Truck, RotateCcw, Sparkles, Check, Tag, X, CheckCircle, Zap } from 'lucide-react';
+import { ShieldCheck, Truck, RotateCcw, Sparkles, Check, Tag, X, CheckCircle, Zap, Award } from 'lucide-react';
 import ProductImage from '../components/ProductImage';
 
 const PLACEHOLDER = '/images/placeholder-product.svg';
@@ -35,10 +35,13 @@ const CheckoutPage = () => {
     city: '', state: '', postal_code: '',
     country: 'India', address_type: 'residential', is_default: false,
   });
+  const [loyaltyInfo, setLoyaltyInfo] = useState(null);
+  const [loyaltyPoints, setLoyaltyPoints] = useState(0);
+  const [useLoyalty, setUseLoyalty] = useState(false);
 
-  const runCalculation = useCallback(async (code) => {
+  const runCalculation = useCallback(async (code, points = 0) => {
     try {
-      const res = await shoppingAPI.calculateCart({ coupon_code: code || null });
+      const res = await shoppingAPI.calculateCart({ coupon_code: code || null, loyalty_points_to_redeem: points });
       setCalc(res.data);
     } catch {
       setCalc(null);
@@ -63,6 +66,7 @@ const CheckoutPage = () => {
       if (defaultAddr) setSelectedAddressId(defaultAddr.id);
       else if (addressesRes.data.length > 0) setSelectedAddressId(addressesRes.data[0].id);
       await runCalculation(null);
+      loyaltyAPI.getSummary().then((res) => setLoyaltyInfo(res.data)).catch(() => {});
     } catch {
       setError('Failed to load checkout data');
     } finally {
@@ -72,12 +76,36 @@ const CheckoutPage = () => {
 
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) return;
-    await runCalculation(couponCode.trim());
+    const pts = useLoyalty ? loyaltyPoints : 0;
+    await runCalculation(couponCode.trim(), pts);
   };
 
   const handleRemoveCoupon = async () => {
     setCouponCode('');
-    await runCalculation(null);
+    const pts = useLoyalty ? loyaltyPoints : 0;
+    await runCalculation(null, pts);
+  };
+
+  const handleLoyaltyToggle = async () => {
+    if (useLoyalty) {
+      setUseLoyalty(false);
+      setLoyaltyPoints(0);
+      await runCalculation(couponCode.trim() || null, 0);
+    } else {
+      setUseLoyalty(true);
+      const maxPoints = Math.min(
+        loyaltyInfo?.current_points || 0,
+        Math.floor((calc?.subtotal || 0) * 0.5)
+      );
+      setLoyaltyPoints(maxPoints);
+      await runCalculation(couponCode.trim() || null, maxPoints);
+    }
+  };
+
+  const handleLoyaltyPointsChange = async (e) => {
+    const val = parseInt(e.target.value) || 0;
+    setLoyaltyPoints(val);
+    await runCalculation(couponCode.trim() || null, val);
   };
 
   const handleCreateAddress = async (e) => {
@@ -101,6 +129,7 @@ const CheckoutPage = () => {
       const res = await shoppingAPI.checkout({
         shipping_address_id: selectedAddressId,
         coupon_code: calc?.applied_coupon?.code || null,
+        loyalty_points_to_redeem: useLoyalty ? loyaltyPoints : 0,
       });
       dispatch(clearCart());
       navigate(`/orders/${res.data.id}`);
@@ -278,6 +307,49 @@ const CheckoutPage = () => {
               <span className="text-sm font-medium text-green-700">Free shipping applied from active promotion!</span>
             </div>
           )}
+
+          {/* Loyalty Points Redemption */}
+          {loyaltyInfo && loyaltyInfo.current_points > 0 && (
+            <div className="bg-white rounded-lg border border-gray-200 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Award className="w-5 h-5 text-gold" />
+                  <span className="font-semibold text-text">Loyalty Points</span>
+                </div>
+                <span className="text-sm text-text-muted">{loyaltyInfo.current_points} points available</span>
+              </div>
+              <div className="flex items-center gap-3 mb-2">
+                <button
+                  onClick={handleLoyaltyToggle}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
+                    useLoyalty
+                      ? 'bg-gold text-white'
+                      : 'bg-gray-100 text-text hover:bg-gray-200'
+                  }`}
+                >
+                  {useLoyalty ? 'Remove' : 'Use Points'}
+                </button>
+                {useLoyalty && (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="range"
+                      min={0}
+                      max={Math.min(loyaltyInfo.current_points, Math.floor((calc?.subtotal || 0) * 0.5))}
+                      value={loyaltyPoints}
+                      onChange={handleLoyaltyPointsChange}
+                      className="flex-1 h-2 rounded-lg appearance-none bg-gray-200 accent-gold"
+                    />
+                    <span className="text-sm font-semibold text-gold">{loyaltyPoints} pts</span>
+                  </div>
+                )}
+              </div>
+              {useLoyalty && (
+                <p className="text-xs text-text-muted">
+                  Max 50% of order total redeemable. {loyaltyPoints > 0 && `≈ ₹${loyaltyPoints} off`}
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Order Summary */}
@@ -326,6 +398,15 @@ const CheckoutPage = () => {
                     <span>Coupon ({calc?.applied_coupon?.code})</span>
                   </div>
                   <span>-₹{calc.coupon_discount}</span>
+                </div>
+              )}
+              {calc?.loyalty_discount > 0 && (
+                <div className="flex justify-between text-amber-600">
+                  <div className="flex items-center gap-1">
+                    <Award className="w-3 h-3" />
+                    <span>Loyalty ({calc.loyalty_points_redeemed} pts)</span>
+                  </div>
+                  <span>-₹{calc.loyalty_discount}</span>
                 </div>
               )}
               <div className="flex justify-between">

@@ -51,6 +51,23 @@ class OrderStatusEnum(str, PyEnum):
     FAILED = "failed"
 
 
+class LoyaltyTierEnum(str, PyEnum):
+    BRONZE = "bronze"
+    SILVER = "silver"
+    GOLD = "gold"
+    PLATINUM = "platinum"
+
+
+class LoyaltyTransactionTypeEnum(str, PyEnum):
+    EARN = "earn"
+    REDEEM = "redeem"
+    EXPIRE = "expire"
+    ADJUSTMENT = "adjustment"
+    REFUND = "refund"
+    REFERRAL_BONUS = "referral_bonus"
+    PROMOTION_BONUS = "promotion_bonus"
+
+
 class PaymentStatusEnum(str, PyEnum):
     PENDING = "pending"
     COMPLETED = "completed"
@@ -98,6 +115,7 @@ class User(Base):
     cart_items = relationship("Product", secondary=cart_association, back_populates="in_carts")
     referrer = relationship("User", remote_side=[id], backref="referred_users")
     loyalty_transactions = relationship("LoyaltyTransaction", back_populates="user", cascade="all, delete-orphan")
+    loyalty_account = relationship("LoyaltyAccount", back_populates="user", uselist=False)
     recently_viewed = relationship("RecentlyViewed", back_populates="user", cascade="all, delete-orphan")
     support_tickets = relationship("SupportTicket", back_populates="user", cascade="all, delete-orphan")
     notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
@@ -646,23 +664,51 @@ class RecentlyViewed(Base):
     )
 
 
+class LoyaltyAccount(Base):
+    __tablename__ = "loyalty_accounts"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'), unique=True, nullable=False)
+    current_points = Column(Integer, default=0, nullable=False)
+    lifetime_earned = Column(Integer, default=0, nullable=False)
+    lifetime_redeemed = Column(Integer, default=0, nullable=False)
+    current_tier = Column(Enum(LoyaltyTierEnum), default=LoyaltyTierEnum.BRONZE)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    user = relationship("User", back_populates="loyalty_account")
+    transactions = relationship("LoyaltyTransaction", back_populates="loyalty_account", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index('idx_loyalty_account_user', 'user_id'),
+    )
+
+
 class LoyaltyTransaction(Base):
     __tablename__ = "loyalty_transactions"
 
     id = Column(Integer, primary_key=True)
+    loyalty_account_id = Column(Integer, ForeignKey('loyalty_accounts.id'), nullable=False)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-    points = Column(Integer, nullable=False)
-    transaction_type = Column(String(30), nullable=False)  # earned, redeemed, referral_bonus, signup_bonus, admin_adjustment
-    description = Column(String(500), nullable=True)
     order_id = Column(Integer, ForeignKey('orders.id'), nullable=True)
+    transaction_type = Column(Enum(LoyaltyTransactionTypeEnum), nullable=False)
+    points = Column(Integer, nullable=False)
+    balance_after = Column(Integer, default=0, nullable=False)
+    description = Column(String(500), nullable=True)
+    reference_type = Column(String(50), nullable=True)
+    reference_id = Column(Integer, nullable=True)
+    expires_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+    loyalty_account = relationship("LoyaltyAccount", back_populates="transactions")
     user = relationship("User", back_populates="loyalty_transactions")
     order = relationship("Order")
 
     __table_args__ = (
-        Index('idx_loyalty_user', 'user_id'),
-        Index('idx_loyalty_order', 'order_id'),
+        Index('idx_loyalty_tx_user', 'user_id'),
+        Index('idx_loyalty_tx_account', 'loyalty_account_id'),
+        Index('idx_loyalty_tx_order', 'order_id'),
+        Index('idx_loyalty_tx_type', 'transaction_type'),
     )
 
 

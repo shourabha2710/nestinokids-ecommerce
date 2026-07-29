@@ -85,4 +85,8 @@ export const adminAPI = {
   createAnnouncement: (data) => api.post('/admin/announcements', data),
   updateAnnouncement: (id, data) => api.put(`/admin/announcements/${id}`, data),
   deleteAnnouncement: (id) => api.delete(`/admin/announcements/${id}`),
+  getLoyaltyAccounts: (params) => api.get('/admin/loyalty', { params }),
+  getUserLoyalty: (userId) => api.get(`/admin/loyalty/${userId}`),
+  adjustLoyalty: (data) => api.post('/admin/loyalty/adjust', data),
+  expireUserLoyalty: (userId) => api.post(`/admin/loyalty/${userId}/expire`),
 };
