@@ -33,4 +33,7 @@ export const Permissions = {
   COUPON_CREATE: 'coupon:create',
   COUPON_UPDATE: 'coupon:update',
   COUPON_DELETE: 'coupon:delete',
+
+  MARKETPLACE_VIEW: 'marketplace:view',
+  MARKETPLACE_MANAGE: 'marketplace:manage',
 };

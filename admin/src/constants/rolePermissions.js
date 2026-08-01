@@ -37,6 +37,8 @@ export const ROLE_PERMISSIONS = {
     Permissions.COUPON_CREATE,
     Permissions.COUPON_UPDATE,
     Permissions.COUPON_DELETE,
+    Permissions.MARKETPLACE_VIEW,
+    Permissions.MARKETPLACE_MANAGE,
   ],
   [Roles.SUPPORT]: [
     Permissions.ORDER_VIEW,

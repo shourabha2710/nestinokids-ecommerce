@@ -1114,6 +1114,8 @@ class StoreSettingResponse(BaseModel):
     cod_enabled: bool = True
     online_payment_enabled: bool = True
     maintenance_mode: bool = False
+    direct_checkout_enabled: bool = False
+    marketplace_purchase_enabled: bool = True
     default_meta_title: Optional[str] = None
     default_meta_description: Optional[str] = None
     default_meta_keywords: Optional[str] = None
@@ -1143,6 +1145,8 @@ class StoreSettingUpdate(BaseModel):
     cod_enabled: Optional[bool] = None
     online_payment_enabled: Optional[bool] = None
     maintenance_mode: Optional[bool] = None
+    direct_checkout_enabled: Optional[bool] = None
+    marketplace_purchase_enabled: Optional[bool] = None
     default_meta_title: Optional[str] = None
     default_meta_description: Optional[str] = None
     default_meta_keywords: Optional[str] = None
