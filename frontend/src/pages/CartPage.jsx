@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { shoppingAPI } from '../api/endpoints';
 import { clearCart, setCartItems, setCalculation } from '../store/slices/cartSlice';
 import MobilePageHeader from '../components/MobilePageHeader';
+import MarketplaceCartSection from '../components/marketplace/MarketplaceCartSection';
 import { motion } from 'framer-motion';
 import ProductImage from '../components/ProductImage';
 import { Tag, X, CheckCircle, Zap, Truck } from 'lucide-react';
@@ -169,6 +170,8 @@ const CartPage = () => {
               </div>
             </motion.div>
           ))}
+
+          <MarketplaceCartSection items={items} />
 
           <div className="bg-white rounded-lg shadow p-6 mt-6">
             <div className="flex justify-between items-center text-lg mb-4">
