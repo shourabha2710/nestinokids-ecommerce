@@ -35,6 +35,7 @@ import {
   Users,
   Percent,
   Award,
+  Store,
 } from 'lucide-react';
 
 const AdminLayout = () => {
@@ -60,6 +61,7 @@ const AdminLayout = () => {
     { path: '/faqs', label: 'FAQs', icon: HelpCircle, permission: null },
     { path: '/announcements', label: 'Announcements', icon: Megaphone, permission: null },
     { path: '/promotions', label: 'Promotions', icon: Percent, permission: Permissions.PROMOTION_VIEW },
+    { path: '/marketplace', label: 'Marketplace Listings', icon: Store, permission: Permissions.MARKETPLACE_VIEW },
     { path: '/loyalty', label: 'Loyalty & Rewards', icon: Award, permission: Permissions.USER_MANAGE },
     { path: '/media', label: 'Media Library', icon: Image, permission: Permissions.MEDIA_VIEW },
     { path: '/activity-logs', label: 'Activity Logs', icon: History, permission: Permissions.AUDIT_VIEW },

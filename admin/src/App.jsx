@@ -34,6 +34,8 @@ import AdminMedia from './pages/admin/AdminMedia';
 import AdminPromotionList from './pages/admin/AdminPromotionList';
 import AdminPromotionForm from './pages/admin/AdminPromotionForm';
 import AdminLoyaltyList from './pages/admin/AdminLoyaltyList';
+import MarketplaceListingsPage from './pages/admin/MarketplaceListingsPage';
+import MarketplaceListingForm from './components/marketplace/MarketplaceListingForm';
 
 function App() {
   return (
@@ -144,6 +146,21 @@ function App() {
           <Route path="promotions/:id/edit" element={
             <PermissionRoute permission={Permissions.PROMOTION_UPDATE}>
               <AdminPromotionForm />
+            </PermissionRoute>
+          } />
+          <Route path="marketplace" element={
+            <PermissionRoute permission={Permissions.MARKETPLACE_VIEW}>
+              <MarketplaceListingsPage />
+            </PermissionRoute>
+          } />
+          <Route path="marketplace/new" element={
+            <PermissionRoute permission={Permissions.MARKETPLACE_MANAGE}>
+              <MarketplaceListingForm />
+            </PermissionRoute>
+          } />
+          <Route path="marketplace/:id/edit" element={
+            <PermissionRoute permission={Permissions.MARKETPLACE_MANAGE}>
+              <MarketplaceListingForm />
             </PermissionRoute>
           } />
           <Route path="loyalty" element={
