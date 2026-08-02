@@ -35,6 +35,7 @@ import AdminPromotionList from './pages/admin/AdminPromotionList';
 import AdminPromotionForm from './pages/admin/AdminPromotionForm';
 import AdminLoyaltyList from './pages/admin/AdminLoyaltyList';
 import MarketplaceListingsPage from './pages/admin/MarketplaceListingsPage';
+import MarketplaceAnalyticsPage from './pages/admin/MarketplaceAnalyticsPage';
 import MarketplaceListingForm from './components/marketplace/MarketplaceListingForm';
 
 function App() {
@@ -151,6 +152,11 @@ function App() {
           <Route path="marketplace" element={
             <PermissionRoute permission={Permissions.MARKETPLACE_VIEW}>
               <MarketplaceListingsPage />
+            </PermissionRoute>
+          } />
+          <Route path="marketplace/analytics" element={
+            <PermissionRoute permission={Permissions.MARKETPLACE_VIEW}>
+              <MarketplaceAnalyticsPage />
             </PermissionRoute>
           } />
           <Route path="marketplace/new" element={

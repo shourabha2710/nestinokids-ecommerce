@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Dict, Optional, List
 from datetime import datetime
 
 from app.models.models import MarketplaceCode
@@ -97,3 +97,56 @@ class ClickCreate(BaseModel):
 class ClickResponse(BaseModel):
     redirect_url: str
     marketplace: str
+
+
+# ─── Analytics schemas ────────────────────────────────────────────────────────
+
+
+class MarketplaceAnalyticsSummary(BaseModel):
+    total_clicks: int = 0
+
+
+class MarketplaceAnalyticsBreakdownItem(BaseModel):
+    marketplace: str
+    clicks: int = 0
+    share: float = 0.0
+
+
+class MarketplaceSourceBreakdownItem(BaseModel):
+    source_page: Optional[str] = None
+    clicks: int = 0
+    share: float = 0.0
+
+
+class MarketplaceDailyTrendItem(BaseModel):
+    date: str
+    clicks: int = 0
+
+
+class MarketplaceTopProductItem(BaseModel):
+    product_id: int
+    name: str = ""
+    is_active: bool = True
+    clicks: int = 0
+    marketplace_clicks: Dict[str, int] = {}
+    source_clicks: Dict[str, int] = {}
+
+
+class MarketplaceRecentClickItem(BaseModel):
+    id: int
+    marketplace: str
+    product_id: Optional[int] = None
+    product_name: Optional[str] = None
+    variant_id: Optional[int] = None
+    variant_label: Optional[str] = None
+    source_page: Optional[str] = None
+    clicked_at: Optional[datetime] = None
+
+
+class MarketplaceAnalyticsResponse(BaseModel):
+    summary: MarketplaceAnalyticsSummary
+    marketplace_breakdown: List[MarketplaceAnalyticsBreakdownItem] = []
+    source_breakdown: List[MarketplaceSourceBreakdownItem] = []
+    daily_trend: List[MarketplaceDailyTrendItem] = []
+    top_products: List[MarketplaceTopProductItem] = []
+    recent_clicks: List[MarketplaceRecentClickItem] = []

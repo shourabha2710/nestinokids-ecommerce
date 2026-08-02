@@ -6,6 +6,7 @@ const marketplaceService = {
   createListing: (data) => api.post('/admin/marketplace/listings', data),
   updateListing: (id, data) => api.put(`/admin/marketplace/listings/${id}`, data),
   deleteListing: (id) => api.delete(`/admin/marketplace/listings/${id}`),
+  getAnalytics: (params) => api.get('/admin/marketplace/analytics', { params }),
 };
 
 export default marketplaceService;
