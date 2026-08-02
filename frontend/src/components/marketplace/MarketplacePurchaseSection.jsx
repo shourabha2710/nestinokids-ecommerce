@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 import { settingsAPI, marketplaceAPI } from '../../api/endpoints';
+import { useMarketplaceRedirect } from '../../hooks/useMarketplaceRedirect';
 import MarketplaceLogo from './MarketplaceLogo';
 
 const BRAND_NAMES = {
@@ -16,8 +17,7 @@ const MarketplacePurchaseSection = ({ productId, variantId, variantRequired, var
   const [enabled, setEnabled] = useState(null);
   const [listings, setListings] = useState([]);
   const [loadingListings, setLoadingListings] = useState(false);
-  const [loadingListingId, setLoadingListingId] = useState(null);
-  const [clickError, setClickError] = useState('');
+  const { loadingListingId, redirectError, handleMarketplaceClick } = useMarketplaceRedirect();
   const requestIdRef = useRef(0);
 
   useEffect(() => {
@@ -66,48 +66,13 @@ const MarketplacePurchaseSection = ({ productId, variantId, variantRequired, var
     };
   }, [enabled, productId, variantId, variantRequired, variantSelected]);
 
-  const handleClick = async (listing) => {
-    if (loadingListingId !== null) return;
-    setLoadingListingId(listing.id);
-    setClickError('');
-
-    let newWindow = null;
-    try {
-      newWindow = window.open('', '_blank');
-    } catch {
-      newWindow = null;
-    }
-
-    try {
-      const res = await marketplaceAPI.trackClick({
-        marketplace_listing_id: listing.id,
-        product_id: productId,
-        variant_id: variantId || null,
-        source_page: 'product_detail',
-      });
-      const redirectUrl = res.data?.redirect_url;
-
-      if (!redirectUrl) {
-        if (newWindow) newWindow.close();
-        setClickError('Unable to open marketplace right now. Please try again.');
-        return;
-      }
-
-      if (newWindow) {
-        newWindow.opener = null;
-        newWindow.location = redirectUrl;
-      } else {
-        const fallback = window.open(redirectUrl, '_blank', 'noopener,noreferrer');
-        if (!fallback) {
-          setClickError('Unable to open marketplace. Please allow pop-ups and try again.');
-        }
-      }
-    } catch {
-      if (newWindow) newWindow.close();
-      setClickError('Unable to open marketplace right now. Please try again.');
-    } finally {
-      setLoadingListingId(null);
-    }
+  const handleClick = (listing) => {
+    handleMarketplaceClick({
+      listingId: listing.id,
+      productId,
+      variantId,
+      sourcePage: 'product_detail',
+    });
   };
 
   if (enabled !== true) return null;
@@ -169,8 +134,8 @@ const MarketplacePurchaseSection = ({ productId, variantId, variantRequired, var
       <p className="text-[10px] text-text-muted mt-2.5">
         Secure checkout, payment and delivery are handled by the selected marketplace.
       </p>
-      {clickError && (
-        <p className="text-xs text-red-500 mt-2">{clickError}</p>
+      {redirectError && (
+        <p className="text-xs text-red-500 mt-2">{redirectError}</p>
       )}
     </div>
   );
