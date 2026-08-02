@@ -214,7 +214,7 @@ def get_cart(
     return cart_items
 
 
-@router.post("/cart/{product_id}")
+@router.post("/cart/{product_id:int}")
 def add_to_cart(
     product_id: int,
     quantity: int = Query(1, ge=1),
@@ -272,7 +272,7 @@ def add_to_cart(
     return {"message": "Product added to cart", "quantity": new_qty}
 
 
-@router.put("/cart/{product_id}")
+@router.put("/cart/{product_id:int}")
 def update_cart_item(
     product_id: int,
     quantity: int = Query(..., ge=0),
@@ -318,7 +318,7 @@ def update_cart_item(
     return {"message": "Cart updated"}
 
 
-@router.delete("/cart/{product_id}")
+@router.delete("/cart/{product_id:int}")
 def remove_from_cart(
     product_id: int,
     variant_id: Optional[int] = None,

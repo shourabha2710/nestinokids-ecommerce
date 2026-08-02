@@ -44,7 +44,7 @@ def _load_cart_items(db: Session, user_id: int) -> list[dict]:
     return items
 
 
-@router.post("/calculate", response_model=CalculationResponse)
+@router.post("/calculate-totals", response_model=CalculationResponse)
 def calculate_cart(
     data: CartCalculateRequest,
     current_user: User = Depends(get_current_user),

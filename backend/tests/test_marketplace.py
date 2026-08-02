@@ -525,9 +525,9 @@ def test_cart_calculation_functional_when_checkout_disabled(client, db, monkeypa
     user, token, _ = _setup_buyer(client, db, email="buyer3@test.com")
     product, variant = _create_product(db, name="BuyMe3", slug="buyme3")
 
-    # Checkout gating must not break the calculation engine. The engine is
-    # exercised directly (POST /cart/calculate is shadowed by an existing
-    # /cart/{product_id} route registered earlier - pre-existing quirk).
+    # Checkout gating must not break the calculation engine. Engine-level
+    # coverage (HTTP-routing coverage lives in
+    # test_cart_calculate_totals_endpoint_http_routing below).
     result = calculate_order(db, cart_items=[{
         "product_id": product.id,
         "category_id": product.category_id,
@@ -538,6 +538,51 @@ def test_cart_calculation_functional_when_checkout_disabled(client, db, monkeypa
     }], user_id=user.id)
     assert result.item_count == 2
     assert result.subtotal == 200.0
+
+
+def test_cart_calculate_totals_endpoint_http_routing(client, db, monkeypatch):
+    """POST /api/v1/cart/calculate-totals must reach the calculation endpoint
+    through HTTP routing and must NOT be captured by POST /api/v1/cart/{product_id}."""
+    monkeypatch.setattr(app_settings, "DIRECT_CHECKOUT_ENABLED", None)
+    store = get_settings(db)
+    store.direct_checkout_enabled = False
+    db.commit()
+
+    user, token, _ = _setup_buyer(client, db, email="buyer4@test.com")
+    product, variant = _create_product(db, name="CalcTotals", slug="calctotals")
+
+    add_resp = client.post(
+        f"/api/v1/cart/{product.id}?quantity=2&variant_id={variant.id}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert add_resp.status_code == 200, add_resp.text
+
+    resp = client.post(
+        "/api/v1/cart/calculate-totals",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"coupon_code": None},
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["item_count"] == 2
+    assert body["subtotal"] == 200.0
+
+
+def test_cart_calculate_static_word_does_not_shadowed_as_product_id(client, db, monkeypatch):
+    """Non-numeric static paths under /cart/ must never be parsed as product_id."""
+    monkeypatch.setattr(app_settings, "DIRECT_CHECKOUT_ENABLED", None)
+    store = get_settings(db)
+    store.direct_checkout_enabled = False
+    db.commit()
+
+    _, token, _ = _setup_buyer(client, db, email="buyer5@test.com")
+
+    resp = client.post(
+        "/api/v1/cart/calculate-totals",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"coupon_code": None},
+    )
+    assert resp.status_code == 200, resp.text
 
 
 def test_marketplace_api_functional_when_checkout_disabled(client, db, monkeypatch):

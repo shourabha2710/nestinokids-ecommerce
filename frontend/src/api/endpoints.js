@@ -37,7 +37,7 @@ export const shoppingAPI = {
   addToCart: (productId, params) => api.post(`/cart/${productId}`, null, { params }),
   updateCartItem: (productId, quantity, variantId = null) => api.put(`/cart/${productId}`, null, { params: { quantity, variant_id: variantId } }),
   removeFromCart: (productId, variantId = null) => api.delete(`/cart/${productId}`, { params: { variant_id: variantId } }),
-  calculateCart: (data) => api.post('/cart/calculate', data),
+  calculateCart: (data) => api.post('/cart/calculate-totals', data),
   
   checkout: (data) => api.post('/checkout', data),
   createOrder: (data) => api.post('/orders', data),
@@ -123,5 +123,12 @@ export const notificationAPI = {
   getUnreadCount: () => api.get('/notifications/unread-count'),
   markRead: (id) => api.put(`/notifications/${id}/read`),
   markAllRead: () => api.put('/notifications/read-all'),
+};
+
+// Marketplace APIs
+export const marketplaceAPI = {
+  getListings: (productId, params) => api.get(`/marketplace/products/${productId}/listings`, { params }),
+  resolve: (data) => api.post('/marketplace/listings/resolve', data),
+  trackClick: (data) => api.post('/marketplace/clicks', data),
 };
 
