@@ -125,7 +125,7 @@ const MarketplacePurchaseSection = ({ productId, variantId, variantRequired, var
               className="flex-1 h-12 px-5 rounded-xl border border-gray-200 bg-white text-text hover:border-gray-300 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
             >
               <MarketplaceLogo marketplace={listing.marketplace} />
-              <span className="text-sm font-semibold truncate">{label}</span>
+              <span className="min-w-0 text-sm font-semibold truncate">{label}</span>
               {isPending && <Loader2 className="w-4 h-4 animate-spin text-gold" />}
             </motion.button>
           );
