@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Search, Filter, Edit3, Trash2, AlertTriangle, CheckCircle, Loader2, ToggleLeft, ToggleRight, Store } from 'lucide-react';
+import { Plus, Search, Filter, Edit3, Trash2, AlertTriangle, CheckCircle, Loader2, ToggleLeft, ToggleRight, Store, BarChart3 } from 'lucide-react';
 import marketplaceService from '../../services/marketplaceService';
 import { adminAPI } from '../../services/adminApi';
 import { getErrorMessage } from '../../utils/errorUtils';
@@ -170,6 +170,15 @@ const MarketplaceListingsPage = () => {
           <h1 className="text-2xl font-bold text-gray-900">Marketplace Listings</h1>
           <p className="text-sm text-gray-500 mt-1">Manage external marketplace purchase links for your products.</p>
         </div>
+        {hasPermission(Permissions.MARKETPLACE_VIEW) && (
+          <button
+            onClick={() => navigate('/marketplace/analytics')}
+            className="inline-flex items-center justify-center space-x-2 bg-white border border-gray-200 text-gray-700 px-4 py-2.5 rounded-xl font-medium hover:border-gold hover:text-gold transition-all text-sm w-full sm:w-auto"
+          >
+            <BarChart3 className="w-4 h-4" />
+            <span>Click Analytics</span>
+          </button>
+        )}
         {hasPermission(Permissions.MARKETPLACE_MANAGE) && (
           <button
             onClick={() => navigate('/marketplace/new')}
