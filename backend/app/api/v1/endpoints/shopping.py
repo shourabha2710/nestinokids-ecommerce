@@ -15,6 +15,7 @@ from app.api.v1.endpoints.auth import get_current_user
 from app.utils.helpers import generate_order_number
 from app.services.notification_event_service import notification_event_service
 from app.services.order_calculation_service import calculate_for_order_creation
+from app.services.marketplace_service import is_direct_checkout_enabled
 from typing import List, Optional
 from datetime import datetime
 
@@ -213,7 +214,7 @@ def get_cart(
     return cart_items
 
 
-@router.post("/cart/{product_id}")
+@router.post("/cart/{product_id:int}")
 def add_to_cart(
     product_id: int,
     quantity: int = Query(1, ge=1),
@@ -271,7 +272,7 @@ def add_to_cart(
     return {"message": "Product added to cart", "quantity": new_qty}
 
 
-@router.put("/cart/{product_id}")
+@router.put("/cart/{product_id:int}")
 def update_cart_item(
     product_id: int,
     quantity: int = Query(..., ge=0),
@@ -317,7 +318,7 @@ def update_cart_item(
     return {"message": "Cart updated"}
 
 
-@router.delete("/cart/{product_id}")
+@router.delete("/cart/{product_id:int}")
 def remove_from_cart(
     product_id: int,
     variant_id: Optional[int] = None,
@@ -380,6 +381,25 @@ def _build_order_response(order: Order) -> dict:
     }
 
 
+def _ensure_direct_checkout_enabled(db: Session) -> None:
+    """Defense-in-depth gate for direct order placement/checkout.
+
+    Cart calculation, coupons, promotions and loyalty are unaffected — only
+    actual order creation is rejected when direct checkout is disabled.
+    """
+    if not is_direct_checkout_enabled(db):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": "DIRECT_CHECKOUT_DISABLED",
+                "message": (
+                    "Direct checkout is currently disabled. "
+                    "You can complete your purchase on Amazon or Flipkart."
+                ),
+            },
+        )
+
+
 # Order Endpoints
 @router.post("/orders", response_model=OrderResponse, status_code=status.HTTP_201_CREATED)
 def create_order(
@@ -388,6 +408,8 @@ def create_order(
     db: Session = Depends(get_db)
 ):
     """Create new order from items list"""
+    _ensure_direct_checkout_enabled(db)
+
     shipping_address = db.query(Address).filter(
         Address.id == order_data.shipping_address_id,
         Address.user_id == current_user.id
@@ -570,6 +592,8 @@ def checkout(
     db: Session = Depends(get_db)
 ):
     """Checkout: create order from cart items"""
+    _ensure_direct_checkout_enabled(db)
+
     shipping_address = db.query(Address).filter(
         Address.id == data.shipping_address_id,
         Address.user_id == current_user.id

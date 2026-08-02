@@ -13,6 +13,7 @@ import { Heart, ShoppingBag, Star, Shield, Truck, RefreshCw, ChevronLeft, Chevro
 import RelatedProducts from '../components/RelatedProducts';
 import YouMayAlsoLike from '../components/YouMayAlsoLike';
 import ProductImage from '../components/ProductImage';
+import MarketplacePurchaseSection from '../components/marketplace/MarketplacePurchaseSection';
 
 const PLACEHOLDER = '/images/placeholder-product.svg';
 
@@ -437,6 +438,14 @@ const ProductDetailPage = () => {
                 <Heart className={`w-5 h-5 ${isInWishlist ? 'fill-current' : ''}`} />
               </motion.button>
             </motion.div>
+
+            {/* Marketplace Purchasing */}
+            <MarketplacePurchaseSection
+              productId={product.id}
+              variantId={selectedVariantId}
+              variantRequired={variants.length > 0}
+              variantSelected={!!selectedVariantId}
+            />
 
             {/* Trust Badges */}
             <motion.div variants={fadeUp} className="grid grid-cols-3 gap-3 mb-6">

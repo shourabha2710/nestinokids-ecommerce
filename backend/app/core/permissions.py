@@ -36,6 +36,9 @@ class Permissions:
     COUPON_UPDATE = "coupon:update"
     COUPON_DELETE = "coupon:delete"
 
+    MARKETPLACE_VIEW = "marketplace:view"
+    MARKETPLACE_MANAGE = "marketplace:manage"
+
 
 ALL_PERMISSIONS = [
     getattr(Permissions, attr) for attr in dir(Permissions)
@@ -67,6 +70,8 @@ ROLE_PERMISSIONS = {
         Permissions.COUPON_CREATE,
         Permissions.COUPON_UPDATE,
         Permissions.COUPON_DELETE,
+        Permissions.MARKETPLACE_VIEW,
+        Permissions.MARKETPLACE_MANAGE,
     ],
     RoleEnum.SUPPORT: [
         Permissions.ORDER_VIEW,

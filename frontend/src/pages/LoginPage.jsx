@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
 import { authAPI } from '../api/endpoints';
 import { setCredentials, setError as setAuthError } from '../store/slices/authSlice';
+import { getErrorMessage } from '../utils/errorUtils';
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -56,7 +57,7 @@ const LoginPage = () => {
       if (status === 401) {
         setError('Invalid email or password');
       } else if (detail) {
-        setError(detail);
+        setError(getErrorMessage(err, 'Unable to login. Please try again.'));
       } else if (err.message === 'Network Error') {
         setError('Unable to connect to server. Please try again.');
       } else {

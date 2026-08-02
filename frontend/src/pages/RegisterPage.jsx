@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
 import { authAPI } from '../api/endpoints';
 import { setCredentials, setError as setAuthError } from '../store/slices/authSlice';
+import { getErrorMessage } from '../utils/errorUtils';
 
 const RegisterPage = () => {
   const navigate = useNavigate();
@@ -96,7 +97,7 @@ const RegisterPage = () => {
         } else if (Array.isArray(detail)) {
           setError(detail.map((d) => d.msg || d.message).join(', '));
         } else {
-          setError(detail || 'Registration failed. Please check your information.');
+          setError(getErrorMessage(err, 'Registration failed. Please check your information.'));
         }
       } else if (err.message === 'Network Error') {
         setError('Unable to connect to server. Please try again.');

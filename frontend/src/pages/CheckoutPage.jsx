@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { shoppingAPI, loyaltyAPI } from '../api/endpoints';
 import { clearCart } from '../store/slices/cartSlice';
+import { getErrorMessage } from '../utils/errorUtils';
 import { motion } from 'framer-motion';
 import { ShieldCheck, Truck, RotateCcw, Sparkles, Check, Tag, X, CheckCircle, Zap, Award } from 'lucide-react';
 import ProductImage from '../components/ProductImage';
@@ -117,7 +118,7 @@ const CheckoutPage = () => {
       setShowAddressForm(false);
       setAddressForm({ first_name: '', last_name: '', email: '', phone: '', address_line_1: '', address_line_2: '', city: '', state: '', postal_code: '', country: 'India', address_type: 'residential', is_default: false });
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to create address');
+      setError(getErrorMessage(err, 'Failed to create address'));
     }
   };
 
@@ -134,7 +135,7 @@ const CheckoutPage = () => {
       dispatch(clearCart());
       navigate(`/orders/${res.data.id}`);
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to place order');
+      setError(getErrorMessage(err, 'Failed to place order'));
     } finally {
       setPlacing(false);
     }

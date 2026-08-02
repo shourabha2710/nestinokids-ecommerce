@@ -507,7 +507,11 @@ class StoreSetting(Base):
     cod_enabled = Column(Boolean, default=True)
     online_payment_enabled = Column(Boolean, default=True)
     maintenance_mode = Column(Boolean, default=False)
-    
+
+    # Marketplace / direct checkout feature flags
+    direct_checkout_enabled = Column(Boolean, nullable=False, default=False, server_default="false")
+    marketplace_purchase_enabled = Column(Boolean, nullable=False, default=True, server_default="true")
+
     # SEO defaults
     default_meta_title = Column(String(255), nullable=True)
     default_meta_description = Column(String(500), nullable=True)
@@ -855,4 +859,68 @@ class PromotionRule(Base):
     __table_args__ = (
         Index("idx_promotion_rule_promo", "promotion_id"),
         Index("idx_promotion_rule_type", "rule_type"),
+    )
+
+
+class MarketplaceCode(str, PyEnum):
+    """Supported marketplaces.
+
+    Stored as VARCHAR in PostgreSQL (application-level validation only) so that
+    adding a new marketplace never requires an ALTER TYPE migration.
+    """
+    AMAZON = "AMAZON"
+    FLIPKART = "FLIPKART"
+    MYNTRA = "MYNTRA"
+    FIRSTCRY = "FIRSTCRY"
+    MEESHO = "MEESHO"
+
+
+class MarketplaceListing(Base):
+    __tablename__ = "marketplace_listings"
+
+    id = Column(Integer, primary_key=True)
+    product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
+    variant_id = Column(Integer, ForeignKey("product_variants.id", ondelete="CASCADE"), nullable=True)
+    marketplace = Column(String(20), nullable=False)
+    external_product_id = Column(String(255), nullable=False)
+    external_url = Column(String(2048), nullable=False)
+    display_label = Column(String(255), nullable=True)
+    allow_variant_fallback = Column(Boolean, nullable=False, default=False, server_default="false")
+    is_active = Column(Boolean, nullable=False, default=True, server_default="true")
+    priority = Column(Integer, nullable=False, default=0, server_default="0")
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    product = relationship("Product", foreign_keys=[product_id])
+    variant = relationship("ProductVariant", foreign_keys=[variant_id])
+    clicks = relationship("MarketplaceRedirectClick", back_populates="listing")
+
+    __table_args__ = (
+        Index('idx_marketplace_listing_product_active', 'product_id', 'is_active'),
+        Index('idx_marketplace_listing_marketplace', 'marketplace'),
+    )
+
+
+class MarketplaceRedirectClick(Base):
+    __tablename__ = "marketplace_redirect_clicks"
+
+    id = Column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True)
+    marketplace_listing_id = Column(
+        Integer,
+        ForeignKey("marketplace_listings.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    marketplace = Column(String(20), nullable=False)
+    product_id = Column(Integer, nullable=True)
+    variant_id = Column(Integer, nullable=True)
+    source_page = Column(String(255), nullable=True)
+    ip_address = Column(String(45), nullable=True)
+    user_agent = Column(String(500), nullable=True)
+    clicked_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    listing = relationship("MarketplaceListing", back_populates="clicks")
+
+    __table_args__ = (
+        Index('idx_marketplace_click_listing', 'marketplace_listing_id'),
+        Index('idx_marketplace_click_marketplace_time', 'marketplace', 'clicked_at'),
     )

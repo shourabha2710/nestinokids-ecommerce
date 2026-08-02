@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -139,6 +139,15 @@ class Settings(BaseSettings):
     SILVER_THRESHOLD: int = 1000
     GOLD_THRESHOLD: int = 5000
     PLATINUM_THRESHOLD: int = 15000
+
+    # ----------------------------------------------------
+    # Marketplace & Direct Checkout feature flags
+    # ----------------------------------------------------
+    # None = "not explicitly set" → falls back to StoreSetting DB value,
+    # then to the application default. See services.settings_service.get_feature_flag.
+
+    DIRECT_CHECKOUT_ENABLED: Optional[bool] = None
+    MARKETPLACE_PURCHASE_ENABLED: Optional[bool] = None
 
     @property
     def ALLOWED_ORIGINS_LIST(self) -> List[str]:
