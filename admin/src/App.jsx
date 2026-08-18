@@ -97,7 +97,11 @@ function App() {
               <AdminCouponForm />
             </PermissionRoute>
           } />
-          <Route path="banners" element={<AdminBannerList />} />
+          <Route path="banners" element={
+            <PermissionRoute permission={Permissions.BANNER_VIEW}>
+              <AdminBannerList />
+            </PermissionRoute>
+          } />
           <Route path="hero-slides" element={<HeroSlides />} />
           <Route path="instagram" element={<AdminInstagramFeed />} />
           <Route path="reviews" element={<Reviews />} />

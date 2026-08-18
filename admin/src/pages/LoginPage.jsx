@@ -80,12 +80,10 @@ const LoginPage = () => {
             transition={{ delay: 0.1 }}
           >
             <img
-              src="/images/logo.png"
+              src="/images/logo1.png"
               alt="NestinoKids"
-              className="h-28 w-auto object-contain mb-6"
+              className="h-[140px] w-auto lg:h-[160px] object-contain rounded-2xl mb-8"
             />
-            <h1 className="text-4xl font-bold text-white mb-1">NestinoKids</h1>
-            <p className="text-sm text-gray-400 tracking-wide mb-6">Softness You Can Trust</p>
             <p className="text-gray-400 text-lg leading-relaxed max-w-md">
               Welcome back, administrator. Manage your store, track orders, and keep your business growing.
             </p>
@@ -120,12 +118,10 @@ const LoginPage = () => {
         >
           <div className="mb-8 md:mb-10 text-center">
             <img
-              src="/images/logo.png"
+              src="/images/logo1.png"
               alt="NestinoKids"
-              className="h-[72px] md:h-20 w-auto object-contain mx-auto mb-3"
+              className="h-[90px] w-auto md:h-[100px] object-contain mx-auto mb-4"
             />
-            <h2 className="text-xl font-bold text-gray-900">NestinoKids</h2>
-            <p className="text-xs text-gray-400 mb-5">Softness You Can Trust</p>
             <h2 className="text-3xl lg:text-2xl font-bold text-gray-900 mb-2">Sign In</h2>
             <p className="text-sm text-gray-500">Enter your credentials to access the admin panel</p>
           </div>

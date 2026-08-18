@@ -1,3 +1,4 @@
+import logging
 import os
 import uuid
 from datetime import datetime
@@ -11,6 +12,7 @@ from app.schemas.schemas import (
     BannerCreate,
     BannerResponse,
     BannerUpdate,
+    BannerUploadResponse,
     DashboardChartsResponse,
     CategoryCreate,
     CategoryResponse,
@@ -50,6 +52,44 @@ from app.services.notification_event_service import notification_event_service
 from typing import List, Optional
 
 ALLOWED_IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp'}
+
+logger = logging.getLogger(__name__)
+
+BANNER_UPLOAD_PREFIX = "/uploads/banners/"
+BANNER_IMAGE_SIGNATURES = {
+    '.jpg': (b'\xff\xd8\xff',),
+    '.jpeg': (b'\xff\xd8\xff',),
+    '.png': (b'\x89PNG\r\n\x1a\n',),
+    '.webp': (b'RIFF', b'WEBP'),
+}
+
+
+def _is_banner_owned_path(url: Optional[str]) -> bool:
+    """True only for paths inside our own /uploads/banners/ storage."""
+    return bool(url) and url.startswith(BANNER_UPLOAD_PREFIX)
+
+
+def _delete_banner_owned_file(url: Optional[str]) -> None:
+    """Safely delete a locally-owned banner image file. Never touches external URLs."""
+    if not _is_banner_owned_path(url):
+        return
+    try:
+        file_path = Path(url.lstrip("/"))
+        if file_path.exists():
+            file_path.unlink()
+    except Exception:
+        logger.exception("Failed to delete banner image file %s", url)
+
+
+def _verify_banner_image_signature(contents: bytes, ext: str) -> bool:
+    """Lightweight magic-byte check to avoid trusting the extension alone."""
+    if not contents:
+        return False
+    signatures = BANNER_IMAGE_SIGNATURES.get(ext, ())
+    if not signatures:
+        return False
+    return any(contents.startswith(sig) for sig in signatures)
+
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
@@ -244,11 +284,62 @@ def admin_create_banner(
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
+    if data.target_category_id is not None:
+        if not db.query(Category).filter(Category.id == data.target_category_id).first():
+            raise HTTPException(
+                status_code=422,
+                detail=f"target_category_id {data.target_category_id} does not exist",
+            )
+
+    if data.target_product_id is not None:
+        if not db.query(Product).filter(Product.id == data.target_product_id).first():
+            raise HTTPException(
+                status_code=422,
+                detail=f"target_product_id {data.target_product_id} does not exist",
+            )
+
     banner = Banner(**data.dict())
     db.add(banner)
     db.commit()
     db.refresh(banner)
     return banner
+
+
+@router.post("/banners/upload", response_model=BannerUploadResponse, status_code=status.HTTP_201_CREATED)
+def admin_upload_banner_image(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    """Upload a banner image. Returns the stored relative path for image_url/mobile_image_url."""
+    ext = Path(file.filename or "").suffix.lower()
+    if ext not in ALLOWED_IMAGE_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File type '{ext}' not allowed. Allowed: {', '.join(sorted(ALLOWED_IMAGE_EXTENSIONS))}",
+        )
+
+    contents = file.file.read()
+    if not contents:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty")
+
+    if len(contents) > settings.MAX_UPLOAD_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File too large. Maximum size is {settings.MAX_UPLOAD_SIZE // (1024 * 1024)}MB",
+        )
+
+    if not _verify_banner_image_signature(contents, ext):
+        raise HTTPException(status_code=400, detail="File content does not match the declared image type")
+
+    unique_name = f"{uuid.uuid4().hex}{ext}"
+    upload_dir = Path(settings.UPLOAD_DIR) / "banners"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    file_path = upload_dir / unique_name
+    with open(file_path, "wb") as f:
+        f.write(contents)
+
+    return BannerUploadResponse(url=f"/{settings.UPLOAD_DIR}/banners/{unique_name}")
 
 
 @router.put("/banners/{banner_id}", response_model=BannerResponse)
@@ -263,12 +354,36 @@ def admin_update_banner(
         raise HTTPException(status_code=404, detail="Banner not found")
 
     update_data = data.dict(exclude_unset=True)
+
+    if update_data.get("target_category_id") is not None:
+        if not db.query(Category).filter(Category.id == update_data["target_category_id"]).first():
+            raise HTTPException(
+                status_code=422,
+                detail=f"target_category_id {update_data['target_category_id']} does not exist",
+            )
+
+    if update_data.get("target_product_id") is not None:
+        if not db.query(Product).filter(Product.id == update_data["target_product_id"]).first():
+            raise HTTPException(
+                status_code=422,
+                detail=f"target_product_id {update_data['target_product_id']} does not exist",
+            )
+
+    old_image_url = banner.image_url
+    old_mobile_image_url = banner.mobile_image_url
+
     for field, value in update_data.items():
         setattr(banner, field, value)
 
     db.add(banner)
     db.commit()
     db.refresh(banner)
+
+    if old_image_url and old_image_url != banner.image_url:
+        _delete_banner_owned_file(old_image_url)
+    if old_mobile_image_url and old_mobile_image_url != banner.mobile_image_url:
+        _delete_banner_owned_file(old_mobile_image_url)
+
     return banner
 
 
@@ -282,8 +397,15 @@ def admin_delete_banner(
     if not banner:
         raise HTTPException(status_code=404, detail="Banner not found")
 
+    image_url = banner.image_url
+    mobile_image_url = banner.mobile_image_url
+
     db.delete(banner)
     db.commit()
+
+    _delete_banner_owned_file(image_url)
+    _delete_banner_owned_file(mobile_image_url)
+
     return {"message": "Banner deleted successfully"}
 
 

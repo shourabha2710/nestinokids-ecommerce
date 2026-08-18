@@ -384,7 +384,7 @@ const HeroSlides = () => {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-text">Hero Slides</h1>
-          <p className="text-text-muted text-sm mt-1">Manage homepage hero carousel slides</p>
+          <p className="text-text-muted text-sm mt-1">Legacy hero carousel — retained for rollback. Not rendered on the homepage. Use Homepage Hero Banners instead.</p>
         </div>
         <button
           onClick={openAdd}

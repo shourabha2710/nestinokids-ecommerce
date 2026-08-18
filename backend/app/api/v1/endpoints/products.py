@@ -22,6 +22,7 @@ def get_active_banners(
     """Get all active banners sorted by order"""
     banners = (
         db.query(Banner)
+        .options(joinedload(Banner.target_product))
         .filter(Banner.is_active == True)
         .order_by(Banner.order.asc(), Banner.created_at.desc())
         .all()

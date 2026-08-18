@@ -29,6 +29,8 @@ export const Permissions = {
   PROMOTION_UPDATE: 'promotion:update',
   PROMOTION_DELETE: 'promotion:delete',
 
+  BANNER_VIEW: 'banner:view',
+
   COUPON_VIEW: 'coupon:view',
   COUPON_CREATE: 'coupon:create',
   COUPON_UPDATE: 'coupon:update',

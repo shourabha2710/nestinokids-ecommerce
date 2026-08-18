@@ -5,6 +5,7 @@ import Header from './Header';
 import Footer from './Footer';
 import CartDrawer from './CartDrawer';
 import AnnouncementBar from './AnnouncementBar';
+import FeatureMarquee from './FeatureMarquee';
 import WhatsAppButton from './WhatsAppButton';
 import PromotionRibbon from './promotions/PromotionRibbon';
 import { fetchActivePromotions } from '../store/slices/promotionsSlice';
@@ -20,6 +21,7 @@ const StorefrontLayout = () => {
 
   return (
     <>
+      <FeatureMarquee />
       <AnnouncementBar />
       <PromotionRibbon promotions={promotions} />
       <Header />

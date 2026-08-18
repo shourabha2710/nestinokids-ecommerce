@@ -53,8 +53,8 @@ const AdminLayout = () => {
     { path: '/orders', label: 'Orders', icon: ShoppingCart, permission: Permissions.ORDER_VIEW },
     { path: '/reports', label: 'Reports', icon: BarChart3, permission: Permissions.REPORT_VIEW },
     { path: '/coupons', label: 'Coupons', icon: Tag, permission: Permissions.COUPON_VIEW },
-    { path: '/banners', label: 'Banners', icon: Image, permission: null },
-    { path: '/hero-slides', label: 'Hero Slides', icon: Monitor, permission: null },
+    { path: '/banners', label: 'Homepage Hero Banners', icon: Image, permission: Permissions.BANNER_VIEW },
+    { path: '/hero-slides', label: 'Hero Slides (Legacy)', icon: Monitor, permission: null },
     { path: '/instagram', label: 'Instagram', icon: Camera, permission: null },
     { path: '/reviews', label: 'Reviews', icon: Star, permission: null },
     { path: '/support-tickets', label: 'Support Tickets', icon: MessageSquare, permission: Permissions.SUPPORT_VIEW },
@@ -125,13 +125,12 @@ const AdminLayout = () => {
         `}>
           <div className={`flex items-center ${sidebarCollapsed ? '' : 'flex-1 min-w-0'} gap-3`}>
             <img
-              src="/images/logo.png"
+              src="/images/logo1.png"
               alt="NestinoKids"
-              className="h-10 w-auto object-contain flex-shrink-0"
+              className="h-[46px] w-auto object-contain flex-shrink-0 rounded-xl"
             />
             {!sidebarCollapsed && (
               <div className="min-w-0">
-                <h2 className="text-base font-bold text-white truncate">NestinoKids</h2>
                 <p className="text-[10px] text-gray-400 truncate">Admin Panel</p>
               </div>
             )}

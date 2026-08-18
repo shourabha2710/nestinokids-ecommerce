@@ -157,7 +157,7 @@ const AdminSettings = () => {
 
   const renderBrandingTab = () => (
     <SettingsSection title="Branding" description="Logo and favicon URLs" icon={Palette}>
-      <SettingsInput label="Logo URL" name="logo_url" value={form.logo_url} onChange={handleChange} placeholder="https://example.com/logo.png" />
+      <SettingsInput label="Logo URL" name="logo_url" value={form.logo_url} onChange={handleChange} placeholder="https://example.com/logo1.png" />
       <SettingsInput label="Favicon URL" name="favicon_url" value={form.favicon_url} onChange={handleChange} placeholder="https://example.com/favicon.ico" />
     </SettingsSection>
   );

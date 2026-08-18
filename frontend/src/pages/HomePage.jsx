@@ -7,13 +7,13 @@ import RecentlyViewedCarousel from '../components/RecentlyViewedCarousel';
 import RecommendedSection from '../components/RecommendedSection';
 import Seo from '../components/seo/Seo';
 import PromotionBanner from '../components/promotions/PromotionBanner';
+import BannerSection from '../components/banners/BannerSection';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowRight,
   ChevronRight,
   Star,
   Heart,
-  Shield,
   Truck,
   Sparkles,
   Leaf,
@@ -21,9 +21,6 @@ import {
   Camera,
   ChevronLeft,
   Play,
-  ShieldCheck,
-  Banknote,
-  RotateCcw,
 } from 'lucide-react';
 
 /* ─── Animations ─── */
@@ -84,7 +81,10 @@ const SectionHeader = ({ title, subtitle, linkTo, linkLabel }) => {
   );
 };
 
-/* ─── HERO V3 ─── */
+/* ─── HERO V3 (LEGACY — preserved for rollback, NOT rendered on homepage) ───
+   Phase 24.3 made BannerSection the single canonical homepage hero.
+   This component is intentionally kept intact (no longer referenced from the
+   render path) so the old Hero Slide system can be restored if needed. */
 const HeroSection = () => {
   const nav = useNavigate();
   const [slides, setSlides] = useState([]);
@@ -193,7 +193,7 @@ const HeroSection = () => {
             </div>
             <div className="relative">
               <div className="aspect-square rounded-2xl bg-gradient-to-br from-gold/10 to-blush/30 flex items-center justify-center">
-                <img src="/images/logo.png" alt="NestinoKids" className="object-contain w-2/3 opacity-20" />
+                <img src="/images/logo1.png" alt="NestinoKids" className="object-contain w-2/3 opacity-20" />
               </div>
             </div>
           </div>
@@ -391,38 +391,6 @@ const HeroSection = () => {
     </section>
   );
 };
-
-/* ─── CONVERSION TRUST STRIP ─── */
-const conversionItems = [
-  { icon: Truck, label: 'Free Shipping', sub: 'on orders ₹999+' },
-  { icon: Banknote, label: 'COD Available', sub: 'pay on delivery' },
-  { icon: ShieldCheck, label: 'Secure Checkout', sub: '100% safe payment' },
-  { icon: RotateCcw, label: '7-Day Returns', sub: 'easy & hassle-free' },
-  { icon: Sparkles, label: 'Premium Quality', sub: 'handpicked fabrics' },
-];
-
-const ConversionStrip = () => (
-  <div className="bg-white border-b border-gray-100">
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div className="flex items-center justify-between gap-4 py-3 overflow-x-auto scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
-        {conversionItems.map((item) => {
-          const Icon = item.icon;
-          return (
-            <div key={item.label} className="flex items-center gap-2 flex-shrink-0">
-              <div className="w-8 h-8 rounded-full bg-gold/5 flex items-center justify-center">
-                <Icon className="w-4 h-4 text-gold" />
-              </div>
-              <div className="text-left">
-                <p className="text-xs font-semibold text-text whitespace-nowrap">{item.label}</p>
-                <p className="text-[10px] text-text-muted whitespace-nowrap">{item.sub}</p>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  </div>
-);
 
 /* ─── AGE-BASED SHOPPING ─── */
 const ageGroups = [
@@ -857,44 +825,6 @@ const InstagramSection = () => {
   );
 };
 
-/* ─── NEWSLETTER ─── */
-const NewsletterSection = () => (
-  <section className="py-14 lg:py-20 bg-text relative overflow-hidden">
-    <div className="absolute top-0 right-0 w-96 h-96 bg-gold/5 rounded-full blur-3xl" />
-    <div className="absolute bottom-0 left-0 w-64 h-64 bg-gold/5 rounded-full blur-3xl" />
-    <div className="relative z-10 max-w-2xl mx-auto px-4 text-center">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-      >
-        <Sparkles className="w-8 h-8 text-gold mx-auto mb-4" />
-        <h2 className="font-display text-3xl lg:text-4xl font-bold text-white mb-3">
-          Join the Family
-        </h2>
-        <p className="text-gray-400 text-sm mb-8 max-w-md mx-auto">
-          Subscribe for exclusive access to new collections, special offers, and style inspiration.
-        </p>
-        <form className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
-          <input
-            type="email"
-            placeholder="Enter your email"
-            className="flex-1 px-5 py-3.5 rounded-xl text-text outline-none text-sm bg-white/10 backdrop-blur-sm border border-white/10 text-white placeholder-gray-500 focus:border-gold/50 transition-colors"
-            required
-          />
-          <button
-            type="submit"
-            className="px-8 py-3.5 bg-gold text-text font-semibold rounded-xl hover:bg-gold-light transition-colors text-sm whitespace-nowrap"
-          >
-            Subscribe
-          </button>
-        </form>
-        <p className="text-xs text-gray-500 mt-4">No spam. Unsubscribe anytime.</p>
-      </motion.div>
-    </div>
-  </section>
-);
-
 /* ─── MAIN HOMEPAGE ─── */
 const HomePage = () => {
   const nav = useNavigate();
@@ -930,18 +860,15 @@ const HomePage = () => {
           '@type': 'Organization',
           name: 'NestinoKids',
           url: 'https://www.nestinokids.com',
-          logo: 'https://www.nestinokids.com/images/logo.png',
+          logo: 'https://www.nestinokids.com/images/logo1.png',
           description: 'Premium kids clothing and accessories for newborns, toddlers, and growing kids.',
         })}
       </script>
-      {/* 1. Hero */}
-      <HeroSection />
+      {/* 1. Primary Hero Banner Carousel — canonical homepage hero (Phase 24.3) */}
+      <BannerSection />
 
-      {/* 1a. Promotion Banner */}
+      {/* 1a. Global Promotion Banner — renders nothing when no global promotions are active */}
       <PromotionBanner promotions={bannerPromotions} />
-
-      {/* 1b. Conversion Trust Strip */}
-      <ConversionStrip />
 
       {/* 2. Recently Viewed (logged-in only) */}
       <RecentlyViewedCarousel />
@@ -1015,9 +942,6 @@ const HomePage = () => {
 
       {/* 11. Instagram Gallery */}
       <InstagramSection />
-
-      {/* 12. Newsletter */}
-      <NewsletterSection />
     </div>
   );
 };

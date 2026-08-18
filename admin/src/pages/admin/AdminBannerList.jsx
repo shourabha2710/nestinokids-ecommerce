@@ -1,6 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { adminAPI } from '../../services/adminApi';
+import { getMediaUrl } from '../../utils/mediaUrl';
+import { usePermissions } from '../../hooks/usePermissions';
+import { Permissions } from '../../constants/permissions';
+import MediaPickerModal from '../../components/media/MediaPickerModal';
 import {
   Image,
   Plus,
@@ -11,7 +15,19 @@ import {
   Save,
   Eye,
   EyeOff,
+  Upload,
+  Loader2,
+  Link2,
+  Trash,
+  ImagePlus,
+  ChevronDown,
+  Search,
+  Check,
 } from 'lucide-react';
+
+const MAX_SIZE = 5 * 1024 * 1024;
+const ALLOWED_EXT = /\.(jpe?g|png|webp)$/i;
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 const emptyForm = {
   title: '',
@@ -21,11 +37,16 @@ const emptyForm = {
   button_text: '',
   button_link: '',
   target_category_id: '',
+  target_product_id: '',
   is_active: true,
   order: 0,
 };
 
 const AdminBannerList = () => {
+  const { hasPermission } = usePermissions();
+  const canViewMedia = hasPermission(Permissions.MEDIA_VIEW);
+  const canManageMedia = hasPermission(Permissions.MEDIA_MANAGE);
+
   const [banners, setBanners] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -35,6 +56,17 @@ const AdminBannerList = () => {
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
   const [imgErrors, setImgErrors] = useState({});
+  const [uploading, setUploading] = useState({ desktop: false, mobile: false });
+  const [uploadError, setUploadError] = useState({ desktop: '', mobile: '' });
+  const [pickerField, setPickerField] = useState(null);
+  const desktopInputRef = useRef(null);
+  const mobileInputRef = useRef(null);
+
+  const [products, setProducts] = useState([]);
+  const [productSearch, setProductSearch] = useState('');
+  const [productOpen, setProductOpen] = useState(false);
+  const [productLoading, setProductLoading] = useState(false);
+  const productPickerRef = useRef(null);
 
   const fetchBanners = async () => {
     try {
@@ -52,37 +84,162 @@ const AdminBannerList = () => {
     fetchBanners();
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    setProductLoading(true);
+    adminAPI.getProducts({ limit: 200 })
+      .then((res) => {
+        if (active) setProducts(Array.isArray(res.data) ? res.data : []);
+      })
+      .catch(() => {
+        if (active) setProducts([]);
+      })
+      .finally(() => {
+        if (active) setProductLoading(false);
+      });
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    const onDocClick = (e) => {
+      if (productPickerRef.current && !productPickerRef.current.contains(e.target)) {
+        setProductOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, []);
+
+  const selectedProduct = products.find((p) => Number(p.id) === Number(form.target_product_id));
+
+  const filteredProducts = useMemo(() => {
+    const q = productSearch.trim().toLowerCase();
+    if (!q) return products;
+    return products.filter((p) => ((p.name || '') + ' ' + String(p.id)).toLowerCase().includes(q));
+  }, [products, productSearch]);
+
+  const handleSelectProduct = (id) => {
+    setForm((prev) => ({ ...prev, target_product_id: id === '' || id == null ? '' : String(id) }));
+    setProductSearch('');
+    setProductOpen(false);
+  };
+
+  const resetForm = () => {
+    setForm(emptyForm);
+    setUploadError({ desktop: '', mobile: '' });
+  };
+
   const openAdd = () => {
     setEditingId(null);
-    setForm(emptyForm);
+    resetForm();
     setError('');
     setShowModal(true);
   };
 
-  const openEdit = async (banner) => {
+  const openEdit = (banner) => {
     setEditingId(banner.id);
     setForm({
-      title: banner.title,
+      title: banner.title || '',
       image_url: banner.image_url,
       mobile_image_url: banner.mobile_image_url || '',
       description: banner.description || '',
       button_text: banner.button_text || '',
       button_link: banner.button_link || '',
       target_category_id: banner.target_category_id ?? '',
+      target_product_id: banner.target_product_id ?? '',
       is_active: banner.is_active,
       order: banner.order,
     });
+    setUploadError({ desktop: '', mobile: '' });
     setError('');
     setShowModal(true);
   };
 
+  const validateFile = (file) => {
+    if (!file) return 'No file selected';
+    if (!ALLOWED_EXT.test(file.name)) {
+      return 'Only JPG, JPEG, PNG or WebP images are allowed';
+    }
+    if (file.type && !ALLOWED_TYPES.includes(file.type)) {
+      return 'Unsupported image type';
+    }
+    if (file.size > MAX_SIZE) {
+      return 'Image must be 5 MB or smaller';
+    }
+    return '';
+  };
+
+  const handleUpload = async (field, file) => {
+    if (!file) return;
+    const validationError = validateFile(file);
+    if (validationError) {
+      setUploadError((prev) => ({ ...prev, [field]: validationError }));
+      return;
+    }
+
+    setUploadError((prev) => ({ ...prev, [field]: '' }));
+    setUploading((prev) => ({ ...prev, [field]: true }));
+    try {
+      const res = await adminAPI.uploadBannerImage(file);
+      const url = res.data.url;
+      setForm((prev) => ({ ...prev, [field]: url }));
+    } catch (err) {
+      setUploadError((prev) => ({ ...prev, [field]: err.response?.data?.detail || 'Image upload failed' }));
+    } finally {
+      setUploading((prev) => ({ ...prev, [field]: false }));
+    }
+  };
+
+  const getSourceLabel = (url) => {
+    if (!url) return '';
+    if (url.startsWith('/uploads/banners/')) return 'Banner upload';
+    if (url.startsWith('/uploads/media/')) return 'Media Library';
+    return 'External URL';
+  };
+
+  const getFilename = (url) => {
+    if (!url) return '';
+    const clean = url.split(/[?#]/)[0];
+    const parts = clean.split('/');
+    return parts[parts.length - 1] || clean;
+  };
+
+  const handleSelectMedia = (media) => {
+    const url = media.file_url || media.url || '';
+    if (pickerField && url) {
+      setForm((prev) => ({ ...prev, [pickerField]: url }));
+    }
+    setPickerField(null);
+  };
+
   const handleSave = async () => {
+    if (uploading.desktop || uploading.mobile) {
+      setError('Please wait for the image upload to finish');
+      return;
+    }
+
+    if (!form.image_url) {
+      setError('Desktop image is required. Upload an image or provide an image URL.');
+      return;
+    }
+    if (form.order !== '' && (Number.isNaN(Number(form.order)) || Number(form.order) < 0)) {
+      setError('Order must be a number >= 0');
+      return;
+    }
+
     try {
       setSaving(true);
       const payload = {
-        ...form,
-        target_category_id: form.target_category_id === '' ? null : parseInt(form.target_category_id),
-        order: parseInt(form.order) || 0,
+        title: form.title.trim(),
+        image_url: form.image_url.trim(),
+        mobile_image_url: form.mobile_image_url ? form.mobile_image_url.trim() : null,
+        description: form.description || null,
+        button_text: form.button_text || null,
+        button_link: form.button_link || null,
+        target_category_id: form.target_category_id === '' ? null : parseInt(form.target_category_id, 10),
+        target_product_id: form.target_product_id === '' ? null : Number(form.target_product_id),
+        is_active: form.is_active,
+        order: parseInt(form.order, 10) || 0,
       };
 
       if (editingId) {
@@ -118,13 +275,132 @@ const AdminBannerList = () => {
     }
   };
 
+  const renderUploadField = ({ field, label, required, inputRef, accentClass = 'bg-gray-900' }) => (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+        {label} {required && '*'}
+      </label>
+
+      <div className="space-y-3">
+        {/* A. Upload new / B. Media Library */}
+        <div className="flex flex-wrap gap-2">
+          <input
+            ref={inputRef}
+            type="file"
+            accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleUpload(field, file);
+              e.target.value = '';
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            disabled={uploading[field]}
+            className={`inline-flex items-center space-x-1.5 text-xs font-medium text-white px-3 py-2 rounded-lg transition-all disabled:opacity-50 ${accentClass} hover:opacity-90`}
+          >
+            {uploading[field] ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Uploading...</span>
+              </>
+            ) : (
+              <>
+                <Upload className="w-3.5 h-3.5" />
+                <span>{form[field] ? 'Replace Image' : 'Upload Image'}</span>
+              </>
+            )}
+          </button>
+          {canViewMedia && (
+            <button
+              type="button"
+              onClick={() => setPickerField(field)}
+              disabled={uploading[field]}
+              className="inline-flex items-center space-x-1.5 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-200 px-3 py-2 rounded-lg transition-all disabled:opacity-50"
+            >
+              <ImagePlus className="w-3.5 h-3.5" />
+              <span>Media Library</span>
+            </button>
+          )}
+        </div>
+
+        {/* C. Manual / external URL */}
+        <div className="flex items-center gap-2">
+          <Link2 className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+          <input
+            type="text"
+            value={form[field]}
+            onChange={(e) => setForm((prev) => ({ ...prev, [field]: e.target.value }))}
+            className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold transition-all"
+            placeholder="or paste an image URL"
+          />
+        </div>
+
+        {uploadError[field] && (
+          <p className="text-xs text-red-600 flex items-center space-x-1">
+            <AlertTriangle className="w-3 h-3" />
+            <span>{uploadError[field]}</span>
+          </p>
+        )}
+
+        {/* Selected image: preview + source info + replace/clear */}
+        {form[field] && (
+          <div className="flex items-center gap-3 bg-gray-50 border border-gray-100 rounded-xl p-3">
+            <div className="relative w-24 h-16 rounded-lg overflow-hidden bg-white border border-gray-200 flex-shrink-0">
+              <img
+                src={getMediaUrl(form[field])}
+                alt={`${label} preview`}
+                className="w-full h-full object-cover"
+                onError={(e) => { e.target.style.display = 'none'; }}
+              />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium text-gray-800 truncate" title={getFilename(form[field])}>
+                {getFilename(form[field])}
+              </p>
+              <span className="inline-block mt-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-white border border-gray-200 text-gray-500">
+                {getSourceLabel(form[field])}
+              </span>
+            </div>
+            <div className="flex flex-col gap-1.5 flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => inputRef.current?.click()}
+                disabled={uploading[field]}
+                className="inline-flex items-center justify-center space-x-1.5 text-xs font-medium text-white px-3 py-1.5 rounded-lg transition-all disabled:opacity-50 bg-gray-900 hover:opacity-90"
+              >
+                {uploading[field] ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <Upload className="w-3 h-3" />
+                )}
+                <span>Replace</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setForm((prev) => ({ ...prev, [field]: '' }))}
+                disabled={uploading[field]}
+                className="inline-flex items-center justify-center space-x-1.5 text-xs font-medium text-gray-500 hover:text-red-600 border border-gray-200 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+              >
+                <Trash className="w-3 h-3" />
+                <span>Clear</span>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   if (loading) {
     return (
       <div>
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Banners</h1>
-            <p className="text-sm text-gray-500 mt-1">Manage promotional banners</p>
+            <h1 className="text-2xl font-bold text-gray-900">Homepage Hero Banners</h1>
+            <p className="text-sm text-gray-500 mt-1">Manage the homepage hero carousel banners</p>
           </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -191,7 +467,7 @@ const AdminBannerList = () => {
               <div className="relative h-40 bg-gray-50">
                 {banner.image_url && !imgErrors[banner.id] ? (
                   <img
-                    src={banner.image_url}
+                    src={getMediaUrl(banner.image_url)}
                     alt={banner.title}
                     className="w-full h-full object-cover"
                     onError={() => setImgErrors((prev) => ({ ...prev, [banner.id]: true }))}
@@ -305,43 +581,98 @@ const AdminBannerList = () => {
 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Title *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Title</label>
                     <input
                       type="text"
                       value={form.title}
                       onChange={(e) => setForm({ ...form, title: e.target.value })}
                       className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold transition-all"
-                      placeholder="Summer Sale 2025"
+                      placeholder="Banner title (optional)"
                     />
                   </div>
+
+                  {renderUploadField({
+                    field: 'image_url',
+                    label: 'Desktop / Primary Image',
+                    required: true,
+                    inputRef: desktopInputRef,
+                  })}
+
+                  {renderUploadField({
+                    field: 'mobile_image_url',
+                    label: 'Mobile Image',
+                    required: false,
+                    inputRef: mobileInputRef,
+                    accentClass: 'bg-rose-500 hover:bg-rose-600',
+                  })}
+
+                  {/* Target Product (makes the entire banner clickable) */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Image URL *</label>
-                    <input
-                      type="text"
-                      value={form.image_url}
-                      onChange={(e) => setForm({ ...form, image_url: e.target.value })}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold transition-all"
-                      placeholder="https://example.com/banner.jpg"
-                    />
-                    {form.image_url && (
-                      <img
-                        src={form.image_url}
-                        alt="preview"
-                        className="mt-2 h-24 w-full rounded-xl object-cover bg-gray-50"
-                        onError={(e) => { e.target.style.display = 'none'; }}
-                      />
-                    )}
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Target Product</label>
+                    <div className="relative" ref={productPickerRef}>
+                      <button
+                        type="button"
+                        onClick={() => setProductOpen((o) => !o)}
+                        className="w-full flex items-center justify-between gap-2 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-left focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold transition-all"
+                      >
+                        <span className={selectedProduct ? 'text-gray-900 truncate' : 'text-gray-400 truncate'}>
+                          {selectedProduct ? selectedProduct.name : 'Search & select a product'}
+                        </span>
+                        {productLoading ? (
+                          <Loader2 className="w-4 h-4 text-gray-400 animate-spin flex-shrink-0" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                        )}
+                      </button>
+                      {productOpen && (
+                        <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-56 flex flex-col overflow-hidden">
+                          <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-100">
+                            <Search className="w-3.5 h-3.5 text-gray-400" />
+                            <input
+                              autoFocus
+                              type="text"
+                              value={productSearch}
+                              onChange={(e) => setProductSearch(e.target.value)}
+                              placeholder="Search products..."
+                              className="w-full text-sm bg-transparent focus:outline-none"
+                            />
+                          </div>
+                          <div className="flex-1 overflow-y-auto">
+                            {filteredProducts.length === 0 ? (
+                              <p className="px-3 py-3 text-xs text-gray-400">No products found</p>
+                            ) : (
+                              filteredProducts.map((p) => (
+                                <button
+                                  key={p.id}
+                                  type="button"
+                                  onClick={() => handleSelectProduct(p.id)}
+                                  className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 transition-colors"
+                                >
+                                  <span className="text-gray-800 truncate">{p.name}</span>
+                                  {Number(p.id) === Number(form.target_product_id) && (
+                                    <Check className="w-4 h-4 text-gold flex-shrink-0" />
+                                  )}
+                                </button>
+                              ))
+                            )}
+                          </div>
+                          {form.target_product_id && (
+                            <button
+                              type="button"
+                              onClick={() => handleSelectProduct('')}
+                              className="w-full px-3 py-2 text-left text-xs font-medium text-red-600 hover:bg-red-50 border-t border-gray-100 transition-colors"
+                            >
+                              Clear product destination
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Selecting a Target Product makes the entire banner clickable to that product page.
+                    </p>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Mobile Image URL</label>
-                    <input
-                      type="text"
-                      value={form.mobile_image_url}
-                      onChange={(e) => setForm({ ...form, mobile_image_url: e.target.value })}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold transition-all"
-                      placeholder="https://example.com/banner-mobile.jpg"
-                    />
-                  </div>
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
                     <textarea
@@ -360,7 +691,7 @@ const AdminBannerList = () => {
                         value={form.button_text}
                         onChange={(e) => setForm({ ...form, button_text: e.target.value })}
                         className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold transition-all"
-                        placeholder="Shop Now"
+                        placeholder="Button text (optional)"
                       />
                     </div>
                     <div>
@@ -370,7 +701,7 @@ const AdminBannerList = () => {
                         value={form.button_link}
                         onChange={(e) => setForm({ ...form, button_link: e.target.value })}
                         className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold transition-all"
-                        placeholder="/products"
+                        placeholder="Optional link (e.g. /products)"
                       />
                     </div>
                   </div>
@@ -384,15 +715,7 @@ const AdminBannerList = () => {
                         onChange={(e) => setForm({ ...form, order: e.target.value })}
                         className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold transition-all"
                       />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Target Category ID</label>
-                      <input
-                        type="number"
-                        value={form.target_category_id}
-                        onChange={(e) => setForm({ ...form, target_category_id: e.target.value })}
-                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold transition-all"
-                      />
+                      <p className="text-xs text-gray-400 mt-1">Lower order appears first</p>
                     </div>
                   </div>
                   <label className="flex items-center space-x-2.5 py-1">
@@ -416,10 +739,10 @@ const AdminBannerList = () => {
                 </button>
                 <button
                   onClick={handleSave}
-                  disabled={saving || !form.title || !form.image_url}
+                  disabled={saving || uploading.desktop || uploading.mobile || !form.image_url}
                   className="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-all text-sm w-full sm:w-auto disabled:opacity-50"
                 >
-                  <Save className="w-4 h-4" />
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                   <span>{saving ? 'Saving...' : editingId ? 'Update' : 'Create'}</span>
                 </button>
               </div>
@@ -473,6 +796,15 @@ const AdminBannerList = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Media Library picker */}
+      <MediaPickerModal
+        open={pickerField !== null}
+        title={pickerField === 'image_url' ? 'Choose Desktop Image' : 'Choose Mobile Image'}
+        onClose={() => setPickerField(null)}
+        onSelect={handleSelectMedia}
+        allowUpload={canManageMedia}
+      />
     </div>
   );
 };

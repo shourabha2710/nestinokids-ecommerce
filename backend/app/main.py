@@ -39,6 +39,8 @@ hero_upload_path = Path(settings.UPLOAD_DIR) / "hero"
 hero_upload_path.mkdir(parents=True, exist_ok=True)
 media_upload_path = Path(settings.UPLOAD_DIR) / "media"
 media_upload_path.mkdir(parents=True, exist_ok=True)
+banner_upload_path = Path(settings.UPLOAD_DIR) / "banners"
+banner_upload_path.mkdir(parents=True, exist_ok=True)
 
 # Initialize FastAPI app
 app = FastAPI(

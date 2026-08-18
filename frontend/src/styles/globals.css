@@ -132,3 +132,64 @@
   }
 
 }
+
+/* Large screens / TV (1600px+): let the standard page container scale
+   fluidly with the viewport so content never sits in a narrow column
+   with huge empty side margins. Below 1600px behaviour is unchanged. */
+@media (min-width: 1600px) {
+  .max-w-7xl {
+    max-width: min(92vw, 2400px);
+  }
+}
+
+/* ─── Top feature/announcement marquee strip ─── */
+.marquee-viewport {
+  overflow: hidden;
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee-scroll 32s linear infinite;
+  will-change: transform;
+}
+
+.marquee-segment {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+@keyframes marquee-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* Slightly faster on small screens so the loop stays lively on phones */
+@media (max-width: 767px) {
+  .marquee-track {
+    animation-duration: 22s;
+  }
+}
+
+/* Respect reduced-motion: stop the loop and show a static, wrapped layout */
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track {
+    animation: none;
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .marquee-segment {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .marquee-segment:last-child {
+    display: none;
+  }
+}
