@@ -545,16 +545,73 @@ class InventoryUpdate(BaseModel):
 
 
 # Banner Schemas
+def _validate_banner_image_url(v: str) -> str:
+    """Allow local /uploads/... paths and http(s) URLs. Reject unsafe schemes."""
+    value = (v or "").strip()
+    if not value:
+        raise ValueError("image URL cannot be empty")
+    if value.startswith("/"):
+        return value
+    if value.lower().startswith(("http://", "https://")):
+        return value
+    raise ValueError("image URL must be a relative /uploads/... path or an http(s) URL")
+
+
+def _validate_banner_link(v: Optional[str]) -> Optional[str]:
+    """Validate CTA link: internal relative links, anchors, mailto, or http(s). Reject unsafe schemes."""
+    if v is None:
+        return v
+    value = v.strip()
+    if not value:
+        return None
+    lowered = value.lower()
+    if value.startswith(("/", "#", "mailto:", "tel:")) or lowered.startswith(("http://", "https://")):
+        return value
+    raise ValueError("button_link must be an internal path or an http(s)/mailto/tel URL")
+
+
 class BannerBase(BaseModel):
-    title: str
+    title: Optional[str] = None
     image_url: str
     mobile_image_url: Optional[str] = None
     description: Optional[str] = None
     button_text: Optional[str] = None
     button_link: Optional[str] = None
     target_category_id: Optional[int] = None
+    target_product_id: Optional[int] = None
     is_active: bool = True
     order: int = 0
+
+    @field_validator('title')
+    @classmethod
+    def validate_title(cls, v):
+        if v is None:
+            return ""
+        return v.strip()
+
+    @field_validator('image_url')
+    @classmethod
+    def validate_image_url(cls, v):
+        return _validate_banner_image_url(v)
+
+    @field_validator('mobile_image_url')
+    @classmethod
+    def validate_mobile_image_url(cls, v):
+        if v is None:
+            return v
+        return _validate_banner_image_url(v)
+
+    @field_validator('button_link')
+    @classmethod
+    def validate_button_link(cls, v):
+        return _validate_banner_link(v)
+
+    @field_validator('order')
+    @classmethod
+    def validate_order(cls, v):
+        if v is not None and v < 0:
+            raise ValueError('Order must be >= 0')
+        return v
 
 
 class BannerCreate(BannerBase):
@@ -569,12 +626,51 @@ class BannerUpdate(BaseModel):
     button_text: Optional[str] = None
     button_link: Optional[str] = None
     target_category_id: Optional[int] = None
+    target_product_id: Optional[int] = None
     is_active: Optional[bool] = None
     order: Optional[int] = None
+
+    @field_validator('title')
+    @classmethod
+    def validate_title(cls, v):
+        if v is None:
+            return None
+        return v.strip()
+
+    @field_validator('image_url')
+    @classmethod
+    def validate_image_url(cls, v):
+        if v is None:
+            return v
+        return _validate_banner_image_url(v)
+
+    @field_validator('mobile_image_url')
+    @classmethod
+    def validate_mobile_image_url(cls, v):
+        if v is None:
+            return v
+        return _validate_banner_image_url(v)
+
+    @field_validator('button_link')
+    @classmethod
+    def validate_button_link(cls, v):
+        return _validate_banner_link(v)
+
+    @field_validator('order')
+    @classmethod
+    def validate_order(cls, v):
+        if v is not None and v < 0:
+            raise ValueError('Order must be >= 0')
+        return v
+
+
+class BannerUploadResponse(BaseModel):
+    url: str
 
 
 class BannerResponse(BannerBase):
     id: int
+    target_product_slug: Optional[str] = None
     created_at: datetime
     
     class Config:

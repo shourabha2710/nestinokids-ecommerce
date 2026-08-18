@@ -29,6 +29,13 @@ export const adminAPI = {
   createBanner: (data) => api.post('/admin/banners', data),
   updateBanner: (id, data) => api.put(`/admin/banners/${id}`, data),
   deleteBanner: (id) => api.delete(`/admin/banners/${id}`),
+  uploadBannerImage: (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/admin/banners/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
   getOrders: (params) => api.get('/admin/orders', { params }),
   getOrder: (id) => api.get(`/admin/orders/${id}`),
   updateOrderStatus: (id, data) => api.put(`/admin/orders/${id}/status`, data),

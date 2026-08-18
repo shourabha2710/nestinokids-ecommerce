@@ -77,13 +77,11 @@ const LoginPage = () => {
       >
         <div className="text-center mb-6">
           <img
-            src="/images/logo.png"
+            src="/images/logo1.png"
             alt="NestinoKids"
-            className="object-contain h-[70px] md:h-[90px] mx-auto mb-3 cursor-pointer"
+            className="object-contain h-[110px] w-auto md:h-[140px] mx-auto mb-4 cursor-pointer"
             onClick={() => navigate('/')}
           />
-          <h2 className="text-xl font-bold text-gold">NestinoKids</h2>
-          <p className="text-xs text-gray-400 mb-4">Softness You Can Trust</p>
           <h1 className="text-3xl font-bold text-gold mb-2">Welcome Back</h1>
           <p className="text-gray-500">Sign in to your NestinoKids account</p>
         </div>

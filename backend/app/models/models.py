@@ -428,13 +428,20 @@ class Banner(Base):
     button_text = Column(String(50), nullable=True)
     button_link = Column(String(255), nullable=True)
     target_category_id = Column(Integer, ForeignKey('categories.id'), nullable=True)
+    target_product_id = Column(Integer, ForeignKey('products.id', ondelete='SET NULL'), nullable=True, index=True)
     is_active = Column(Boolean, default=True, index=True)
     order = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    
+
+    target_product = relationship("Product")
+
     __table_args__ = (
         Index('idx_banner_active', 'is_active'),
     )
+
+    @property
+    def target_product_slug(self):
+        return self.target_product.slug if self.target_product else None
 
 
 class InstagramPost(Base):

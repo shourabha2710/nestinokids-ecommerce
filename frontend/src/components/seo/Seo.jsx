@@ -25,7 +25,7 @@ const Seo = ({
     '@type': 'Organization',
     name: SITE_NAME,
     url: SITE_URL,
-    logo: `${SITE_URL}/images/logo.png`,
+    logo: `${SITE_URL}/images/logo1.png`,
     description: metaDescription,
   };
 

@@ -174,18 +174,14 @@ const Header = () => {
           {/* Logo + Brand — hidden on mobile (shown in MobileDrawer) */}
           <motion.div
             whileHover={{ opacity: 0.9 }}
-            className="hidden md:flex items-center cursor-pointer md:flex-none justify-start gap-3"
+            className="hidden md:flex items-center cursor-pointer md:flex-none justify-start"
             onClick={() => navigate('/')}
           >
             <img
-              src="/images/logo.png"
+              src="/images/logo1.png"
               alt="NestinoKids"
-              className="object-contain h-12"
+              className="object-contain h-[68px] lg:h-[96px] w-auto rounded-xl"
             />
-            <div className="leading-tight">
-              <h1 className="text-2xl font-bold text-gold">NestinoKids</h1>
-              <p className="text-xs tracking-wide text-gray-500">Softness You Can Trust</p>
-            </div>
           </motion.div>
 
           {/* Live Search — desktop only */}
