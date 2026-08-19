@@ -86,13 +86,13 @@ const BannerSection = () => {
               <img
                 src={getMediaUrl(banner.image_url)}
                 alt={banner.title || 'Promotional banner'}
-                className="w-full object-cover aspect-[4/3] sm:aspect-[16/6] lg:aspect-[21/8] 2xl:max-h-[900px]"
+                className="block w-full h-auto object-contain"
                 loading="eager"
                 decoding="async"
                 onError={() => setImgErrors((prev) => ({ ...prev, [`d${banner.id}`]: true }))}
               />
             ) : (
-              <div className="w-full aspect-[4/3] sm:aspect-[16/6] lg:aspect-[21/8] 2xl:max-h-[900px] bg-gray-100 flex items-center justify-center">
+              <div className="w-full min-h-[200px] sm:min-h-[300px] lg:min-h-[400px] bg-gray-100 flex items-center justify-center">
                 <span className="text-gray-400 text-sm">{banner.title || 'Banner'}</span>
               </div>
             )}
