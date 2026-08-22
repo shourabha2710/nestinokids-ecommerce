@@ -257,6 +257,7 @@ class OrderBase(BaseModel):
 
 class OrderCreate(OrderBase):
     items: List[OrderItemBase] = Field(..., min_items=1)
+    loyalty_points_to_redeem: int = 0
 
 
 class CheckoutRequest(BaseModel):

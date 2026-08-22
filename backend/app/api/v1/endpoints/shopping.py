@@ -155,11 +155,17 @@ def remove_from_wishlist(
     return {"message": "Product removed from wishlist"}
 
 
-def _get_cart_items(db: Session, user_id: int):
-    """Get cart items with quantities from association table"""
-    rows = db.execute(
-        select(cart_association).where(cart_association.c.user_id == user_id)
-    ).all()
+def _get_cart_items(db: Session, user_id: int, for_update: bool = False):
+    """Get cart items with quantities from association table.
+
+    for_update takes SELECT ... FOR UPDATE row locks so two concurrent
+    checkout requests for the same cart serialize instead of both seeing
+    the same items and creating duplicate orders (PostgreSQL; no-op on SQLite).
+    """
+    stmt = select(cart_association).where(cart_association.c.user_id == user_id)
+    if for_update:
+        stmt = stmt.with_for_update()
+    rows = db.execute(stmt).all()
     return [
         {
             "id": row.id,
@@ -410,6 +416,13 @@ def create_order(
     """Create new order from items list"""
     _ensure_direct_checkout_enabled(db)
 
+    payment_method = (order_data.payment_method or "cod").strip().lower()
+    if payment_method != "cod":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Unsupported payment method. Only 'cod' is currently accepted.",
+        )
+
     shipping_address = db.query(Address).filter(
         Address.id == order_data.shipping_address_id,
         Address.user_id == current_user.id
@@ -420,6 +433,22 @@ def create_order(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Shipping address not found"
         )
+
+    billing_address_id = shipping_address.id
+    if (
+        order_data.billing_address_id
+        and order_data.billing_address_id != order_data.shipping_address_id
+    ):
+        billing_address = db.query(Address).filter(
+            Address.id == order_data.billing_address_id,
+            Address.user_id == current_user.id
+        ).first()
+        if not billing_address:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Billing address not found"
+            )
+        billing_address_id = billing_address.id
 
     total_amount = 0
     order_items_list = []
@@ -432,11 +461,21 @@ def create_order(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Product {item_data.product_id} not found"
             )
+        if not product.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"{product.name} is no longer available"
+            )
 
         base_price = product.discount_price or product.price
         if item_data.variant_id:
             variant = db.query(ProductVariant).filter(ProductVariant.id == item_data.variant_id).first()
-            price_modifier = variant.price_modifier if variant else 0.0
+            if not variant or variant.product_id != product.id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Variant {item_data.variant_id} is not available for {product.name}",
+                )
+            price_modifier = variant.price_modifier or 0.0
         else:
             price_modifier = 0.0
         price = base_price + price_modifier
@@ -447,10 +486,15 @@ def create_order(
         inventory = db.query(Inventory).filter(
             Inventory.product_id == item_data.product_id
         ).with_for_update().first()
-        if inventory and inventory.available_quantity < item_data.quantity:
+        # A missing inventory row must never bypass stock control.
+        if inventory is None or inventory.available_quantity < item_data.quantity:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Insufficient stock for {product.name}. Available: {inventory.available_quantity}, Requested: {item_data.quantity}",
+                detail=(
+                    f"Insufficient stock for {product.name}. "
+                    f"Available: {inventory.available_quantity if inventory else 0}, "
+                    f"Requested: {item_data.quantity}"
+                ),
             )
 
         order_items_list.append({
@@ -499,8 +543,8 @@ def create_order(
         shipping_amount=shipping_amount,
         final_amount=final_amount,
         shipping_address_id=shipping_address.id,
-        billing_address_id=order_data.billing_address_id or shipping_address.id,
-        payment_method=order_data.payment_method or "cod",
+        billing_address_id=billing_address_id,
+        payment_method=payment_method,
         coupon_id=coupon_id,
     )
     db.add(db_order)
@@ -605,7 +649,20 @@ def checkout(
             detail="Shipping address not found"
         )
 
-    cart_rows = _get_cart_items(db, current_user.id)
+    billing_address_id = shipping_address.id
+    if data.billing_address_id and data.billing_address_id != data.shipping_address_id:
+        billing_address = db.query(Address).filter(
+            Address.id == data.billing_address_id,
+            Address.user_id == current_user.id
+        ).first()
+        if not billing_address:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Billing address not found"
+            )
+        billing_address_id = billing_address.id
+
+    cart_rows = _get_cart_items(db, current_user.id, for_update=True)
     if not cart_rows:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -623,13 +680,23 @@ def checkout(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Product {row['product_id']} not found"
             )
+        if not product.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"{product.name} is no longer available"
+            )
 
         qty = row["quantity"]
         variant_id = row["variant_id"]
         base_price = product.discount_price or product.price
         if variant_id:
             variant = db.query(ProductVariant).filter(ProductVariant.id == variant_id).first()
-            price_modifier = variant.price_modifier if variant else 0.0
+            if not variant or variant.product_id != product.id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Variant {variant_id} is not available for {product.name}",
+                )
+            price_modifier = variant.price_modifier or 0.0
         else:
             price_modifier = 0.0
         price = base_price + price_modifier
@@ -639,10 +706,14 @@ def checkout(
         inventory = db.query(Inventory).filter(
             Inventory.product_id == row["product_id"]
         ).with_for_update().first()
-        if inventory and inventory.available_quantity < qty:
+        # A missing inventory row must never bypass stock control.
+        if inventory is None or inventory.available_quantity < qty:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Insufficient stock for {product.name}. Available: {inventory.available_quantity}, Requested: {qty}",
+                detail=(
+                    f"Insufficient stock for {product.name}. "
+                    f"Available: {inventory.available_quantity if inventory else 0}, Requested: {qty}"
+                ),
             )
 
         order_items_list.append({
@@ -691,7 +762,7 @@ def checkout(
         shipping_amount=shipping_amount,
         final_amount=final_amount,
         shipping_address_id=shipping_address.id,
-        billing_address_id=data.billing_address_id or shipping_address.id,
+        billing_address_id=billing_address_id,
         payment_method="cod",
         coupon_id=coupon_id,
     )
