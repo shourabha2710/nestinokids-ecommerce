@@ -274,6 +274,12 @@ const AdminSettings = () => {
         enabled={form.online_payment_enabled}
         onChange={handleToggle('online_payment_enabled')}
       />
+      <SettingsToggle
+        label="Direct Checkout"
+        description="Allow customers to place orders directly on NestinoKids. When disabled, customers cannot place orders through the website."
+        enabled={form.direct_checkout_enabled}
+        onChange={handleToggle('direct_checkout_enabled')}
+      />
     </SettingsSection>
   );
 
