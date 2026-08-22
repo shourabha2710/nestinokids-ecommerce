@@ -20,6 +20,9 @@ class PublicSettingsResponse(BaseModel):
     default_og_image: Optional[str] = None
     default_canonical_url: Optional[str] = None
     marketplace_purchase_enabled: bool = True
+    cod_enabled: bool = True
+    online_payment_enabled: bool = False
+    direct_checkout_enabled: bool = False
 
     class Config:
         from_attributes = True
@@ -39,4 +42,10 @@ def get_public_settings(db: Session = Depends(get_db)):
         default_og_image=settings.default_og_image,
         default_canonical_url=settings.default_canonical_url,
         marketplace_purchase_enabled=get_feature_flag(db, MARKETPLACE_PURCHASE_ENABLED_KEY),
+        # No online payment gateway is integrated, so online_payment_enabled is
+        # reported as the AND of the admin toggle and actual gateway support.
+        # Until a gateway exists it can never advertise online payments.
+        cod_enabled=settings.cod_enabled,
+        online_payment_enabled=False,
+        direct_checkout_enabled=get_feature_flag(db, "direct_checkout_enabled"),
     )

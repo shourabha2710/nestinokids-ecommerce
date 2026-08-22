@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import select, insert, update, delete
 from app.db.database import get_db
 from app.schemas.schemas import (
@@ -16,6 +16,7 @@ from app.utils.helpers import generate_order_number
 from app.services.notification_event_service import notification_event_service
 from app.services.order_calculation_service import calculate_for_order_creation
 from app.services.marketplace_service import is_direct_checkout_enabled
+from app.services.settings_service import get_settings
 from typing import List, Optional
 from datetime import datetime
 
@@ -364,6 +365,7 @@ def _build_order_response(order: Order) -> dict:
         "tax_amount": order.tax_amount,
         "shipping_amount": order.shipping_amount,
         "final_amount": order.final_amount,
+        "payment_method": order.payment_method or "cod",
         "payment_status": order.payment_status.value if hasattr(order.payment_status, 'value') else order.payment_status,
         "created_at": order.created_at,
         "items": [
@@ -381,6 +383,7 @@ def _build_order_response(order: Order) -> dict:
                 ) or None,
                 "variant_sku": item.variant.sku if item.variant else None,
                 "variant_size": item.variant.size if item.variant else None,
+                "images": item.product.images if item.product else [],
             }
             for item in order.items
         ],
@@ -406,6 +409,24 @@ def _ensure_direct_checkout_enabled(db: Session) -> None:
         )
 
 
+def _ensure_cod_enabled(db: Session) -> None:
+    """COD is the only genuinely implemented payment method; gate it on the
+    admin-controlled StoreSetting.cod_enabled flag. There is no payment
+    gateway integration, so online_payment_enabled has no ordering effect."""
+    store_settings = get_settings(db)
+    if not store_settings.cod_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": "COD_DISABLED",
+                "message": (
+                    "Cash on Delivery is currently unavailable. "
+                    "Please try again later."
+                ),
+            },
+        )
+
+
 # Order Endpoints
 @router.post("/orders", response_model=OrderResponse, status_code=status.HTTP_201_CREATED)
 def create_order(
@@ -415,6 +436,7 @@ def create_order(
 ):
     """Create new order from items list"""
     _ensure_direct_checkout_enabled(db)
+    _ensure_cod_enabled(db)
 
     payment_method = (order_data.payment_method or "cod").strip().lower()
     if payment_method != "cod":
@@ -637,6 +659,7 @@ def checkout(
 ):
     """Checkout: create order from cart items"""
     _ensure_direct_checkout_enabled(db)
+    _ensure_cod_enabled(db)
 
     shipping_address = db.query(Address).filter(
         Address.id == data.shipping_address_id,
@@ -843,11 +866,18 @@ def get_user_orders(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get user's orders"""
-    orders = db.query(Order).filter(
-        Order.user_id == current_user.id
-    ).order_by(Order.created_at.desc()).all()
-    return [_build_order_response(o) for o in orders]
+        """Get user's orders"""
+        orders = (
+            db.query(Order)
+            .options(
+                joinedload(Order.items).joinedload(OrderItem.product).joinedload(Product.images),
+                joinedload(Order.items).joinedload(OrderItem.variant),
+            )
+            .filter(Order.user_id == current_user.id)
+            .order_by(Order.created_at.desc())
+            .all()
+        )
+        return [_build_order_response(o) for o in orders]
 
 
 @router.get("/orders/{order_id}", response_model=OrderResponse)
@@ -856,18 +886,26 @@ def get_order(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get specific order"""
-    order = db.query(Order).filter(
-        Order.id == order_id,
-        Order.user_id == current_user.id
-    ).first()
-
-    if not order:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Order not found"
+        """Get specific order"""
+        order = (
+            db.query(Order)
+            .options(
+                joinedload(Order.items).joinedload(OrderItem.product).joinedload(Product.images),
+                joinedload(Order.items).joinedload(OrderItem.variant),
+            )
+            .filter(
+                Order.id == order_id,
+                Order.user_id == current_user.id
+            )
+            .first()
         )
-    return _build_order_response(order)
+
+        if not order:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Order not found"
+            )
+        return _build_order_response(order)
 
 
 # Coupon Validation

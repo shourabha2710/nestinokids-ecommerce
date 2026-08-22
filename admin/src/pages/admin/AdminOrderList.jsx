@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { adminAPI } from '../../services/adminApi';
 import { usePermissions } from '../../hooks/usePermissions';
 import { Permissions } from '../../constants/permissions';
+import { getMediaUrl } from '../../utils/mediaUrl';
 import {
   ShoppingCart,
   Search,
@@ -18,7 +19,34 @@ import {
   AlertCircle,
   RotateCcw,
   DollarSign,
+  ImageOff,
 } from 'lucide-react';
+
+const PAYMENT_METHOD_LABELS = {
+  cod: 'Cash on Delivery',
+};
+
+const ItemImage = ({ images, alt }) => {
+  const [errored, setErrored] = useState(false);
+  const src =
+    images?.find((img) => img.is_primary)?.image_url || images?.[0]?.image_url;
+  if (!src || errored) {
+    return (
+      <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+        <ImageOff className="w-4 h-4 text-gray-300" />
+      </div>
+    );
+  }
+  return (
+    <img
+      src={getMediaUrl(src)}
+      alt={alt || 'Product'}
+      onError={() => setErrored(true)}
+      className="w-10 h-10 rounded-lg object-cover border border-gray-200 flex-shrink-0"
+      loading="lazy"
+    />
+  );
+};
 
 const STATUS_CONFIG = {
   pending: { icon: Clock, bg: 'bg-yellow-50', text: 'text-yellow-700', dot: 'bg-yellow-500', label: 'Pending' },
@@ -339,6 +367,12 @@ const AdminOrderList = () => {
                         </div>
                         <div className="space-y-2">
                           <div className="flex justify-between items-center text-sm gap-2">
+                            <span className="text-gray-500 flex-shrink-0">Method</span>
+                            <span className="text-gray-900 font-medium">
+                              {PAYMENT_METHOD_LABELS[detailOrder.payment_method] || detailOrder.payment_method || '—'}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center text-sm gap-2">
                             <span className="text-gray-500 flex-shrink-0">Payment</span>
                             <PaymentBadge status={detailOrder.payment_status} />
                           </div>
@@ -438,6 +472,7 @@ const AdminOrderList = () => {
                               <table className="w-full text-sm">
                                 <thead>
                                   <tr className="border-b border-gray-100">
+                                    <th className="text-left px-4 py-3 font-semibold text-gray-600 text-xs whitespace-nowrap">Image</th>
                                     <th className="text-left px-4 py-3 font-semibold text-gray-600 text-xs whitespace-nowrap">Product</th>
                                     <th className="text-left px-4 py-3 font-semibold text-gray-600 text-xs whitespace-nowrap">Size</th>
                                     <th className="text-left px-4 py-3 font-semibold text-gray-600 text-xs whitespace-nowrap">SKU</th>
@@ -449,6 +484,9 @@ const AdminOrderList = () => {
                                 <tbody>
                                   {detailOrder.items?.map((item) => (
                                     <tr key={item.id} className="border-b border-gray-100 last:border-0">
+                                      <td className="px-4 py-3">
+                                        <ItemImage images={item.images} alt={item.product_name} />
+                                      </td>
                                       <td className="px-4 py-3 text-gray-900 break-words">
                                         {item.product_name || `Product #${item.product_id}`}
                                       </td>

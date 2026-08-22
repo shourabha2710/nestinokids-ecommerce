@@ -217,7 +217,11 @@ const OrderDetailPage = () => {
             <div key={item.id} className="flex gap-4 pb-4 border-b last:border-0 last:pb-0">
               <ProductImage
                 variant="cart"
-                src={PLACEHOLDER}
+                src={
+                  item.images?.find((img) => img.is_primary)?.image_url ||
+                  item.images?.[0]?.image_url ||
+                  PLACEHOLDER
+                }
                 alt={item.product_name}
                 className="w-16 h-16 rounded"
               />
@@ -260,7 +264,13 @@ const OrderDetailPage = () => {
             <span className="text-gold">₹{order.final_amount}</span>
           </div>
           <div className="flex justify-between text-gray-600 pt-2 border-t">
-            <span>Payment</span>
+            <span>Payment Method</span>
+            <span className="font-medium text-text">
+              {order.payment_method === 'cod' ? 'Cash on Delivery' : (order.payment_method || 'Cash on Delivery')}
+            </span>
+          </div>
+          <div className="flex justify-between text-gray-600">
+            <span>Payment Status</span>
             <span className="capitalize">{order.payment_status}</span>
           </div>
         </div>
