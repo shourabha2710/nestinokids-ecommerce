@@ -43,24 +43,35 @@ const BannerSection = () => {
   const handlePrev = () => setCurrent((p) => (p - 1 + banners.length) % banners.length);
   const handleNext = () => setCurrent((p) => (p + 1) % banners.length);
 
-  const handleClick = (banner) => {
-    const link = banner.button_link;
-    if (!link) {
-      if (banner.target_category_id) {
-        nav(`/products?category=${banner.target_category_id}`);
-      }
-      return;
+  const getBannerDestination = (banner) => {
+    if (!banner) return null;
+    if (banner.target_product_id && banner.target_product_slug) {
+      return `/products/${banner.target_product_slug}`;
     }
-    if (/^https?:\/\//i.test(link)) {
-      window.open(link, '_blank', 'noopener,noreferrer');
-    } else if (/^mailto:|^tel:/i.test(link)) {
-      window.location.href = link;
+    if (banner.button_link) return banner.button_link;
+    if (banner.target_category_id) {
+      return `/products?category=${banner.target_category_id}`;
+    }
+    return null;
+  };
+
+  const openDestination = (destination) => {
+    if (/^https?:\/\//i.test(destination)) {
+      window.open(destination, '_blank', 'noopener,noreferrer');
+    } else if (/^mailto:|^tel:/i.test(destination)) {
+      window.location.href = destination;
     } else {
-      nav(link);
+      nav(destination);
     }
   };
 
+  const handleClick = (banner) => {
+    const destination = getBannerDestination(banner);
+    if (destination) openDestination(destination);
+  };
+
   const banner = banners[current];
+  const isClickable = Boolean(getBannerDestination(banner));
 
   return (
     <section className="relative bg-[#FFFCF7]" aria-label="Promotional banners">
@@ -71,8 +82,8 @@ const BannerSection = () => {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.4 }}
-          className="relative w-full overflow-hidden cursor-pointer"
-          onClick={() => handleClick(banner)}
+          className={`relative w-full overflow-hidden ${isClickable ? 'cursor-pointer' : 'cursor-default'}`}
+          onClick={isClickable ? () => handleClick(banner) : undefined}
         >
           <picture>
             {banner.mobile_image_url && !imgErrors[`m${banner.id}`] && (
