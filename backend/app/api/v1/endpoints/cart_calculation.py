@@ -60,4 +60,5 @@ def calculate_cart(
         cart_items=cart_items,
         coupon_code=data.coupon_code,
         user_id=current_user.id,
+        loyalty_points_to_redeem=data.loyalty_points_to_redeem,
     )
