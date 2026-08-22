@@ -252,6 +252,21 @@ const CartPage = () => {
               </div>
             )}
 
+            {/* Free shipping threshold progress */}
+            {!calc?.free_shipping && calc?.free_shipping_threshold != null && (
+              calc.subtotal >= calc.free_shipping_threshold ? (
+                <div className="flex items-center gap-2 text-green-600 text-sm font-semibold mb-2">
+                  <Truck className="w-4 h-4" />
+                  <span>Free shipping unlocked!</span>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500 mb-2 flex items-center gap-2">
+                  <Truck className="w-4 h-4 text-gold" />
+                  Add <span className="font-semibold text-gold">₹{Math.max(0, Math.ceil(calc.free_shipping_threshold - calc.subtotal)).toFixed(0)}</span> more for FREE shipping
+                </p>
+              )
+            )}
+
             {/* Shipping */}
             {!calc?.free_shipping && (
               <p className="text-sm text-gray-500 mt-1">

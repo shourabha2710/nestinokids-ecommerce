@@ -183,6 +183,18 @@ def calculate_discount(coupon: Coupon, cart_total: float) -> float:
         return min(coupon.discount_value, cart_total)
 
 
+def _as_utc(dt: Optional[datetime]) -> Optional[datetime]:
+    """Normalize DB datetimes to aware UTC.
+
+    SQLite round-trips DateTime columns as naive values; Postgres returns
+    aware ones. Comparing against datetime.now(timezone.utc) raises TypeError
+    for naive inputs, silently invalidating coupons.
+    """
+    if dt is None or dt.tzinfo is not None:
+        return dt
+    return dt.replace(tzinfo=timezone.utc)
+
+
 def validate_coupon_for_cart(
     db: Session,
     coupon_code: str,
@@ -203,10 +215,12 @@ def validate_coupon_for_cart(
     if not coupon.is_active:
         return False, 0.0, "Coupon is disabled"
 
-    if coupon.start_date and now < coupon.start_date:
+    start = _as_utc(coupon.start_date)
+    if start and now < start:
         return False, 0.0, "Coupon is not active yet"
 
-    if coupon.end_date and now > coupon.end_date:
+    end = _as_utc(coupon.end_date)
+    if end and now > end:
         return False, 0.0, "Coupon has expired"
 
     if coupon.minimum_order_value and cart_total < coupon.minimum_order_value:

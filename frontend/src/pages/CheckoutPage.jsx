@@ -441,7 +441,7 @@ const CheckoutPage = () => {
               <div className="grid grid-cols-2 gap-3">
                 {[
                   { icon: ShieldCheck, label: 'Secure Checkout', sub: '100% safe payment' },
-                  { icon: Truck, label: 'Fast Shipping', sub: 'Free on orders ₹499+' },
+                  { icon: Truck, label: 'Fast Shipping', sub: `Free on orders ₹${Math.round(calc?.free_shipping_threshold ?? 500)}+` },
                   { icon: RotateCcw, label: '7-Day Returns', sub: 'Easy & hassle-free' },
                   { icon: Sparkles, label: 'Premium Quality', sub: 'Handpicked fabrics' },
                 ].map((item) => {

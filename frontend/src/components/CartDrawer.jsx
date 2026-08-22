@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, ShoppingBag, Plus, Minus, Trash2, Truck, Loader2 } from 'lucide-react';
 import { closeCartDrawer } from '../store/slices/uiSlice';
 import { setCartItems } from '../store/slices/cartSlice';
-import { shoppingAPI, productsAPI, settingsAPI, recommendationAPI } from '../api/endpoints';
+import { shoppingAPI, productsAPI, recommendationAPI } from '../api/endpoints';
 import ProductImage from './ProductImage';
 
 const PLACEHOLDER = '/images/placeholder-product.svg';
@@ -18,13 +18,19 @@ const CartDrawer = () => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [recommendations, setRecommendations] = useState([]);
-  const [freeThreshold, setFreeThreshold] = useState(999);
+  const [calc, setCalc] = useState(null);
   const [updatingId, setUpdatingId] = useState(null);
   const [addingRecId, setAddingRecId] = useState(null);
 
   const syncToRedux = useCallback((cartItems) => {
     dispatch(setCartItems(cartItems));
   }, [dispatch]);
+
+  const refreshCalculation = useCallback(() => {
+    shoppingAPI.calculateCart({})
+      .then((res) => setCalc(res.data))
+      .catch(() => setCalc(null));
+  }, []);
 
   const fetchCart = useCallback(async () => {
     if (!isAuthenticated) return;
@@ -43,11 +49,10 @@ const CartDrawer = () => {
 
   useEffect(() => {
     if (cartDrawerOpen) {
+      setCalc(null);
       fetchCart();
-      settingsAPI.getPublic().then((res) => {
-        if (res.data?.free_shipping_threshold) setFreeThreshold(res.data.free_shipping_threshold);
-      }).catch(() => {});
       if (isAuthenticated) {
+        refreshCalculation();
         recommendationAPI.getRecommendations({ limit: 4 })
           .then((res) => {
             const data = res.data;
@@ -75,6 +80,7 @@ const CartDrawer = () => {
     syncToRedux(optimistically);
     try {
       await shoppingAPI.updateCartItem(item.product_id || item.id, newQty, item.variant_id);
+      refreshCalculation();
     } catch {
       setItems(prev);
       syncToRedux(prev);
@@ -92,6 +98,8 @@ const CartDrawer = () => {
     syncToRedux(optimistically);
     try {
       await shoppingAPI.removeFromCart(item.product_id || item.id, item.variant_id);
+      if (optimistically.length === 0) setCalc(null);
+      else refreshCalculation();
     } catch {
       setItems(prev);
       syncToRedux(prev);
@@ -108,6 +116,7 @@ const CartDrawer = () => {
       const res = await shoppingAPI.getCart();
       setItems(res.data);
       syncToRedux(res.data);
+      refreshCalculation();
     } catch {
       // silently fail
     } finally {
@@ -115,10 +124,19 @@ const CartDrawer = () => {
     }
   };
 
+  // Authoritative values come from the backend calculation engine
+  // (POST /cart/calculate-totals) — never from a client-side formula.
   const subtotal = items.reduce((sum, i) => sum + i.total, 0);
-  const remaining = Math.max(0, freeThreshold - subtotal);
-  const progressPct = Math.min(100, (subtotal / freeThreshold) * 100);
-  const shipping = subtotal >= freeThreshold ? 0 : remaining;
+  const threshold = calc?.free_shipping_threshold ?? null;
+  const shipping = calc?.shipping ?? null;
+  const freeShippingUnlocked = Boolean(calc?.free_shipping)
+    || (shipping === 0 && subtotal > 0 && threshold != null && subtotal >= threshold);
+  const remaining = threshold != null
+    ? Math.max(0, Math.ceil(threshold - subtotal))
+    : null;
+  const progressPct = threshold != null && threshold > 0
+    ? Math.min(100, (subtotal / threshold) * 100)
+    : null;
 
   const closeAndNavigate = (path) => {
     dispatch(closeCartDrawer());
@@ -158,30 +176,32 @@ const CartDrawer = () => {
               </button>
             </div>
 
-            {/* Free shipping progress */}
-            <div className="px-5 py-3 border-b border-gray-50 shrink-0">
-              {remaining > 0 ? (
-                <div>
-                  <p className="text-xs text-text-muted mb-1.5">
-                    <Truck size={12} className="inline mr-1 text-gold" />
-                    Add <span className="font-semibold text-gold">₹{remaining.toFixed(0)}</span> more for FREE Shipping
-                  </p>
-                  <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${Math.min(progressPct, 100)}%` }}
-                      transition={{ duration: 0.5 }}
-                      className="h-full bg-gold rounded-full"
-                    />
+            {/* Free shipping progress — only with a real cart + authoritative calc */}
+            {isAuthenticated && items.length > 0 && remaining != null && (
+              <div className="px-5 py-3 border-b border-gray-50 shrink-0">
+                {!freeShippingUnlocked && remaining > 0 ? (
+                  <div>
+                    <p className="text-xs text-text-muted mb-1.5">
+                      <Truck size={12} className="inline mr-1 text-gold" />
+                      Add <span className="font-semibold text-gold">₹{remaining.toFixed(0)}</span> more for FREE Shipping
+                    </p>
+                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.min(progressPct, 100)}%` }}
+                        transition={{ duration: 0.5 }}
+                        className="h-full bg-gold rounded-full"
+                      />
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <p className="text-xs text-green-600 font-medium flex items-center gap-1">
-                  <Truck size={12} />
-                  You qualify for FREE Shipping!
-                </p>
-              )}
-            </div>
+                ) : (
+                  <p className="text-xs text-green-600 font-medium flex items-center gap-1">
+                    <Truck size={12} />
+                    You qualify for FREE Shipping!
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Cart Items */}
             <div className="flex-1 overflow-y-auto px-5 py-3 space-y-3">
@@ -316,18 +336,22 @@ const CartDrawer = () => {
               <div className="border-t border-gray-100 px-5 py-4 space-y-2 shrink-0 bg-white">
                 <div className="flex justify-between text-sm">
                   <span className="text-text-muted">Subtotal</span>
-                  <span className="font-semibold text-text">₹{subtotal}</span>
+                  <span className="font-semibold text-text">₹{(calc?.subtotal ?? subtotal).toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-text-muted">Shipping</span>
-                  <span className={`font-semibold ${shipping === 0 ? 'text-green-600' : 'text-text'}`}>
-                    {shipping === 0 ? 'FREE' : `₹${shipping.toFixed(0)}`}
-                  </span>
-                </div>
-                <div className="flex justify-between text-base font-bold pt-2 border-t border-gray-100">
-                  <span>Total</span>
-                  <span className="text-gold">₹{(subtotal + shipping).toFixed(0)}</span>
-                </div>
+                {calc && (
+                  <>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-text-muted">Shipping</span>
+                      <span className={`font-semibold ${calc.shipping === 0 ? 'text-green-600' : 'text-text'}`}>
+                        {calc.shipping === 0 ? 'FREE' : `₹${calc.shipping.toFixed(2)}`}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-base font-bold pt-2 border-t border-gray-100">
+                      <span>Total</span>
+                      <span className="text-gold">₹{calc.grand_total.toFixed(2)}</span>
+                    </div>
+                  </>
+                )}
                 <button
                   onClick={() => closeAndNavigate('/checkout')}
                   className="w-full mt-2 h-11 bg-gold text-white rounded-xl font-semibold text-sm shadow-premium hover:bg-gold-dark transition-colors"

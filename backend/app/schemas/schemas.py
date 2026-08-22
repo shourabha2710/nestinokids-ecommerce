@@ -1506,6 +1506,7 @@ class CalculationNotification(BaseModel):
 
 class CartCalculateRequest(BaseModel):
     coupon_code: Optional[str] = None
+    loyalty_points_to_redeem: int = 0
 
 
 class AppliedPromotionInfo(BaseModel):

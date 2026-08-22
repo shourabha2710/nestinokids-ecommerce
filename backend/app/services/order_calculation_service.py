@@ -164,13 +164,23 @@ def calculate_order(
 
     # --- 7. Shipping ---
     total_discount_before_shipping = promotion_discount + coupon_discount + gift_card_discount + wallet_discount + loyalty_discount
-    if free_shipping:
+    if not cart_items:
+        # Empty cart never charges shipping
+        shipping = 0.0
+    elif free_shipping:
         shipping = 0.0
     else:
-        shipping = 0.0 if subtotal >= settings.FREE_SHIPPING_THRESHOLD else settings.FLAT_SHIPPING_RATE
-        if shipping == 0 and subtotal >= settings.FREE_SHIPPING_THRESHOLD:
+        shipping = (
+            0.0
+            if subtotal >= settings.FREE_SHIPPING_THRESHOLD
+            else settings.FLAT_SHIPPING_RATE
+        )
+        if subtotal >= settings.FREE_SHIPPING_THRESHOLD:
             notifications.append(
-                CalculationNotification(type="shipping", text=f"Free shipping on orders above ₹{settings.FREE_SHIPPING_THRESHOLD:.0f}")
+                CalculationNotification(
+                    type="shipping",
+                    text=f"Free shipping applied (orders ₹{settings.FREE_SHIPPING_THRESHOLD:.0f}+)",
+                )
             )
 
     # --- 8. Tax (placeholder) ---
