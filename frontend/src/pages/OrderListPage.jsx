@@ -5,14 +5,34 @@ import { shoppingAPI } from '../api/endpoints';
 import MobilePageHeader from '../components/MobilePageHeader';
 import { motion } from 'framer-motion';
 
+const STATUS_LABELS = {
+  pending: 'Pending',
+  confirmed: 'Confirmed',
+  packed: 'Packed',
+  shipped: 'Shipped',
+  out_for_delivery: 'Out for Delivery',
+  delivered: 'Delivered',
+  cancelled: 'Cancelled',
+  return_requested: 'Return Requested',
+  returned: 'Returned',
+  refund_initiated: 'Refund Initiated',
+  refunded: 'Refunded',
+  failed: 'Failed',
+};
+
 const STATUS_COLORS = {
   pending: 'bg-yellow-100 text-yellow-800',
   confirmed: 'bg-blue-100 text-blue-800',
   packed: 'bg-purple-100 text-purple-800',
   shipped: 'bg-indigo-100 text-indigo-800',
+  out_for_delivery: 'bg-cyan-100 text-cyan-800',
   delivered: 'bg-green-100 text-green-800',
   cancelled: 'bg-red-100 text-red-800',
+  return_requested: 'bg-orange-100 text-orange-800',
   returned: 'bg-gray-100 text-gray-800',
+  refund_initiated: 'bg-amber-100 text-amber-800',
+  refunded: 'bg-emerald-100 text-emerald-800',
+  failed: 'bg-red-100 text-red-800',
 };
 
 const OrderListPage = () => {
@@ -95,7 +115,7 @@ const OrderListPage = () => {
                   </p>
                 </div>
                 <span className={`px-3 py-1 rounded-full text-xs font-semibold ${STATUS_COLORS[order.status] || 'bg-gray-100 text-gray-800'}`}>
-                  {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                  {STATUS_LABELS[order.status] || order.status}
                 </span>
               </div>
               <div className="flex justify-between items-center mt-4">

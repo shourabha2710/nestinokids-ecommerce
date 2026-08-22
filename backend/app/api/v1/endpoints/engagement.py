@@ -345,7 +345,10 @@ def award_loyalty_points_for_order(order_id: int, db: Session):
         description=f"Points earned from order #{order.order_number}",
         reference_type="order"
     )
-    db.commit()
+    # flush() only — the endpoint that triggered the state-machine transition
+    # owns the commit, so the award participates atomically with the status
+    # change and its audit log instead of committing mid-transition.
+    db.flush()
 
 
 # ─── Admin Referral Analytics ───

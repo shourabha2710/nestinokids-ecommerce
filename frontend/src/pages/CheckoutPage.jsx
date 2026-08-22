@@ -123,6 +123,7 @@ const CheckoutPage = () => {
   };
 
   const handlePlaceOrder = async () => {
+    if (placing) return; // double-click guard: never fire a second POST mid-flight
     if (!selectedAddressId) { setError('Please select a shipping address'); return; }
     try {
       setPlacing(true);
