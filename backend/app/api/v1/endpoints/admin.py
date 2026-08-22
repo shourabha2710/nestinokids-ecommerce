@@ -442,6 +442,7 @@ def _build_admin_order(order: Order) -> dict:
         "tax_amount": order.tax_amount,
         "shipping_amount": order.shipping_amount,
         "final_amount": order.final_amount,
+        "payment_method": order.payment_method or "cod",
         "payment_status": order.payment_status.value if hasattr(order.payment_status, 'value') else order.payment_status,
         "order_status": current_status,
         "item_count": len(order.items),
@@ -461,6 +462,7 @@ def _build_admin_order(order: Order) -> dict:
                 ) or None,
                 "variant_sku": item.variant.sku if item.variant else None,
                 "variant_size": item.variant.size if item.variant else None,
+                "images": item.product.images if item.product else [],
             }
             for item in order.items
         ],
@@ -484,7 +486,7 @@ def admin_get_orders(
         .join(User)
         .outerjoin(OrderItem)
         .options(
-            joinedload(Order.items).joinedload(OrderItem.product),
+            joinedload(Order.items).joinedload(OrderItem.product).joinedload(Product.images),
             joinedload(Order.items).joinedload(OrderItem.variant),
         )
     )
@@ -511,7 +513,7 @@ def admin_get_order(
     order = (
         db.query(Order)
         .options(
-            joinedload(Order.items).joinedload(OrderItem.product),
+            joinedload(Order.items).joinedload(OrderItem.product).joinedload(Product.images),
             joinedload(Order.items).joinedload(OrderItem.variant),
             joinedload(Order.status_history),
         )
@@ -531,6 +533,7 @@ def admin_update_order_status(
     admin: User = Depends(require_permission(Permissions.ORDER_UPDATE)),
 ):
     order = db.query(Order).options(
+        joinedload(Order.items).joinedload(OrderItem.product).joinedload(Product.images),
         joinedload(Order.items).joinedload(OrderItem.variant),
     ).filter(Order.id == order_id).first()
     if not order:

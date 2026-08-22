@@ -262,15 +262,22 @@ const AdminSettings = () => {
 
   const renderPaymentsTab = () => (
     <SettingsSection title="Payment Methods" description="Available payment options" icon={CreditCard}>
+      <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
+        <AlertTriangle size={16} className="text-amber-600 mt-0.5 flex-shrink-0" />
+        <p className="text-xs text-amber-700">
+          Online payments require a payment gateway integration. No gateway is currently
+          configured, so customers can only pay via Cash on Delivery.
+        </p>
+      </div>
       <SettingsToggle
         label="Cash on Delivery"
-        description="Accept COD payments"
+        description="Allow customers to pay in cash on delivery at checkout"
         enabled={form.cod_enabled}
         onChange={handleToggle('cod_enabled')}
       />
       <SettingsToggle
-        label="Online Payments"
-        description="Accept online payments via gateway"
+        label="Online Payments (Coming Soon)"
+        description="Reserved for a future payment gateway integration. Has no effect today - online checkout is not available."
         enabled={form.online_payment_enabled}
         onChange={handleToggle('online_payment_enabled')}
       />

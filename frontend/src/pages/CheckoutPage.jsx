@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { shoppingAPI, loyaltyAPI } from '../api/endpoints';
+import { shoppingAPI, loyaltyAPI, settingsAPI } from '../api/endpoints';
 import { clearCart } from '../store/slices/cartSlice';
 import { getErrorMessage } from '../utils/errorUtils';
 import { motion } from 'framer-motion';
-import { ShieldCheck, Truck, RotateCcw, Sparkles, Check, Tag, X, CheckCircle, Zap, Award } from 'lucide-react';
+import { ShieldCheck, Truck, RotateCcw, Sparkles, Check, Tag, X, CheckCircle, Zap, Award, Banknote, CreditCard, Clock } from 'lucide-react';
 import ProductImage from '../components/ProductImage';
 
 const PLACEHOLDER = '/images/placeholder-product.svg';
@@ -39,6 +39,13 @@ const CheckoutPage = () => {
   const [loyaltyInfo, setLoyaltyInfo] = useState(null);
   const [loyaltyPoints, setLoyaltyPoints] = useState(0);
   const [useLoyalty, setUseLoyalty] = useState(false);
+  const [codAvailable, setCodAvailable] = useState(true);
+
+  useEffect(() => {
+    settingsAPI.getPublic()
+      .then((res) => setCodAvailable(res.data?.cod_enabled !== false))
+      .catch(() => {});
+  }, []);
 
   const runCalculation = useCallback(async (code, points = 0) => {
     try {
@@ -352,6 +359,43 @@ const CheckoutPage = () => {
               )}
             </div>
           )}
+
+          {/* Payment Method */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-lg font-semibold text-text mb-4">Payment Method</h2>
+            <label
+              className={`block p-4 border rounded-lg cursor-pointer ${
+                codAvailable ? 'border-gold bg-gold bg-opacity-5' : 'border-gray-200 opacity-60'
+              }`}
+            >
+              <input type="radio" name="payment_method" checked readOnly className="sr-only" />
+              <div className="flex items-start gap-3">
+                <Banknote className={`w-5 h-5 mt-0.5 ${codAvailable ? 'text-gold' : 'text-gray-400'}`} />
+                <div className="flex-1">
+                  <p className="font-semibold text-text">Cash on Delivery</p>
+                  <p className="text-sm text-gray-500">Pay in cash when your order arrives</p>
+                  {!codAvailable && (
+                    <p className="text-xs text-red-500 mt-1">Currently unavailable</p>
+                  )}
+                </div>
+                {codAvailable && <CheckCircle className="w-5 h-5 text-gold" />}
+              </div>
+            </label>
+            <div className="block p-4 border border-gray-100 rounded-lg mt-3 opacity-60 cursor-not-allowed" aria-disabled="true">
+              <div className="flex items-start gap-3">
+                <CreditCard className="w-5 h-5 mt-0.5 text-gray-400" />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-text-muted">Online Payment</p>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-[10px] font-semibold uppercase tracking-wide">
+                      <Clock size={10} /> Coming Soon
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-400">Cards, UPI and netbanking will be available soon</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Order Summary */}
@@ -431,7 +475,7 @@ const CheckoutPage = () => {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={handlePlaceOrder}
-              disabled={placing || cartItems.length === 0}
+              disabled={placing || cartItems.length === 0 || !codAvailable}
               className="w-full bg-gold text-white py-3 rounded-lg font-semibold mt-6 hover:bg-opacity-90 disabled:opacity-50"
             >
               {placing ? 'Placing Order...' : 'Place Order'}

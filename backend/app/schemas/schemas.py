@@ -242,6 +242,7 @@ class OrderItemResponse(BaseModel):
     variant_name: Optional[str] = None
     variant_sku: Optional[str] = None
     variant_size: Optional[str] = None
+    images: List[ProductImageResponse] = []
     
     class Config:
         from_attributes = True
@@ -276,6 +277,7 @@ class OrderResponse(BaseModel):
     tax_amount: float
     shipping_amount: float
     final_amount: float
+    payment_method: str = "cod"
     payment_status: str
     created_at: datetime
     items: List[OrderItemResponse] = []
@@ -329,6 +331,7 @@ class AdminOrderResponse(BaseModel):
     tax_amount: float
     shipping_amount: float
     final_amount: float
+    payment_method: str = "cod"
     payment_status: str
     order_status: str
     item_count: int
