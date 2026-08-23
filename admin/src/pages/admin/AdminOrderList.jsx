@@ -26,6 +26,13 @@ const PAYMENT_METHOD_LABELS = {
   cod: 'Cash on Delivery',
 };
 
+const PAYMENT_STATUS_LABELS = {
+  pending: 'Pending',
+  completed: 'Paid',
+  failed: 'Failed',
+  refunded: 'Refunded',
+};
+
 const ItemImage = ({ images, alt }) => {
   const [errored, setErrored] = useState(false);
   const src =
@@ -74,6 +81,8 @@ const AdminOrderList = () => {
   const [detailLoading, setDetailLoading] = useState(false);
   const [transitionRemarks, setTransitionRemarks] = useState('');
   const [transitioning, setTransitioning] = useState(false);
+  const [settleConfirm, setSettleConfirm] = useState(false);
+  const [settling, setSettling] = useState(false);
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -134,6 +143,29 @@ const AdminOrderList = () => {
     }
   };
 
+  const canSettleCod =
+    detailOrder &&
+    detailOrder.payment_method === 'cod' &&
+    detailOrder.payment_status === 'pending' &&
+    detailOrder.order_status === 'delivered';
+
+  const confirmMarkCodPaid = async () => {
+    if (!detailOrder) return;
+    try {
+      setError('');
+      setSettling(true);
+      await adminAPI.markCodPaid(detailOrder.id, {});
+      setSettleConfirm(false);
+      await openDetail(detailOrder.id);
+      fetchOrders();
+    } catch (err) {
+      const detail = err.response?.data?.detail;
+      setError(typeof detail === 'string' ? detail : 'Failed to mark COD payment as paid');
+    } finally {
+      setSettling(false);
+    }
+  };
+
   const StatusBadge = ({ status }) => {
     const config = STATUS_CONFIG[status] || STATUS_CONFIG.pending;
     const Icon = config.icon;
@@ -154,7 +186,7 @@ const AdminOrderList = () => {
     };
     return (
       <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-medium whitespace-nowrap ${colors[status] || 'bg-gray-50 text-gray-500'}`}>
-        {status}
+        {PAYMENT_STATUS_LABELS[status] || status}
       </span>
     );
   };
@@ -385,6 +417,16 @@ const AdminOrderList = () => {
                             <span className="text-gray-900">{detailOrder.item_count} item(s)</span>
                           </div>
                         </div>
+                        {hasPermission(Permissions.ORDER_UPDATE) && canSettleCod && (
+                          <button
+                            onClick={() => setSettleConfirm(true)}
+                            disabled={settling}
+                            className="mt-3 w-full inline-flex items-center justify-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg text-xs font-semibold hover:bg-green-700 transition-colors disabled:opacity-50"
+                          >
+                            <DollarSign size={14} />
+                            Mark Payment Received (₹{detailOrder.final_amount?.toLocaleString()})
+                          </button>
+                        )}
                       </div>
                     </div>
 
@@ -534,6 +576,68 @@ const AdminOrderList = () => {
                     </div>
                   </div>
                 )}
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* COD settlement confirmation modal */}
+        <AnimatePresence>
+          {settleConfirm && detailOrder && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
+              onClick={() => { if (!settling) setSettleConfirm(false); }}
+            >
+              <motion.div
+                initial={{ scale: 0.95, y: 8 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.95, y: 8 }}
+                className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-start gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center flex-shrink-0">
+                    <DollarSign className="w-5 h-5 text-green-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-semibold text-gray-900">Mark COD payment as received?</h3>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Order {detailOrder.order_number} · {PAYMENT_METHOD_LABELS[detailOrder.payment_method] || detailOrder.payment_method}
+                    </p>
+                  </div>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-3 text-sm space-y-1 mb-4">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Amount collected</span>
+                    <span className="font-semibold text-gray-900">₹{detailOrder.final_amount?.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Payment status</span>
+                    <span className="text-gray-900">Pending → Paid</span>
+                  </div>
+                </div>
+                <p className="text-xs text-red-600 mb-4">
+                  This confirms cash collection and cannot be undone from this screen.
+                </p>
+                <div className="flex gap-2 justify-end">
+                  <button
+                    onClick={() => setSettleConfirm(false)}
+                    disabled={settling}
+                    className="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmMarkCodPaid}
+                    disabled={settling}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-semibold hover:bg-green-700 disabled:opacity-50"
+                  >
+                    {settling ? 'Confirming...' : 'Confirm Payment Received'}
+                  </button>
+                </div>
               </motion.div>
             </motion.div>
           )}

@@ -26,6 +26,7 @@ from app.schemas.schemas import (
     InventoryResponse,
     OrderItemResponse,
     OrderStatusUpdate,
+    CODSettlementRequest,
     ProductCreate,
     ProductImageResponse,
     ProductResponse,
@@ -565,6 +566,101 @@ def admin_update_order_status(
         description=f"Changed order status from {current_status} to {new_status}",
         old_values={"status": current_status},
         new_values={"status": new_status},
+    )
+
+    return _build_admin_order(order)
+
+
+@router.post("/orders/{order_id}/mark-cod-paid", response_model=AdminOrderResponse)
+def admin_mark_cod_paid(
+    order_id: int,
+    data: CODSettlementRequest,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_permission(Permissions.ORDER_UPDATE)),
+):
+    """Settle a COD payment: pending -> completed.
+
+    Backend-authoritative action with strict guards:
+      - order must exist and be a COD order
+      - payment must currently be PENDING (duplicate-payment protection)
+      - order status must be DELIVERED (cash is only collected on delivery)
+      - optional client `amount` must match the stored order total
+    Delivery does NOT automatically settle payment; this is an explicit
+    admin confirmation of cash received.
+    """
+    order = db.query(Order).options(
+        joinedload(Order.items).joinedload(OrderItem.product).joinedload(Product.images),
+        joinedload(Order.items).joinedload(OrderItem.variant),
+    ).filter(Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    payment_method = (order.payment_method or "cod").strip().lower()
+    if payment_method != "cod":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only Cash on Delivery orders can be settled through this endpoint.",
+        )
+
+    current_payment_status = (
+        order.payment_status.value
+        if hasattr(order.payment_status, "value")
+        else order.payment_status
+    )
+    if current_payment_status != PaymentStatusEnum.PENDING.value:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"COD payment for this order is already '{current_payment_status}'. "
+                "Duplicate settlements are not allowed."
+            ),
+        )
+
+    current_status = order.status.value if hasattr(order.status, 'value') else order.status
+    if current_status != OrderStatusEnum.DELIVERED.value:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "COD payment can only be marked as paid after the order is "
+                f"delivered. Current status: '{current_status}'."
+            ),
+        )
+
+    final_amount = float(order.final_amount or 0)
+    if data.amount is not None and abs(float(data.amount) - final_amount) > 0.01:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"Amount mismatch: order total is {final_amount:.2f}. "
+                "Settlement amount must match the server-side order total."
+            ),
+        )
+
+    old_payment_status = current_payment_status
+    order.payment_status = PaymentStatusEnum.COMPLETED
+
+    db.commit()
+    db.refresh(order)
+
+    audit_service.create_log(
+        db=db,
+        user=admin,
+        action=AuditAction.STATUS_CHANGE,
+        entity_type=AuditEntityType.ORDER,
+        entity_id=order.id,
+        description=(
+            f"Marked COD payment as paid for order {order.order_number} "
+            f"(amount {final_amount:.2f})"
+            + (f"; remarks: {data.remarks}" if data.remarks else "")
+        ),
+        old_values={
+            "payment_status": old_payment_status,
+            "order_status": current_status,
+        },
+        new_values={
+            "payment_status": PaymentStatusEnum.COMPLETED.value,
+            "settled_amount": final_amount,
+        },
     )
 
     return _build_admin_order(order)
