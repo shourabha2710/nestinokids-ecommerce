@@ -271,7 +271,13 @@ const OrderDetailPage = () => {
           </div>
           <div className="flex justify-between text-gray-600">
             <span>Payment Status</span>
-            <span className="capitalize">{order.payment_status}</span>
+            <span className="font-medium text-text">
+              {order.payment_status === 'completed'
+                ? 'Paid'
+                : order.payment_status
+                ? order.payment_status.charAt(0).toUpperCase() + order.payment_status.slice(1)
+                : 'Pending'}
+            </span>
           </div>
         </div>
       </div>

@@ -349,6 +349,17 @@ class OrderStatusUpdate(BaseModel):
     note: Optional[str] = None
 
 
+class CODSettlementRequest(BaseModel):
+    """Admin confirmation payload for COD settlement.
+
+    `amount` is OPTIONAL and only used as a client-side sanity check against
+    the server-authoritative order total; settlement always uses the stored
+    order.final_amount. No client value can alter the settled amount.
+    """
+    amount: Optional[float] = None
+    remarks: Optional[str] = None
+
+
 # Coupon Schemas
 class CouponBase(BaseModel):
     code: str = Field(..., min_length=3, max_length=50)

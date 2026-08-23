@@ -41,6 +41,7 @@ export const adminAPI = {
   updateOrderStatus: (id, data) => api.put(`/admin/orders/${id}/status`, data),
   transitionOrder: (id, data) => api.post(`/admin/orders/${id}/transition`, data),
   getOrderStatusHistory: (id) => api.get(`/admin/orders/${id}/status-history`),
+  markCodPaid: (id, data) => api.post(`/admin/orders/${id}/mark-cod-paid`, data),
   getCoupons: () => api.get('/admin/coupons'),
   getCoupon: (id) => api.get(`/admin/coupons/${id}`),
   createCoupon: (data) => api.post('/admin/coupons', data),
