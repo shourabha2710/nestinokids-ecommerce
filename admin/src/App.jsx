@@ -37,6 +37,7 @@ import AdminLoyaltyList from './pages/admin/AdminLoyaltyList';
 import MarketplaceListingsPage from './pages/admin/MarketplaceListingsPage';
 import MarketplaceAnalyticsPage from './pages/admin/MarketplaceAnalyticsPage';
 import MarketplaceListingForm from './components/marketplace/MarketplaceListingForm';
+import NotFound from './pages/NotFound';
 
 function App() {
   return (
@@ -178,9 +179,9 @@ function App() {
               <AdminLoyaltyList />
             </PermissionRoute>
           } />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<NotFound />} />
         </Route>
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </AuthProvider>
   );

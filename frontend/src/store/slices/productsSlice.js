@@ -6,7 +6,6 @@ const initialState = {
   loading: false,
   error: null,
   selectedProduct: null,
-  wishlist: [],
 };
 
 const productsSlice = createSlice({
@@ -28,14 +27,6 @@ const productsSlice = createSlice({
     setError: (state, action) => {
       state.error = action.payload;
     },
-    addToWishlist: (state, action) => {
-      if (!state.wishlist.find(item => item.id === action.payload.id)) {
-        state.wishlist.push(action.payload);
-      }
-    },
-    removeFromWishlist: (state, action) => {
-      state.wishlist = state.wishlist.filter(item => item.id !== action.payload);
-    },
   },
 });
 
@@ -45,8 +36,6 @@ export const {
   setSelectedProduct,
   setLoading,
   setError,
-  addToWishlist,
-  removeFromWishlist,
 } = productsSlice.actions;
 
 export default productsSlice.reducer;
