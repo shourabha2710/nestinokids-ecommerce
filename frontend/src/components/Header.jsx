@@ -3,6 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { toggleSidebar, openCartDrawer } from '../store/slices/uiSlice';
 import { logout } from '../store/slices/authSlice';
+import { clearWishlist } from '../store/slices/wishlistSlice';
+import { clearCart } from '../store/slices/cartSlice';
 import { motion } from 'framer-motion';
 import { Menu, Search, X, Loader2, Bell, ChevronDown } from 'lucide-react';
 import { productsAPI, notificationAPI } from '../api/endpoints';
@@ -151,6 +153,8 @@ const Header = () => {
 
   const handleLogout = () => {
     dispatch(logout());
+    dispatch(clearWishlist());
+    dispatch(clearCart());
     navigate('/');
   };
 

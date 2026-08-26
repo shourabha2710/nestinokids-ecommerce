@@ -47,7 +47,7 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid referral code"
             )
-    
+
     # Create new user
     db_user = User(
         email=user.email,
@@ -77,23 +77,23 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
 def login(credentials: LoginRequest, request: Request, db: Session = Depends(get_db)):
     """Login user and return tokens"""
     user = db.query(User).filter(User.email == credentials.email).first()
-    
+
     if not user or not verify_password(credentials.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials"
         )
-    
+
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User account is disabled"
         )
-    
+
     # Create tokens
     access_token = create_access_token(data={"sub": str(user.id), "email": user.email})
     refresh_token = create_refresh_token(data={"sub": str(user.id)})
-    
+
     if user.role == RoleEnum.ADMIN:
         audit_service.create_log(
             db=db,
@@ -104,7 +104,7 @@ def login(credentials: LoginRequest, request: Request, db: Session = Depends(get
             description="Admin logged in",
             request=request,
         )
-    
+
     return TokenResponse(
         access_token=access_token,
         refresh_token=refresh_token,
@@ -116,25 +116,39 @@ def login(credentials: LoginRequest, request: Request, db: Session = Depends(get
 def refresh_token(request: RefreshTokenRequest, db: Session = Depends(get_db)):
     """Refresh access token using refresh token"""
     from app.core.security import decode_token
-    
+
     payload = decode_token(request.refresh_token)
     if not payload or payload.get("type") != "refresh":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid refresh token"
         )
-    
-    user_id = int(payload.get("sub"))
+
+    user_id_str = payload.get("sub")
+    try:
+        user_id = int(user_id_str)
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token"
+        )
+
     user = db.query(User).filter(User.id == user_id).first()
-    
+
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
-    
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is disabled"
+        )
+
     access_token = create_access_token(data={"sub": str(user.id), "email": user.email})
-    
+
     return {
         "access_token": access_token,
         "token_type": "bearer"
@@ -147,13 +161,13 @@ def get_current_user(
 ):
     """Dependency to get current logged-in user"""
     from app.core.security import decode_token
-    
+
     if not credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing authentication token"
         )
-    
+
     token = credentials.credentials
     payload = decode_token(token)
     if not payload or payload.get("type") != "access":
@@ -161,16 +175,29 @@ def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token"
         )
-    
-    user_id = int(payload.get("sub"))
+
+    try:
+        user_id = int(payload.get("sub"))
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token"
+        )
+
     user = db.query(User).filter(User.id == user_id).first()
-    
+
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
-    
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is disabled"
+        )
+
     return user
 
 
@@ -189,8 +216,16 @@ def get_optional_current_user(
     if not payload or payload.get("type") != "access":
         return None
 
-    user_id = int(payload.get("sub"))
-    return db.query(User).filter(User.id == user_id).first()
+    try:
+        user_id = int(payload.get("sub"))
+    except (TypeError, ValueError):
+        return None
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if user and not user.is_active:
+        return None
+
+    return user
 
 
 def require_admin(current_user: User = Depends(get_current_user)):
@@ -227,10 +262,10 @@ def update_current_user(
 ):
     """Update current user info"""
     update_data = user_update.dict(exclude_unset=True)
-    
+
     for field, value in update_data.items():
         setattr(current_user, field, value)
-    
+
     db.add(current_user)
     db.commit()
     db.refresh(current_user)

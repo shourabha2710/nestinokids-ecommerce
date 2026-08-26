@@ -27,6 +27,7 @@ import ReturnPolicyPage from "./pages/ReturnPolicyPage";
 import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
 import TermsPage from "./pages/TermsPage";
 import RewardsPage from "./pages/RewardsPage";
+import NotFoundPage from "./pages/NotFoundPage";
 import { setUser, logout } from "./store/slices/authSlice";
 import { setCartItems } from "./store/slices/cartSlice";
 import { setWishlist } from "./store/slices/wishlistSlice";
@@ -107,9 +108,8 @@ function App() {
               <Route path="/wishlist" element={<ProtectedRoute><WishlistPage /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
               <Route path="/rewards" element={<ProtectedRoute><RewardsPage /></ProtectedRoute>} />
+              <Route path="*" element={<NotFoundPage />} />
             </Route>
-
-            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </AuthProvider>
       </Router>
