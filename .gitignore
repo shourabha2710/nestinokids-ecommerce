@@ -79,3 +79,6 @@ backend/alembic_backup/
 
 backend/test_cart.ps1
 backend/test_cart.py
+
+# Production uploaded media
+backend/uploads/
