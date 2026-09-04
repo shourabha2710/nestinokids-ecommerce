@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Text, DateTime, Boolean, ForeignKey, Table, Enum, JSON, UniqueConstraint, Index, BigInteger
+from sqlalchemy import Column, Integer, String, Float, Text, DateTime, Boolean, ForeignKey, Table, Enum, JSON, UniqueConstraint, Index, BigInteger, text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.db.database import Base
@@ -369,8 +369,8 @@ class Coupon(Base):
     max_usage = Column(Integer, nullable=True)
     usage_count = Column(Integer, default=0)
     per_user_limit = Column(Integer, nullable=True)
-    applicable_scope = Column(String(20), default='GLOBAL', nullable=False, index=True)  # GLOBAL, CATEGORY, PRODUCT
-    priority = Column(Integer, default=0)
+    applicable_scope = Column(String(20), default='GLOBAL', nullable=False)  # GLOBAL, CATEGORY, PRODUCT
+    priority = Column(Integer, default=0, nullable=False)
     category_id = Column(Integer, ForeignKey('categories.id'), nullable=True)
     product_id = Column(Integer, ForeignKey('products.id'), nullable=True)
     start_date = Column(DateTime(timezone=True), nullable=False)
@@ -905,6 +905,23 @@ class MarketplaceListing(Base):
     __table_args__ = (
         Index('idx_marketplace_listing_product_active', 'product_id', 'is_active'),
         Index('idx_marketplace_listing_marketplace', 'marketplace'),
+        Index(
+    'uq_marketplace_listing_variant',
+    'product_id',
+    'variant_id',
+    'marketplace',
+    unique=True,
+    postgresql_where=text('variant_id IS NOT NULL'),
+    sqlite_where=text('variant_id IS NOT NULL'),
+),
+Index(
+    'uq_marketplace_listing_product_level',
+    'product_id',
+    'marketplace',
+    unique=True,
+    postgresql_where=text('variant_id IS NULL'),
+    sqlite_where=text('variant_id IS NULL'),
+),
     )
 
 
