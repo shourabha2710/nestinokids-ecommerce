@@ -50,7 +50,7 @@ jobs:
         env:
           APP_ENV: test
           DATABASE_URL: sqlite:///./test.db
-          SECRET_KEY: test-secret-key
+          SECRET_KEY: test-secret-key-for-ci-only-32-characters-long
           DEBUG: "False"
         run: |
           cd backend
