@@ -29,7 +29,7 @@ from app.api.v1.endpoints import marketplace_analytics as marketplace_analytics_
 from app.db.database import Base, engine
 
 # Create tables in development only; production relies on Alembic migrations
-if settings.DEBUG:
+if settings.DEBUG and settings.APP_ENV == "development":
     Base.metadata.create_all(bind=engine)
 
 # Create upload directories
@@ -54,8 +54,18 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.ALLOWED_ORIGINS_LIST,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=[
+        "GET",
+        "POST",
+        "PUT",
+        "PATCH",
+        "DELETE",
+        "OPTIONS",
+    ],
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+    ],
 )
 
 # GZIP Middleware

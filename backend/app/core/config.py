@@ -69,6 +69,31 @@ class Settings(BaseSettings):
 
     SECRET_KEY: str = ""
     ALGORITHM: str = "HS256"
+    @field_validator("SECRET_KEY")
+    @classmethod
+    def validate_secret_key(cls, value):
+        if not value or not value.strip():
+            raise ValueError("SECRET_KEY must be configured")
+
+        value = value.strip()
+
+        if len(value) < 32:
+            raise ValueError("SECRET_KEY must be at least 32 characters long")
+
+        placeholder_values = {
+            "your-secret-key",
+            "your-secret-key-at-least-32-characters-long",
+            "change-me",
+            "change-me-in-production",
+            "dev-secret-key",
+            "dev-secret-key-change-in-production-min-32-chars",
+            "secret",
+        }
+
+        if value.lower() in placeholder_values:
+            raise ValueError("SECRET_KEY is using a known placeholder value")
+
+        return value
 
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
