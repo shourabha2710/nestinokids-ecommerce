@@ -48,6 +48,10 @@ from app.models.models import (
     MediaAsset,
     Promotion,
     PromotionRule,
+    LoyaltyAccount,
+    OrderStatusHistory,
+    MarketplaceListing,
+    MarketplaceRedirectClick,
 )
 
 # Import settings for database URL
