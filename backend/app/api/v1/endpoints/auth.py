@@ -1,5 +1,6 @@
 import string
 import secrets
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
@@ -10,10 +11,13 @@ from app.services.loyalty_service import loyalty_service
 from app.core.security import hash_password, verify_password, create_access_token, create_refresh_token
 from app.core.constants import AuditAction, AuditEntityType
 from app.services.audit_service import audit_service
-from datetime import timedelta
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 bearer_scheme = HTTPBearer(auto_error=False)
+
+# Account-level brute-force protection
+LOGIN_MAX_FAILED_ATTEMPTS = 5
+LOGIN_LOCKOUT_MINUTES = 15
 
 
 def _generate_referral_code(db: Session) -> str:
@@ -23,6 +27,37 @@ def _generate_referral_code(db: Session) -> str:
         code = ''.join(secrets.choice(alphabet) for _ in range(8))
         if not db.query(User).filter(User.referral_code == code).first():
             return code
+
+
+def _is_locked(user: User) -> bool:
+    """Return True when the account is currently locked out."""
+    if user.locked_until is None:
+        return False
+    locked_until = user.locked_until
+    if locked_until.tzinfo is None:
+        locked_until = locked_until.replace(tzinfo=timezone.utc)
+    return locked_until > datetime.now(timezone.utc)
+
+
+def _register_failed_login_attempt(db: Session, user: User) -> None:
+    """Record a failed login attempt, locking the account once the limit is reached.
+
+    The caller is expected to hold a row-level lock on the user row so that
+    concurrent requests cannot lose increments or bypass the attempt threshold.
+    """
+    if user.locked_until is not None and not _is_locked(user):
+        # A previous lockout has expired: treat this as the first attempt of a
+        # fresh window rather than continuing a stale counter.
+        user.locked_until = None
+        user.failed_login_attempts = 1
+    else:
+        user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
+
+    if user.failed_login_attempts >= LOGIN_MAX_FAILED_ATTEMPTS:
+        user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=LOGIN_LOCKOUT_MINUTES)
+
+    db.add(user)
+    db.commit()
 
 
 
@@ -76,9 +111,25 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
 @router.post("/login", response_model=TokenResponse)
 def login(credentials: LoginRequest, request: Request, db: Session = Depends(get_db)):
     """Login user and return tokens"""
-    user = db.query(User).filter(User.email == credentials.email).first()
+    user = (
+        db.query(User)
+        .filter(User.email == credentials.email)
+        .with_for_update()
+        .first()
+    )
+
+    # Locked accounts always get the same generic 401, whether or not the
+    # supplied password is correct. This avoids needless hash work and does
+    # not reveal that the account exists.
+    if user and _is_locked(user):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials"
+        )
 
     if not user or not verify_password(credentials.password, user.hashed_password):
+        if user:
+            _register_failed_login_attempt(db, user)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials"
@@ -89,6 +140,11 @@ def login(credentials: LoginRequest, request: Request, db: Session = Depends(get
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User account is disabled"
         )
+
+    # Successful login resets the lockout state.
+    user.failed_login_attempts = 0
+    user.locked_until = None
+    db.add(user)
 
     # Create tokens
     access_token = create_access_token(data={"sub": str(user.id), "email": user.email})
@@ -104,6 +160,8 @@ def login(credentials: LoginRequest, request: Request, db: Session = Depends(get
             description="Admin logged in",
             request=request,
         )
+    else:
+        db.commit()
 
     return TokenResponse(
         access_token=access_token,
