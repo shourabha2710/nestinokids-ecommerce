@@ -1,4 +1,3 @@
-import uuid
 from pathlib import Path
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Request
@@ -7,34 +6,22 @@ from app.db.database import get_db
 from app.models.models import HeroSlide, User
 from app.schemas.schemas import HeroSlideCreate, HeroSlideUpdate, HeroSlideResponse
 from app.api.v1.endpoints.auth import require_admin
-from app.core.config import settings
+from app.services.file_validation import (
+    ALLOWED_IMAGE_EXTENSIONS,
+    ALLOWED_VIDEO_EXTENSIONS,
+    save_upload,
+    upload_url,
+    validate_upload,
+)
 
 router = APIRouter(tags=["hero"])
 
-ALLOWED_IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp'}
-ALLOWED_VIDEO_EXTENSIONS = {'.mp4', '.webm'}
-
 
 def save_media(file: UploadFile) -> str:
-    ext = Path(file.filename).suffix.lower()
     allowed = ALLOWED_IMAGE_EXTENSIONS | ALLOWED_VIDEO_EXTENSIONS
-    if ext not in allowed:
-        raise HTTPException(
-            status_code=400,
-            detail=f"File type '{ext}' not allowed. Allowed: {', '.join(sorted(allowed))}",
-        )
-    contents = file.file.read()
-    if len(contents) > settings.MAX_UPLOAD_SIZE:
-        raise HTTPException(
-            status_code=400,
-            detail=f"File too large. Maximum size is {settings.MAX_UPLOAD_SIZE // (1024 * 1024)}MB",
-        )
-    unique_name = f"{uuid.uuid4().hex}{ext}"
-    upload_dir = Path(settings.UPLOAD_DIR) / "hero"
-    upload_dir.mkdir(parents=True, exist_ok=True)
-    with open(upload_dir / unique_name, "wb") as f:
-        f.write(contents)
-    return f"/{settings.UPLOAD_DIR}/hero/{unique_name}"
+    ext, contents = validate_upload(file, allowed)
+    unique_name = save_upload(contents, ext, "hero")
+    return upload_url("hero", unique_name)
 
 
 @router.get("/api/v1/hero-slides", response_model=List[HeroSlideResponse])

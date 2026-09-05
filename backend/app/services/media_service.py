@@ -1,4 +1,3 @@
-import uuid
 import logging
 from pathlib import Path
 from typing import Optional
@@ -10,37 +9,22 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models.models import MediaAsset, User
+from app.services.file_validation import (
+    ALLOWED_IMAGE_EXTENSIONS,
+    save_upload,
+    upload_url,
+    validate_upload,
+)
 
 logger = logging.getLogger(__name__)
 
-ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
-MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
-
 
 def _save_file(file: UploadFile) -> tuple[str, str, int, Optional[int], Optional[int]]:
-    ext = Path(file.filename).suffix.lower()
-    if ext not in ALLOWED_EXTENSIONS:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"File type '{ext}' not allowed. Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}",
-        )
+    ext, contents = validate_upload(file, ALLOWED_IMAGE_EXTENSIONS)
 
-    contents = file.file.read()
-    if len(contents) > MAX_FILE_SIZE:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"File too large. Maximum size is {MAX_FILE_SIZE // (1024 * 1024)}MB",
-        )
-
-    unique_name = f"{uuid.uuid4().hex}{ext}"
-    upload_dir = Path(settings.UPLOAD_DIR) / "media"
-    upload_dir.mkdir(parents=True, exist_ok=True)
-
-    file_path = upload_dir / unique_name
-    with open(file_path, "wb") as f:
-        f.write(contents)
-
-    file_url = f"/{settings.UPLOAD_DIR}/media/{unique_name}"
+    unique_name = save_upload(contents, ext, "media")
+    file_url = upload_url("media", unique_name)
+    file_path = Path(settings.UPLOAD_DIR) / "media" / unique_name
 
     width = None
     height = None
