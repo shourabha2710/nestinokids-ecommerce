@@ -1,6 +1,5 @@
 import logging
 import os
-import uuid
 from datetime import datetime
 from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form, Request
@@ -50,19 +49,17 @@ from app.core.config import settings
 from app.core.constants import AuditAction, AuditEntityType
 from app.services.audit_service import audit_service
 from app.services.notification_event_service import notification_event_service
+from app.services.file_validation import (
+    ALLOWED_IMAGE_EXTENSIONS,
+    save_upload,
+    upload_url,
+    validate_upload,
+)
 from typing import List, Optional
-
-ALLOWED_IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp'}
 
 logger = logging.getLogger(__name__)
 
 BANNER_UPLOAD_PREFIX = "/uploads/banners/"
-BANNER_IMAGE_SIGNATURES = {
-    '.jpg': (b'\xff\xd8\xff',),
-    '.jpeg': (b'\xff\xd8\xff',),
-    '.png': (b'\x89PNG\r\n\x1a\n',),
-    '.webp': (b'RIFF', b'WEBP'),
-}
 
 
 def _is_banner_owned_path(url: Optional[str]) -> bool:
@@ -80,16 +77,6 @@ def _delete_banner_owned_file(url: Optional[str]) -> None:
             file_path.unlink()
     except Exception:
         logger.exception("Failed to delete banner image file %s", url)
-
-
-def _verify_banner_image_signature(contents: bytes, ext: str) -> bool:
-    """Lightweight magic-byte check to avoid trusting the extension alone."""
-    if not contents:
-        return False
-    signatures = BANNER_IMAGE_SIGNATURES.get(ext, ())
-    if not signatures:
-        return False
-    return any(contents.startswith(sig) for sig in signatures)
 
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
@@ -313,34 +300,9 @@ def admin_upload_banner_image(
     admin: User = Depends(require_admin),
 ):
     """Upload a banner image. Returns the stored relative path for image_url/mobile_image_url."""
-    ext = Path(file.filename or "").suffix.lower()
-    if ext not in ALLOWED_IMAGE_EXTENSIONS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"File type '{ext}' not allowed. Allowed: {', '.join(sorted(ALLOWED_IMAGE_EXTENSIONS))}",
-        )
-
-    contents = file.file.read()
-    if not contents:
-        raise HTTPException(status_code=400, detail="Uploaded file is empty")
-
-    if len(contents) > settings.MAX_UPLOAD_SIZE:
-        raise HTTPException(
-            status_code=400,
-            detail=f"File too large. Maximum size is {settings.MAX_UPLOAD_SIZE // (1024 * 1024)}MB",
-        )
-
-    if not _verify_banner_image_signature(contents, ext):
-        raise HTTPException(status_code=400, detail="File content does not match the declared image type")
-
-    unique_name = f"{uuid.uuid4().hex}{ext}"
-    upload_dir = Path(settings.UPLOAD_DIR) / "banners"
-    upload_dir.mkdir(parents=True, exist_ok=True)
-    file_path = upload_dir / unique_name
-    with open(file_path, "wb") as f:
-        f.write(contents)
-
-    return BannerUploadResponse(url=f"/{settings.UPLOAD_DIR}/banners/{unique_name}")
+    ext, contents = validate_upload(file, ALLOWED_IMAGE_EXTENSIONS)
+    unique_name = save_upload(contents, ext, "banners")
+    return BannerUploadResponse(url=upload_url("banners", unique_name))
 
 
 @router.put("/banners/{banner_id}", response_model=BannerResponse)
@@ -1158,26 +1120,8 @@ def admin_upload_product_image(
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
-    ext = Path(file.filename).suffix.lower()
-    if ext not in ALLOWED_IMAGE_EXTENSIONS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"File type '{ext}' not allowed. Allowed: {', '.join(ALLOWED_IMAGE_EXTENSIONS)}",
-        )
-
-    contents = file.file.read()
-    if len(contents) > settings.MAX_UPLOAD_SIZE:
-        raise HTTPException(
-            status_code=400,
-            detail=f"File too large. Maximum size is {settings.MAX_UPLOAD_SIZE // (1024 * 1024)}MB",
-        )
-
-    unique_name = f"{uuid.uuid4().hex}{ext}"
-    upload_dir = Path(settings.UPLOAD_DIR) / "products"
-    upload_dir.mkdir(parents=True, exist_ok=True)
-    file_path = upload_dir / unique_name
-    with open(file_path, "wb") as f:
-        f.write(contents)
+    ext, contents = validate_upload(file, ALLOWED_IMAGE_EXTENSIONS)
+    unique_name = save_upload(contents, ext, "products")
 
     if is_primary:
         db.query(ProductImage).filter(
@@ -1191,7 +1135,7 @@ def admin_upload_product_image(
 
     image = ProductImage(
         product_id=product_id,
-        image_url=f"/{settings.UPLOAD_DIR}/products/{unique_name}",
+        image_url=upload_url("products", unique_name),
         alt_text=alt_text,
         is_primary=is_primary,
         order=max_order + 1,
@@ -1512,27 +1456,10 @@ def admin_create_instagram_post(
     final_thumbnail = thumbnail_url
 
     if image:
-        ext = Path(image.filename).suffix.lower()
-        if ext not in ALLOWED_IMAGE_EXTENSIONS:
-            raise HTTPException(
-                status_code=400,
-                detail=f"File type '{ext}' not allowed. Allowed: {', '.join(ALLOWED_IMAGE_EXTENSIONS)}",
-            )
+        ext, contents = validate_upload(image, ALLOWED_IMAGE_EXTENSIONS)
+        unique_name = save_upload(contents, ext, "instagram")
 
-        contents = image.file.read()
-        if len(contents) > settings.MAX_UPLOAD_SIZE:
-            raise HTTPException(
-                status_code=400,
-                detail=f"File too large. Maximum size is {settings.MAX_UPLOAD_SIZE // (1024 * 1024)}MB",
-            )
-
-        unique_name = f"{uuid.uuid4().hex}{ext}"
-        upload_dir = Path(settings.UPLOAD_DIR) / "instagram"
-        upload_dir.mkdir(parents=True, exist_ok=True)
-        with open(upload_dir / unique_name, "wb") as f:
-            f.write(contents)
-
-        final_thumbnail = f"/{settings.UPLOAD_DIR}/instagram/{unique_name}"
+        final_thumbnail = upload_url("instagram", unique_name)
 
     post = InstagramPost(
         post_url=post_url,
@@ -1572,27 +1499,9 @@ def admin_update_instagram_post(
         post.thumbnail_image = thumbnail_url if thumbnail_url else None
 
     if image:
-        ext = Path(image.filename).suffix.lower()
-        if ext not in ALLOWED_IMAGE_EXTENSIONS:
-            raise HTTPException(
-                status_code=400,
-                detail=f"File type '{ext}' not allowed. Allowed: {', '.join(ALLOWED_IMAGE_EXTENSIONS)}",
-            )
-
-        contents = image.file.read()
-        if len(contents) > settings.MAX_UPLOAD_SIZE:
-            raise HTTPException(
-                status_code=400,
-                detail=f"File too large. Maximum size is {settings.MAX_UPLOAD_SIZE // (1024 * 1024)}MB",
-            )
-
-        unique_name = f"{uuid.uuid4().hex}{ext}"
-        upload_dir = Path(settings.UPLOAD_DIR) / "instagram"
-        upload_dir.mkdir(parents=True, exist_ok=True)
-        with open(upload_dir / unique_name, "wb") as f:
-            f.write(contents)
-
-        post.thumbnail_image = f"/{settings.UPLOAD_DIR}/instagram/{unique_name}"
+        ext, contents = validate_upload(image, ALLOWED_IMAGE_EXTENSIONS)
+        unique_name = save_upload(contents, ext, "instagram")
+        post.thumbnail_image = upload_url("instagram", unique_name)
 
     db.commit()
     db.refresh(post)

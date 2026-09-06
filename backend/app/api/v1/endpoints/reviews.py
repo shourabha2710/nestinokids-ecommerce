@@ -1,17 +1,24 @@
-import uuid
-from pathlib import Path
-from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Request
+from typing import List
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.models.models import CustomerReview, User
 from app.schemas.schemas import CustomerReviewCreate, CustomerReviewUpdate, CustomerReviewResponse
 from app.api.v1.endpoints.auth import require_admin
-from app.core.config import settings
+from app.services.file_validation import (
+    ALLOWED_IMAGE_EXTENSIONS,
+    save_upload,
+    upload_url,
+    validate_upload,
+)
 
 router = APIRouter(tags=["reviews"])
 
-ALLOWED_IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp'}
+
+def _save_review_image(image: UploadFile) -> str:
+    ext, contents = validate_upload(image, ALLOWED_IMAGE_EXTENSIONS)
+    unique_name = save_upload(contents, ext, "reviews")
+    return upload_url("reviews", unique_name)
 
 
 @router.get("/api/v1/reviews", response_model=List[CustomerReviewResponse])
@@ -46,27 +53,7 @@ def create_review(
     final_image = None
 
     if image:
-        ext = Path(image.filename).suffix.lower()
-        if ext not in ALLOWED_IMAGE_EXTENSIONS:
-            raise HTTPException(
-                status_code=400,
-                detail=f"File type '{ext}' not allowed. Allowed: {', '.join(ALLOWED_IMAGE_EXTENSIONS)}",
-            )
-
-        contents = image.file.read()
-        if len(contents) > settings.MAX_UPLOAD_SIZE:
-            raise HTTPException(
-                status_code=400,
-                detail=f"File too large. Maximum size is {settings.MAX_UPLOAD_SIZE // (1024 * 1024)}MB",
-            )
-
-        unique_name = f"{uuid.uuid4().hex}{ext}"
-        upload_dir = Path(settings.UPLOAD_DIR) / "reviews"
-        upload_dir.mkdir(parents=True, exist_ok=True)
-        with open(upload_dir / unique_name, "wb") as f:
-            f.write(contents)
-
-        final_image = f"/{settings.UPLOAD_DIR}/reviews/{unique_name}"
+        final_image = _save_review_image(image)
 
     review = CustomerReview(
         customer_name=customer_name,
@@ -122,27 +109,7 @@ def update_review(
         review.customer_image = customer_image_url if customer_image_url else None
 
     if image:
-        ext = Path(image.filename).suffix.lower()
-        if ext not in ALLOWED_IMAGE_EXTENSIONS:
-            raise HTTPException(
-                status_code=400,
-                detail=f"File type '{ext}' not allowed. Allowed: {', '.join(ALLOWED_IMAGE_EXTENSIONS)}",
-            )
-
-        contents = image.file.read()
-        if len(contents) > settings.MAX_UPLOAD_SIZE:
-            raise HTTPException(
-                status_code=400,
-                detail=f"File too large. Maximum size is {settings.MAX_UPLOAD_SIZE // (1024 * 1024)}MB",
-            )
-
-        unique_name = f"{uuid.uuid4().hex}{ext}"
-        upload_dir = Path(settings.UPLOAD_DIR) / "reviews"
-        upload_dir.mkdir(parents=True, exist_ok=True)
-        with open(upload_dir / unique_name, "wb") as f:
-            f.write(contents)
-
-        review.customer_image = f"/{settings.UPLOAD_DIR}/reviews/{unique_name}"
+        review.customer_image = _save_review_image(image)
 
     db.commit()
     db.refresh(review)
