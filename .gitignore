@@ -82,3 +82,13 @@ backend/test_cart.py
 
 # Production uploaded media
 backend/uploads/
+
+# Server/local environment files
+backend/.env.development
+backend/.env.production
+
+admin/.env.development
+admin/.env.production
+
+frontend/.env.development
+frontend/.env.production
