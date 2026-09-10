@@ -82,7 +82,7 @@ STATUS_LABELS: dict[str, str] = {
 # Inventory is reserved on confirmed; released on cancel BEFORE shipping.
 # Inventory is NOT released once shipped.
 _RESERVE_STATUSES = {OrderStatusEnum.CONFIRMED.value}
-_RELEASE_STATUSES = {OrderStatusEnum.CANCELLED.value}
+_RELEASE_STATUSES = {OrderStatusEnum.CANCELLED.value, OrderStatusEnum.RETURNED.value}
 
 
 class OrderStateMachine:
@@ -182,8 +182,7 @@ class OrderStateMachine:
     @staticmethod
     def _handle_inventory(db: Session, order: Order, new_status: str) -> None:
         """
-        Reserve inventory on confirmed; release on cancel before shipping.
-        Never release after shipment.
+        Reserve inventory on confirmed; release on cancel or return.
         """
         if new_status in _RESERVE_STATUSES:
             # Inventory was already reserved at order creation time.
@@ -191,13 +190,10 @@ class OrderStateMachine:
             pass
 
         elif new_status in _RELEASE_STATUSES:
-            # Only release if order has NOT been shipped yet
-            # (at this point, new_status is cancelled, so shipped_at is None unless
-            # the order was previously shipped — which is not possible per transition rules).
-            OrderStateMachine._release_order_stock(order, db)
+            OrderStateMachine._restore_order_stock(order, db)
 
     @staticmethod
-    def _release_order_stock(order: Order, db: Session) -> None:
+    def _restore_order_stock(order: Order, db: Session) -> None:
         """Restore inventory and variant stock for all items in the order."""
         for item in order.items:
             inventory = (
