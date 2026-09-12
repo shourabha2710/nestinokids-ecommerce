@@ -368,6 +368,7 @@ def _build_order_response(order: Order) -> dict:
         "payment_method": order.payment_method or "cod",
         "payment_status": order.payment_status.value if hasattr(order.payment_status, 'value') else order.payment_status,
         "created_at": order.created_at,
+        "shipping_address": order.shipping_address_snapshot or None,
         "items": [
             {
                 "id": item.id,
@@ -387,6 +388,29 @@ def _build_order_response(order: Order) -> dict:
             }
             for item in order.items
         ],
+    }
+
+
+def _build_shipping_address_snapshot(address: Address) -> dict:
+    """Build the immutable shipping address snapshot from an Address record.
+
+    Server-side only. The client never supplies snapshot data.
+
+    Mirrors the Address model fields so the historical record is faithful
+    to what the customer entered at checkout time.
+    """
+    return {
+        "first_name": address.first_name,
+        "last_name": address.last_name,
+        "phone": address.phone,
+        "email": address.email,
+        "address_line_1": address.address_line_1,
+        "address_line_2": address.address_line_2,
+        "city": address.city,
+        "state": address.state,
+        "postal_code": address.postal_code,
+        "country": address.country or "India",
+        "address_type": address.address_type or "residential",
     }
 
 
@@ -568,6 +592,7 @@ def create_order(
         billing_address_id=billing_address_id,
         payment_method=payment_method,
         coupon_id=coupon_id,
+        shipping_address_snapshot=_build_shipping_address_snapshot(shipping_address),
     )
     db.add(db_order)
     db.flush()
@@ -788,6 +813,7 @@ def checkout(
         billing_address_id=billing_address_id,
         payment_method="cod",
         coupon_id=coupon_id,
+        shipping_address_snapshot=_build_shipping_address_snapshot(shipping_address),
     )
     db.add(db_order)
     db.flush()

@@ -209,6 +209,28 @@ const OrderDetailPage = () => {
         </a>
       )}
 
+      {/* Shipping Address (historical snapshot) */}
+      {order.shipping_address && (
+        <div className="bg-white rounded-lg shadow p-6 mb-6">
+          <h2 className="text-lg font-semibold text-text mb-4">Shipping Address</h2>
+          <div className="text-sm space-y-1">
+            <p className="font-medium text-text">
+              {[order.shipping_address.first_name, order.shipping_address.last_name].filter(Boolean).join(' ')}
+            </p>
+            <p className="text-gray-600">
+              {order.shipping_address.address_line_1}
+              {order.shipping_address.address_line_2 ? `, ${order.shipping_address.address_line_2}` : ''}
+            </p>
+            <p className="text-gray-600">
+              {[order.shipping_address.city, order.shipping_address.state].filter(Boolean).join(', ')}
+              {order.shipping_address.postal_code ? ` - ${order.shipping_address.postal_code}` : ''}
+            </p>
+            {order.shipping_address.country && <p className="text-gray-600">{order.shipping_address.country}</p>}
+            {order.shipping_address.phone && <p className="text-gray-600">Phone: {order.shipping_address.phone}</p>}
+          </div>
+        </div>
+      )}
+
       {/* Items */}
       <div className="bg-white rounded-lg shadow p-6 mb-6">
         <h2 className="text-lg font-semibold text-text mb-4">Items ({order.items?.length || 0})</h2>

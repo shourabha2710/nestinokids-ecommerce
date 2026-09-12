@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Float, Text, DateTime, Boolean, ForeignKey, Table, Enum, JSON, UniqueConstraint, Index, BigInteger, text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.db.database import Base
@@ -304,6 +305,13 @@ class Order(Base):
     # Address info
     shipping_address_id = Column(Integer, ForeignKey('addresses.id'), nullable=True)
     billing_address_id = Column(Integer, ForeignKey('addresses.id'), nullable=True)
+
+    # Immutable snapshot of the shipping address captured at checkout time.
+    # Historical source of truth: immune to later address edits/deletes.
+    # Stored as JSONB on PostgreSQL (the project runtimes are Postgres).
+    shipping_address_snapshot = Column(
+        JSON().with_variant(JSONB(), "postgresql"), nullable=True
+    )
     
     # Payment info
     payment_method = Column(String(50), nullable=True)
