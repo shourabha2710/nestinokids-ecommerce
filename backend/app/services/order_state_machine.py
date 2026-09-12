@@ -234,14 +234,11 @@ class OrderStateMachine:
                 pass
 
             try:
-                from app.models.models import LoyaltyTransaction, LoyaltyTransactionTypeEnum
-                earned_tx = db.query(LoyaltyTransaction).filter(
-                    LoyaltyTransaction.order_id == order.id,
-                    LoyaltyTransaction.transaction_type == LoyaltyTransactionTypeEnum.EARN,
-                ).first()
-                if earned_tx:
-                    from app.services.loyalty_service import loyalty_service
-                    loyalty_service.refund_points(db, order.user_id, order.id, earned_tx.points)
+                # Restore any loyalty points redeemed for this order, exactly
+                # once. Points earned at delivery (EARN) are not refunded here
+                # because cancellation is only reachable from PENDING/CONFIRMED.
+                from app.services.loyalty_service import loyalty_service
+                loyalty_service.refund_redeemed_points(db, order.user_id, order.id)
             except Exception:
                 pass
 
