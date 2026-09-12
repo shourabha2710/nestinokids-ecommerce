@@ -17,8 +17,13 @@ class LoyaltyService:
         (settings.BRONZE_THRESHOLD, LoyaltyTierEnum.BRONZE),
     ]
 
-    def _get_or_create_account(self, db: Session, user_id: int) -> LoyaltyAccount:
-        account = db.query(LoyaltyAccount).filter(LoyaltyAccount.user_id == user_id).first()
+    def _get_or_create_account(
+        self, db: Session, user_id: int, for_update: bool = False
+    ) -> LoyaltyAccount:
+        query = db.query(LoyaltyAccount).filter(LoyaltyAccount.user_id == user_id)
+        if for_update:
+            query = query.with_for_update()
+        account = query.first()
         if not account:
             account = LoyaltyAccount(user_id=user_id, current_points=0, lifetime_earned=0, lifetime_redeemed=0, current_tier=LoyaltyTierEnum.BRONZE)
             db.add(account)
@@ -83,34 +88,107 @@ class LoyaltyService:
         db.flush()
         return points, new_balance
 
-    def redeem_points(
-        self, db: Session, user_id: int, points_to_redeem: int, order_amount: float,
-        order_id: int = None, description: str = None
+    def quote_redemption(
+        self, db: Session, user_id: int, points_to_redeem: int, order_amount: float
     ) -> Tuple[int, float]:
+        """Pure, side-effect-free loyalty redemption quote.
+
+        Returns the points/discount that WOULD be redeemed for an order of
+        ``order_amount``. Never mutates the account, never creates a
+        LoyaltyTransaction, never takes row locks, and never creates an
+        account for a user who does not have one. Safe to call from the
+        order-calculation and cart-preview paths; does not rely on
+        transaction rollback for safety.
+
+        Behavior: CLAMP CONSISTENTLY. The quoted amount is
+
+            actual = min(points_to_redeem, available_points,
+                         max_points_allowed_by_order)
+
+        and that exact amount is what apply_redemption() later publishes, so
+        the price quoted to the customer always matches the ledger.
+        """
         if not settings.LOYALTY_ENABLED or points_to_redeem <= 0:
             return 0, 0.0
 
-        account = self._get_or_create_account(db, user_id)
+        account = db.query(LoyaltyAccount).filter(
+            LoyaltyAccount.user_id == user_id
+        ).first()
+        if not account or account.current_points <= 0:
+            return 0, 0.0
 
-        if account.current_points < points_to_redeem:
-            raise ValueError(f"Insufficient points. Available: {account.current_points}, Requested: {points_to_redeem}")
+        available = account.current_points
+        max_points = int(
+            order_amount * settings.MAX_REDEMPTION_PERCENT / 100
+            * settings.REDEMPTION_RATE
+        )
+        actual = min(points_to_redeem, available, max_points)
+        if actual <= 0:
+            return 0, 0.0
 
-        max_points = int(order_amount * settings.MAX_REDEMPTION_PERCENT / 100 * settings.REDEMPTION_RATE)
-        actual_redeemed = min(points_to_redeem, max_points)
-        discount = actual_redeemed * settings.REDEMPTION_RATE
+        return actual, actual * settings.REDEMPTION_RATE
 
-        account.current_points -= actual_redeemed
-        account.lifetime_redeemed += actual_redeemed
+    def apply_redemption(
+        self, db: Session, user_id: int, order_id: int, quoted_points: int,
+        order_amount: float
+    ) -> Tuple[int, float]:
+        """Apply an already-quoted redemption AFTER the Order row exists.
+
+        Contract required by G2:
+          - runs strictly after ``Order`` is flushed (db_order.id available);
+          - takes a ``SELECT ... FOR UPDATE`` row lock on the loyalty account
+            so the read-modify-write is safe under PostgreSQL concurrency
+            (no-op on SQLite, documented);
+          - re-checks the locked balance and refuses to apply anything if the
+            quoted amount can no longer be backed (raises ValueError so the
+            caller can abort the whole order transaction — never a silent
+            partial mismatch, never a negative balance);
+          - writes ONE REDEEM transaction linked to ``order_id`` (never NULL);
+          - is idempotent per order: if a REDEEM already exists for the order
+            it returns the already-applied value instead of deducting again.
+
+        No commit: the order's owning transaction commits.
+        """
+        if not settings.LOYALTY_ENABLED or quoted_points <= 0:
+            return 0, 0.0
+        if order_id is None:
+            raise ValueError("apply_redemption requires an order_id")
+
+        existing = db.query(LoyaltyTransaction).filter(
+            LoyaltyTransaction.order_id == order_id,
+            LoyaltyTransaction.transaction_type == LoyaltyTransactionTypeEnum.REDEEM,
+        ).first()
+        if existing:
+            return abs(existing.points), abs(existing.points) * settings.REDEMPTION_RATE
+
+        account = self._get_or_create_account(db, user_id, for_update=True)
+        available = account.current_points
+        max_points = int(
+            order_amount * settings.MAX_REDEMPTION_PERCENT / 100
+            * settings.REDEMPTION_RATE
+        )
+        actual = min(quoted_points, available, max_points)
+        if actual < quoted_points:
+            raise ValueError(
+                f"Insufficient loyalty points. Quoted: {quoted_points}, "
+                f"Available: {available}"
+            )
+        if actual <= 0:
+            return 0, 0.0
+
+        discount = actual * settings.REDEMPTION_RATE
+        account.current_points = available - actual
+        account.lifetime_redeemed += actual
         new_balance = account.current_points
 
         self._record_transaction(
-            db, account, LoyaltyTransactionTypeEnum.REDEEM, -actual_redeemed, new_balance,
-            description=description or f"Redeemed {actual_redeemed} points (₹{discount:.2f} discount)",
+            db, account, LoyaltyTransactionTypeEnum.REDEEM, -actual, new_balance,
+            description=f"Redeemed {actual} points (₹{discount:.2f} discount)",
             order_id=order_id, reference_type="order", reference_id=order_id
         )
 
         db.flush()
-        return actual_redeemed, discount
+        return actual, discount
 
     def refund_points(
         self, db: Session, user_id: int, order_id: int, points_to_refund: int
@@ -127,6 +205,51 @@ class LoyaltyService:
         self._record_transaction(
             db, account, LoyaltyTransactionTypeEnum.REFUND, points_to_refund, new_balance,
             description=f"Refunded {points_to_refund} points for order #{order_id}",
+            order_id=order_id, reference_type="order", reference_id=order_id
+        )
+
+        db.flush()
+        return points_to_refund, new_balance
+
+    def refund_redeemed_points(
+        self, db: Session, user_id: int, order_id: int
+    ) -> Tuple[int, int]:
+        """Restore redeemed points for a cancelled order, exactly once.
+
+        Uses the existing REFUND ledger type (positive points) and reverses
+        the redeem's balance + lifetime_redeemed effects. Idempotent:
+        - no-op when the order has no REDEEM transaction (nothing to restore);
+        - no-op when a REFUND reversal already exists for the order, so the
+          hook can never restore points twice.
+
+        No commit: the status-change transaction (state machine) commits.
+        """
+        if not settings.LOYALTY_ENABLED:
+            return 0, 0
+
+        redeem = db.query(LoyaltyTransaction).filter(
+            LoyaltyTransaction.order_id == order_id,
+            LoyaltyTransaction.transaction_type == LoyaltyTransactionTypeEnum.REDEEM,
+        ).first()
+        if not redeem:
+            return 0, 0
+
+        already = db.query(LoyaltyTransaction).filter(
+            LoyaltyTransaction.order_id == order_id,
+            LoyaltyTransaction.transaction_type == LoyaltyTransactionTypeEnum.REFUND,
+        ).first()
+        if already:
+            return abs(already.points), already.balance_after
+
+        points_to_refund = abs(redeem.points)
+        account = self._get_or_create_account(db, user_id, for_update=True)
+        account.current_points += points_to_refund
+        account.lifetime_redeemed = max(0, account.lifetime_redeemed - points_to_refund)
+        new_balance = account.current_points
+
+        self._record_transaction(
+            db, account, LoyaltyTransactionTypeEnum.REFUND, points_to_refund, new_balance,
+            description=f"Refunded {points_to_refund} redeemed points for order #{order_id}",
             order_id=order_id, reference_type="order", reference_id=order_id
         )
 

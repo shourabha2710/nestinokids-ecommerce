@@ -147,9 +147,11 @@ def calculate_order(
         try:
             subtotal_after_promos_coupons = max(subtotal - promotion_discount - coupon_discount, 0.0)
             from app.services.loyalty_service import loyalty_service
-            points_redeemed, discount = loyalty_service.redeem_points(
+            # Pure quote: never mutates the loyalty account, never writes a
+            # LoyaltyTransaction. Mutation happens later in the order-creation
+            # flow (apply_redemption), only after the Order row has an id.
+            points_redeemed, discount = loyalty_service.quote_redemption(
                 db, user_id, loyalty_points_to_redeem, subtotal_after_promos_coupons,
-                description="Points redeemed at checkout"
             )
             if points_redeemed > 0:
                 loyalty_discount = round(discount, 2)

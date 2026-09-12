@@ -17,6 +17,7 @@ from app.services.notification_event_service import notification_event_service
 from app.services.order_calculation_service import calculate_for_order_creation
 from app.services.marketplace_service import is_direct_checkout_enabled
 from app.services.settings_service import get_settings
+from app.services.loyalty_service import loyalty_service
 from typing import List, Optional
 from datetime import datetime
 
@@ -452,6 +453,176 @@ def _ensure_cod_enabled(db: Session) -> None:
 
 
 # Order Endpoints
+def _finalize_order(
+    db: Session,
+    current_user: User,
+    shipping_address: Address,
+    billing_address_id: int,
+    payment_method: str,
+    order_items_list: List[dict],
+    coupon_code: str = "",
+    loyalty_points_to_redeem: int = 0,
+    clear_all_cart: bool = False,
+) -> OrderResponse:
+    """Shared order finalization for POST /orders and POST /checkout.
+
+    Keeps loyalty semantics identical for both paths:
+      - the price is computed by the pure calculation (quote) first;
+      - the Order row is flushed so it has an id;
+      - redemption is applied AFTER the flush, exactly once, linked to
+        db_order.id and in the SAME transaction (db.rollback() undoes both);
+      - a redemption that can no longer be backed (concurrent spend) aborts the
+        whole order with 400, never a silent price/ledger mismatch.
+
+    The ONLY commit for the order happens here; service functions never commit.
+    """
+    low_stock_products = []
+
+    calc_items = [
+        {
+            "product_id": item["product"].id,
+            "category_id": getattr(item["product"], "category_id", None),
+            "quantity": item["quantity"],
+            "price": item["price"],
+            "total": item["total"],
+        }
+        for item in order_items_list
+    ]
+    calc = calculate_for_order_creation(
+        db, calc_items, coupon_code=coupon_code, user_id=current_user.id,
+        loyalty_points_to_redeem=loyalty_points_to_redeem,
+    )
+    discount_amount = calc.coupon_discount + calc.loyalty_discount
+    coupon_id = None
+    if calc.applied_coupon:
+        coupon = db.query(Coupon).filter(
+            Coupon.code == calc.applied_coupon.code, Coupon.is_active == True
+        ).first()
+        if coupon:
+            coupon_id = coupon.id
+            coupon.usage_count += 1
+            db.add(coupon)
+
+    db_order = Order(
+        user_id=current_user.id,
+        order_number=generate_order_number(),
+        total_amount=sum(item["total"] for item in order_items_list),
+        discount_amount=discount_amount,
+        tax_amount=calc.tax,
+        shipping_amount=calc.shipping,
+        final_amount=calc.grand_total,
+        shipping_address_id=shipping_address.id,
+        billing_address_id=billing_address_id,
+        payment_method=payment_method,
+        coupon_id=coupon_id,
+        shipping_address_snapshot=_build_shipping_address_snapshot(shipping_address),
+    )
+    db.add(db_order)
+    db.flush()
+
+    # Loyalty redemption happens strictly AFTER the order has an id.
+    if calc.loyalty_points_redeemed > 0:
+        loyalty_base = max(
+            calc.subtotal - calc.promotion_discount - calc.coupon_discount, 0.0
+        )
+        try:
+            loyalty_service.apply_redemption(
+                db, current_user.id, db_order.id,
+                calc.loyalty_points_redeemed, loyalty_base,
+            )
+        except ValueError as e:
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e),
+            )
+
+    for item in order_items_list:
+        order_item = OrderItem(
+            order_id=db_order.id,
+            product_id=item["product"].id,
+            quantity=item["quantity"],
+            price=item["price"],
+            total=item["total"],
+            variant_id=item["variant_id"]
+        )
+        db.add(order_item)
+
+        inventory = db.query(Inventory).filter(
+            Inventory.product_id == item["product"].id
+        ).with_for_update().first()
+        if inventory:
+            inventory.available_quantity -= item["quantity"]
+            inventory.reserved_quantity += item["quantity"]
+            db.add(inventory)
+            if inventory.available_quantity <= inventory.low_stock_threshold:
+                low_stock_products.append((item["product"], inventory))
+
+        if item["variant_id"]:
+            variant = db.query(ProductVariant).filter(
+                ProductVariant.id == item["variant_id"]
+            ).with_for_update().first()
+            if variant:
+                if variant.quantity < item["quantity"]:
+                    db.rollback()
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Insufficient variant stock for {item['product'].name}. Available: {variant.quantity}, Requested: {item['quantity']}",
+                    )
+                variant.quantity -= item["quantity"]
+                db.add(variant)
+
+    # Record initial Pending status via state machine
+    from app.services.order_state_machine import order_state_machine
+    order_state_machine.record_initial_status(db, db_order)
+
+    # Create legacy tracking event (backward-compatible)
+    from app.models.models import OrderTrackingEvent
+    tracking = OrderTrackingEvent(
+        order_id=db_order.id,
+        status="Order Placed",
+        note="Order has been placed successfully.",
+    )
+    db.add(tracking)
+
+    if clear_all_cart:
+        stmt = delete(cart_association).where(
+            cart_association.c.user_id == current_user.id
+        )
+        db.execute(stmt)
+    else:
+        # Clear cart items associated with this order
+        for item in order_items_list:
+            if item["variant_id"] is not None:
+                stmt = delete(cart_association).where(
+                    cart_association.c.user_id == current_user.id,
+                    cart_association.c.product_id == item["product"].id,
+                    cart_association.c.variant_id == item["variant_id"],
+                )
+            else:
+                stmt = delete(cart_association).where(
+                    cart_association.c.user_id == current_user.id,
+                    cart_association.c.product_id == item["product"].id,
+                    cart_association.c.variant_id.is_(None),
+                )
+            db.execute(stmt)
+
+    db.commit()
+    db.refresh(db_order)
+
+    try:
+        notification_event_service.notify_new_order(db, db_order)
+    except Exception:
+        pass
+    for product, inv in low_stock_products:
+        try:
+            notification_event_service.notify_low_stock(db, product, inv)
+        except Exception:
+            pass
+
+    return _build_order_response(db_order)
+
+
 @router.post("/orders", response_model=OrderResponse, status_code=status.HTTP_201_CREATED)
 def create_order(
     order_data: OrderCreate,
@@ -496,9 +667,7 @@ def create_order(
             )
         billing_address_id = billing_address.id
 
-    total_amount = 0
     order_items_list = []
-    low_stock_products = []
 
     for item_data in order_data.items:
         product = db.query(Product).filter(Product.id == item_data.product_id).first()
@@ -526,7 +695,6 @@ def create_order(
             price_modifier = 0.0
         price = base_price + price_modifier
         item_total = price * item_data.quantity
-        total_amount += item_total
 
         # Validate inventory (with row lock to prevent overselling)
         inventory = db.query(Inventory).filter(
@@ -551,129 +719,17 @@ def create_order(
             "variant_id": item_data.variant_id
         })
 
-    # --- Centralized calculation ---
-    calc_items = [
-        {
-            "product_id": item["product"].id,
-            "category_id": getattr(item["product"], "category_id", None),
-            "quantity": item["quantity"],
-            "price": item["price"],
-            "total": item["total"],
-        }
-        for item in order_items_list
-    ]
-    calc = calculate_for_order_creation(
-        db, calc_items, coupon_code=order_data.coupon_code, user_id=current_user.id,
+    # --- Centralized calculation + order finalization ---
+    return _finalize_order(
+        db,
+        current_user,
+        shipping_address,
+        billing_address_id,
+        payment_method,
+        order_items_list,
+        coupon_code=order_data.coupon_code or "",
         loyalty_points_to_redeem=order_data.loyalty_points_to_redeem,
     )
-    discount_amount = calc.coupon_discount + calc.loyalty_discount
-    coupon_id = None
-    if calc.applied_coupon:
-        coupon = db.query(Coupon).filter(
-            Coupon.code == calc.applied_coupon.code, Coupon.is_active == True
-        ).first()
-        if coupon:
-            coupon_id = coupon.id
-            coupon.usage_count += 1
-            db.add(coupon)
-    shipping_amount = calc.shipping
-    tax_amount = calc.tax
-    final_amount = calc.grand_total
-
-    db_order = Order(
-        user_id=current_user.id,
-        order_number=generate_order_number(),
-        total_amount=total_amount,
-        discount_amount=discount_amount,
-        tax_amount=tax_amount,
-        shipping_amount=shipping_amount,
-        final_amount=final_amount,
-        shipping_address_id=shipping_address.id,
-        billing_address_id=billing_address_id,
-        payment_method=payment_method,
-        coupon_id=coupon_id,
-        shipping_address_snapshot=_build_shipping_address_snapshot(shipping_address),
-    )
-    db.add(db_order)
-    db.flush()
-
-    for item in order_items_list:
-        order_item = OrderItem(
-            order_id=db_order.id,
-            product_id=item["product"].id,
-            quantity=item["quantity"],
-            price=item["price"],
-            total=item["total"],
-            variant_id=item["variant_id"]
-        )
-        db.add(order_item)
-
-        inventory = db.query(Inventory).filter(
-            Inventory.product_id == item["product"].id
-        ).with_for_update().first()
-        if inventory:
-            inventory.available_quantity -= item["quantity"]
-            inventory.reserved_quantity += item["quantity"]
-            db.add(inventory)
-            if inventory.available_quantity <= inventory.low_stock_threshold:
-                low_stock_products.append((item["product"], inventory))
-
-        if item["variant_id"]:
-            variant = db.query(ProductVariant).filter(
-                ProductVariant.id == item["variant_id"]
-            ).with_for_update().first()
-            if variant:
-                if variant.quantity < item["quantity"]:
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail=f"Insufficient variant stock for {item['product'].name}. Available: {variant.quantity}, Requested: {item['quantity']}",
-                    )
-                variant.quantity -= item["quantity"]
-                db.add(variant)
-
-    # Record initial Pending status via state machine
-    from app.services.order_state_machine import order_state_machine
-    order_state_machine.record_initial_status(db, db_order)
-
-    # Create legacy tracking event (backward-compatible)
-    from app.models.models import OrderTrackingEvent
-    tracking = OrderTrackingEvent(
-        order_id=db_order.id,
-        status="Order Placed",
-        note="Order has been placed successfully.",
-    )
-    db.add(tracking)
-
-    # Clear cart items associated with this order
-    for item in order_items_list:
-        if item["variant_id"] is not None:
-            stmt = delete(cart_association).where(
-                cart_association.c.user_id == current_user.id,
-                cart_association.c.product_id == item["product"].id,
-                cart_association.c.variant_id == item["variant_id"],
-            )
-        else:
-            stmt = delete(cart_association).where(
-                cart_association.c.user_id == current_user.id,
-                cart_association.c.product_id == item["product"].id,
-                cart_association.c.variant_id.is_(None),
-            )
-        db.execute(stmt)
-
-    db.commit()
-    db.refresh(db_order)
-
-    try:
-        notification_event_service.notify_new_order(db, db_order)
-    except Exception:
-        pass
-    for product, inv in low_stock_products:
-        try:
-            notification_event_service.notify_low_stock(db, product, inv)
-        except Exception:
-            pass
-
-    return _build_order_response(db_order)
 
 
 @router.post("/checkout", response_model=OrderResponse, status_code=status.HTTP_201_CREATED)
@@ -717,9 +773,7 @@ def checkout(
             detail="Cart is empty"
         )
 
-    total_amount = 0
     order_items_list = []
-    low_stock_products = []
 
     for row in cart_rows:
         product = db.query(Product).filter(Product.id == row["product_id"]).first()
@@ -749,7 +803,6 @@ def checkout(
             price_modifier = 0.0
         price = base_price + price_modifier
         item_total = price * qty
-        total_amount += item_total
 
         inventory = db.query(Inventory).filter(
             Inventory.product_id == row["product_id"]
@@ -772,119 +825,18 @@ def checkout(
             "variant_id": variant_id,
         })
 
-    # --- Centralized calculation ---
-    calc_items = [
-        {
-            "product_id": item["product"].id,
-            "category_id": getattr(item["product"], "category_id", None),
-            "quantity": item["quantity"],
-            "price": item["price"],
-            "total": item["total"],
-        }
-        for item in order_items_list
-    ]
-    calc = calculate_for_order_creation(
-        db, calc_items, coupon_code=data.coupon_code, user_id=current_user.id,
+    # --- Centralized calculation + order finalization ---
+    return _finalize_order(
+        db,
+        current_user,
+        shipping_address,
+        billing_address_id,
+        "cod",
+        order_items_list,
+        coupon_code=data.coupon_code or "",
         loyalty_points_to_redeem=data.loyalty_points_to_redeem,
+        clear_all_cart=True,
     )
-    discount_amount = calc.coupon_discount + calc.loyalty_discount
-    coupon_id = None
-    if calc.applied_coupon:
-        coupon = db.query(Coupon).filter(
-            Coupon.code == calc.applied_coupon.code, Coupon.is_active == True
-        ).first()
-        if coupon:
-            coupon_id = coupon.id
-            coupon.usage_count += 1
-            db.add(coupon)
-    shipping_amount = calc.shipping
-    tax_amount = calc.tax
-    final_amount = calc.grand_total
-
-    db_order = Order(
-        user_id=current_user.id,
-        order_number=generate_order_number(),
-        total_amount=total_amount,
-        discount_amount=discount_amount,
-        tax_amount=tax_amount,
-        shipping_amount=shipping_amount,
-        final_amount=final_amount,
-        shipping_address_id=shipping_address.id,
-        billing_address_id=billing_address_id,
-        payment_method="cod",
-        coupon_id=coupon_id,
-        shipping_address_snapshot=_build_shipping_address_snapshot(shipping_address),
-    )
-    db.add(db_order)
-    db.flush()
-
-    for item in order_items_list:
-        order_item = OrderItem(
-            order_id=db_order.id,
-            product_id=item["product"].id,
-            quantity=item["quantity"],
-            price=item["price"],
-            total=item["total"],
-            variant_id=item["variant_id"]
-        )
-        db.add(order_item)
-
-        inventory = db.query(Inventory).filter(
-            Inventory.product_id == item["product"].id
-        ).with_for_update().first()
-        if inventory:
-            inventory.available_quantity -= item["quantity"]
-            inventory.reserved_quantity += item["quantity"]
-            db.add(inventory)
-            if inventory.available_quantity <= inventory.low_stock_threshold:
-                low_stock_products.append((item["product"], inventory))
-
-        if item["variant_id"]:
-            variant = db.query(ProductVariant).filter(
-                ProductVariant.id == item["variant_id"]
-            ).with_for_update().first()
-            if variant:
-                if variant.quantity < item["quantity"]:
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail=f"Insufficient variant stock for {item['product'].name}. Available: {variant.quantity}, Requested: {item['quantity']}",
-                    )
-                variant.quantity -= item["quantity"]
-                db.add(variant)
-
-    # Record initial Pending status via state machine
-    from app.services.order_state_machine import order_state_machine
-    order_state_machine.record_initial_status(db, db_order)
-
-    # Create legacy tracking event (backward-compatible)
-    from app.models.models import OrderTrackingEvent
-    tracking = OrderTrackingEvent(
-        order_id=db_order.id,
-        status="Order Placed",
-        note="Order has been placed successfully.",
-    )
-    db.add(tracking)
-
-    # Clear entire cart
-    stmt = delete(cart_association).where(
-        cart_association.c.user_id == current_user.id
-    )
-    db.execute(stmt)
-
-    db.commit()
-    db.refresh(db_order)
-
-    try:
-        notification_event_service.notify_new_order(db, db_order)
-    except Exception:
-        pass
-    for product, inv in low_stock_products:
-        try:
-            notification_event_service.notify_low_stock(db, product, inv)
-        except Exception:
-            pass
-
-    return _build_order_response(db_order)
 
 
 @router.get("/orders", response_model=List[OrderResponse])
