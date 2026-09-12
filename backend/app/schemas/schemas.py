@@ -249,6 +249,27 @@ class OrderItemResponse(BaseModel):
 
 
 # Order Schemas
+
+# Immutable snapshot of the shipping address captured at checkout.
+# Mirrors the Address model fields (first_name/last_name, not a combined
+# full_name) so the historical record is faithful to the Address record.
+class ShippingAddressSnapshot(BaseModel):
+    first_name: str
+    last_name: str
+    phone: str
+    email: Optional[str] = None
+    address_line_1: str
+    address_line_2: Optional[str] = None
+    city: str
+    state: str
+    postal_code: str
+    country: str = "India"
+    address_type: str = "residential"
+
+    class Config:
+        from_attributes = True
+
+
 class OrderBase(BaseModel):
     shipping_address_id: int
     billing_address_id: Optional[int] = None
@@ -281,6 +302,7 @@ class OrderResponse(BaseModel):
     payment_status: str
     created_at: datetime
     items: List[OrderItemResponse] = []
+    shipping_address: Optional[ShippingAddressSnapshot] = None
     
     class Config:
         from_attributes = True
@@ -339,6 +361,7 @@ class AdminOrderResponse(BaseModel):
     items: List[OrderItemResponse] = []
     allowed_transitions: List[str] = []
     status_history: List[OrderStatusHistoryResponse] = []
+    shipping_address: Optional[str] = None
 
     class Config:
         from_attributes = True

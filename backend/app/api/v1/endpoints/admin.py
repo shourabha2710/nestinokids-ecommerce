@@ -372,6 +372,35 @@ def admin_delete_banner(
     return {"message": "Banner deleted successfully"}
 
 
+def _format_shipping_address(snapshot) -> Optional[str]:
+    """Format the immutable shipping address snapshot into a human-readable
+    multi-line string. Returns None when the order has no snapshot (i.e.
+    historical orders placed before the snapshot column existed)."""
+    if not snapshot:
+        return None
+    lines = []
+    name = f"{snapshot.get('first_name', '')} {snapshot.get('last_name', '')}".strip()
+    if name:
+        lines.append(name)
+    line_1 = snapshot.get("address_line_1") or ""
+    line_2 = snapshot.get("address_line_2")
+    street = line_1 + (f", {line_2}" if line_2 else "")
+    if street:
+        lines.append(street)
+    locality = ", ".join(
+        p for p in (snapshot.get("city"), snapshot.get("state")) if p
+    )
+    if snapshot.get("postal_code"):
+        locality = f"{locality} - {snapshot['postal_code']}" if locality else str(snapshot["postal_code"])
+    if locality:
+        lines.append(locality)
+    if snapshot.get("country"):
+        lines.append(str(snapshot["country"]))
+    if snapshot.get("phone"):
+        lines.append(f"Phone: {snapshot['phone']}")
+    return "\n".join(lines)
+
+
 def _build_admin_order(order: Order) -> dict:
     from app.services.order_state_machine import order_state_machine, STATUS_LABELS
 
@@ -431,6 +460,7 @@ def _build_admin_order(order: Order) -> dict:
         ],
         "allowed_transitions": allowed,
         "status_history": status_history_list,
+        "shipping_address": _format_shipping_address(order.shipping_address_snapshot),
     }
 
 
