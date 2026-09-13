@@ -9,6 +9,7 @@ Pins the immutable address snapshot contract:
   - ownership is enforced; rollback never leaves a partial order
 """
 import itertools
+from uuid import uuid4
 
 import pytest
 
@@ -122,7 +123,8 @@ def _create_product(db, price=120.0):
 def _checkout(client, token, address_id, **extra):
     body = {"shipping_address_id": address_id}
     body.update(extra)
-    return client.post("/api/v1/checkout", headers=_auth(token), json=body)
+    headers = {**_auth(token), "Idempotency-Key": str(uuid4())}
+    return client.post("/api/v1/checkout", headers=headers, json=body)
 
 
 # ─── Snapshot is stored at checkout ───────────────────────────────────────────
@@ -185,7 +187,7 @@ def test_create_order_endpoint_also_snapshots(client, db):
 
     resp = client.post(
         "/api/v1/orders",
-        headers=_auth(token),
+        headers={**_auth(token), "Idempotency-Key": str(uuid4())},
         json={
             "shipping_address_id": addr["id"],
             "items": [{"product_id": pid, "quantity": 2}],

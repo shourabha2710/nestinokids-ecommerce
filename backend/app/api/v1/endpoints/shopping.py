@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Response, Header
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import select, insert, update, delete
 from app.db.database import get_db
@@ -18,6 +18,15 @@ from app.services.order_calculation_service import calculate_for_order_creation
 from app.services.marketplace_service import is_direct_checkout_enabled
 from app.services.settings_service import get_settings
 from app.services.loyalty_service import loyalty_service
+from app.services.order_idempotency_service import (
+    validate_idempotency_key,
+    build_request_fingerprint,
+    claim_idempotency,
+    resolve_replay,
+    REPLAY,
+    SCOPE_ORDERS,
+    SCOPE_CHECKOUT,
+)
 from typing import List, Optional
 from datetime import datetime
 
@@ -453,6 +462,45 @@ def _ensure_cod_enabled(db: Session) -> None:
 
 
 # Order Endpoints
+def _claim_or_replay(
+    db: Session,
+    response: Response,
+    user_id: int,
+    scope: str,
+    idempotency_key: Optional[str],
+    shipping_address_id: int,
+    billing_address_id: int,
+    coupon_code: Optional[str],
+    loyalty_points_to_redeem: int,
+    payment_method: Optional[str] = None,
+    items: Optional[List] = None,
+):
+    """Validate the Idempotency-Key and atomically claim it (or replay).
+
+    Shared by POST /orders and POST /checkout. On the winning (first) request
+    returns (claim, None) so the caller continues into _finalize_order (the
+    claim row commits atomically with the order, linked to its id). On a
+    replay returns (None, original_order_response) — never re-creates anything
+    and tags the response with Idempotency-Replayed: true.
+    """
+    key = validate_idempotency_key(idempotency_key)
+    fingerprint = build_request_fingerprint(
+        scope,
+        shipping_address_id,
+        billing_address_id,
+        coupon_code,
+        loyalty_points_to_redeem,
+        payment_method,
+        items,
+    )
+    outcome, claim = claim_idempotency(db, user_id, scope, key, fingerprint)
+    if outcome == REPLAY:
+        order = resolve_replay(db, claim, fingerprint)
+        response.headers["Idempotency-Replayed"] = "true"
+        return None, _build_order_response(order)
+    return claim, None
+
+
 def _finalize_order(
     db: Session,
     current_user: User,
@@ -463,6 +511,7 @@ def _finalize_order(
     coupon_code: str = "",
     loyalty_points_to_redeem: int = 0,
     clear_all_cart: bool = False,
+    idempotency_claim: Optional[object] = None,
 ) -> OrderResponse:
     """Shared order finalization for POST /orders and POST /checkout.
 
@@ -519,6 +568,12 @@ def _finalize_order(
     )
     db.add(db_order)
     db.flush()
+
+    # Bind the winning idempotency claim to this order; the claim commits
+    # together with the order, so it never outlives a rolled-back failure.
+    if idempotency_claim is not None:
+        idempotency_claim.order_id = db_order.id
+        db.add(idempotency_claim)
 
     # Loyalty redemption happens strictly AFTER the order has an id.
     if calc.loyalty_points_redeemed > 0:
@@ -627,9 +682,11 @@ def _finalize_order(
 def create_order(
     order_data: OrderCreate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    response: Response = None,
+    idempotency_key: Optional[str] = Header(None),
 ):
-    """Create new order from items list"""
+    """Create new order from items list (idempotent via Idempotency-Key)"""
     _ensure_direct_checkout_enabled(db)
     _ensure_cod_enabled(db)
 
@@ -666,6 +723,25 @@ def create_order(
                 detail="Billing address not found"
             )
         billing_address_id = billing_address.id
+
+    # Idempotency: atomically claim the key, or return the original order on
+    # replay. The claim commits with the order in the same transaction, so a
+    # failed creation rolls both back and the key stays retryable.
+    idempotency_claim, replay_response = _claim_or_replay(
+        db,
+        response,
+        current_user.id,
+        SCOPE_ORDERS,
+        idempotency_key,
+        shipping_address.id,
+        billing_address_id,
+        order_data.coupon_code,
+        order_data.loyalty_points_to_redeem,
+        payment_method,
+        order_data.items,
+    )
+    if replay_response is not None:
+        return replay_response
 
     order_items_list = []
 
@@ -729,6 +805,7 @@ def create_order(
         order_items_list,
         coupon_code=order_data.coupon_code or "",
         loyalty_points_to_redeem=order_data.loyalty_points_to_redeem,
+        idempotency_claim=idempotency_claim,
     )
 
 
@@ -736,9 +813,11 @@ def create_order(
 def checkout(
     data: CheckoutRequest,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    response: Response = None,
+    idempotency_key: Optional[str] = Header(None),
 ):
-    """Checkout: create order from cart items"""
+    """Checkout: create order from cart items (idempotent via Idempotency-Key)"""
     _ensure_direct_checkout_enabled(db)
     _ensure_cod_enabled(db)
 
@@ -765,6 +844,22 @@ def checkout(
                 detail="Billing address not found"
             )
         billing_address_id = billing_address.id
+
+    # Idempotency: atomically claim the key, or return the original order on
+    # replay. The claim commits with the order in the same transaction.
+    idempotency_claim, replay_response = _claim_or_replay(
+        db,
+        response,
+        current_user.id,
+        SCOPE_CHECKOUT,
+        idempotency_key,
+        shipping_address.id,
+        billing_address_id,
+        data.coupon_code,
+        data.loyalty_points_to_redeem,
+    )
+    if replay_response is not None:
+        return replay_response
 
     cart_rows = _get_cart_items(db, current_user.id, for_update=True)
     if not cart_rows:
@@ -836,6 +931,7 @@ def checkout(
         coupon_code=data.coupon_code or "",
         loyalty_points_to_redeem=data.loyalty_points_to_redeem,
         clear_all_cart=True,
+        idempotency_claim=idempotency_claim,
     )
 
 

@@ -11,6 +11,7 @@ Payment:
     fake online checkout.
 """
 import itertools
+from uuid import uuid4
 
 import pytest
 
@@ -156,7 +157,7 @@ def _checkout_product(client, token, addr, pid):
     client.post(f"/api/v1/cart/{pid}?quantity=1", headers=_auth(token))
     r = client.post(
         "/api/v1/checkout",
-        headers=_auth(token),
+        headers={**_auth(token), "Idempotency-Key": str(uuid4())},
         json={"shipping_address_id": addr},
     )
     assert r.status_code in (200, 201), r.text
@@ -249,7 +250,7 @@ def test_cod_returned_explicitly_in_orders_endpoint(client, db, buyer_and_order_
     pid = _create_product_with_images(db, with_images=False)
     r = client.post(
         "/api/v1/orders",
-        headers=_auth(token),
+        headers={**_auth(token), "Idempotency-Key": str(uuid4())},
         json={
             "items": [{"product_id": pid, "quantity": 1}],
             "shipping_address_id": addr,
@@ -269,7 +270,7 @@ def test_client_cannot_force_payment_status_or_method(client, db, buyer_and_orde
     client.post(f"/api/v1/cart/{pid}?quantity=1", headers=_auth(token))
     r = client.post(
         "/api/v1/checkout",
-        headers=_auth(token),
+        headers={**_auth(token), "Idempotency-Key": str(uuid4())},
         json={
             "shipping_address_id": addr,
             "payment_status": "completed",
@@ -283,7 +284,7 @@ def test_client_cannot_force_payment_status_or_method(client, db, buyer_and_orde
     # /orders: unsupported method rejected outright
     r2 = client.post(
         "/api/v1/orders",
-        headers=_auth(token),
+        headers={**_auth(token), "Idempotency-Key": str(uuid4())},
         json={
             "items": [{"product_id": pid, "quantity": 1}],
             "shipping_address_id": addr,
@@ -306,7 +307,7 @@ def test_cod_disabled_blocks_checkout_and_orders(client, db, buyer_and_order_con
 
     r = client.post(
         "/api/v1/checkout",
-        headers=_auth(token),
+        headers={**_auth(token), "Idempotency-Key": str(uuid4())},
         json={"shipping_address_id": addr},
     )
     assert r.status_code == 400, r.text
@@ -315,7 +316,7 @@ def test_cod_disabled_blocks_checkout_and_orders(client, db, buyer_and_order_con
 
     r2 = client.post(
         "/api/v1/orders",
-        headers=_auth(token),
+        headers={**_auth(token), "Idempotency-Key": str(uuid4())},
         json={
             "items": [{"product_id": pid, "quantity": 1}],
             "shipping_address_id": addr,
@@ -332,7 +333,7 @@ def test_cod_disabled_blocks_checkout_and_orders(client, db, buyer_and_order_con
     db.commit()
     r3 = client.post(
         "/api/v1/checkout",
-        headers=_auth(token),
+        headers={**_auth(token), "Idempotency-Key": str(uuid4())},
         json={"shipping_address_id": addr},
     )
     assert r3.status_code in (200, 201), r3.text

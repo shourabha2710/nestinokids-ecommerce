@@ -11,7 +11,7 @@ Rules under test (as implemented, pre-existing business conventions preserved):
 """
 import itertools
 from datetime import datetime, timedelta
-
+from uuid import uuid4
 import pytest
 
 from app.core.config import settings as app_settings
@@ -424,7 +424,7 @@ def test_checkout_final_amount_matches_cart_calculation(client, db, monkeypatch)
 
     resp = client.post(
         "/api/v1/checkout",
-        headers=_auth(token),
+        headers={**_auth(token), "Idempotency-Key": str(uuid4())},
         json={"shipping_address_id": address_id},
     )
     assert resp.status_code in (200, 201), resp.text
@@ -448,7 +448,7 @@ def test_checkout_with_coupon_and_paid_shipping_exact_math(client, db, monkeypat
 
     resp = client.post(
         "/api/v1/checkout",
-        headers=_auth(token),
+        headers={**_auth(token), "Idempotency-Key": str(uuid4())},
         json={"shipping_address_id": address_id, "coupon_code": "SHIPCO100"},
     )
     assert resp.status_code in (200, 201), resp.text

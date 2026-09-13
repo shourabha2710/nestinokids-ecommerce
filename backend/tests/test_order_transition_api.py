@@ -10,6 +10,7 @@ these tests pin the HTTP contract around transitions.
 """
 import itertools
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 
@@ -135,7 +136,7 @@ def placed_order(client, db):
     client.post(f"/api/v1/cart/{pid}?quantity=1", headers=_auth(token))
     r = client.post(
         "/api/v1/checkout",
-        headers=_auth(token),
+        headers={**_auth(token), "Idempotency-Key": str(uuid4())},
         json={"shipping_address_id": addr},
     )
     assert r.status_code in (200, 201), r.text
@@ -407,7 +408,7 @@ def _return_checkout(client, token, address_id, *cart_items):
         assert r.status_code == 200, r.text
     r = client.post(
         "/api/v1/checkout",
-        headers=_auth(token),
+        headers={**_auth(token), "Idempotency-Key": str(uuid4())},
         json={"shipping_address_id": address_id},
     )
     assert r.status_code in (200, 201), r.text

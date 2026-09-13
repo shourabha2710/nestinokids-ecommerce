@@ -10,6 +10,7 @@ pending -> completed with strict backend-authoritative guards:
   - audit logged; delivery never auto-settles payment
 """
 import itertools
+from uuid import uuid4
 
 import pytest
 
@@ -145,7 +146,7 @@ def _place_order(client, env, price=200.0, qty=2):
     client.post(f"/api/v1/cart/{pid}?quantity={qty}", headers=_auth(env["token"]))
     r = client.post(
         "/api/v1/checkout",
-        headers=_auth(env["token"]),
+        headers={**_auth(env["token"]), "Idempotency-Key": str(uuid4())},
         json={"shipping_address_id": env["addr"]},
     )
     assert r.status_code in (200, 201), r.text

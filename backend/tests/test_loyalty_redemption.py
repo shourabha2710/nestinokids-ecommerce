@@ -11,7 +11,7 @@ Covers the exact-once redemption contract:
 """
 import itertools
 from typing import Optional
-
+from uuid import uuid4
 import pytest
 
 from app.core.config import settings as app_settings
@@ -164,7 +164,8 @@ def _add_to_cart(client, token, product_id, qty=1, variant_id=None):
 def _checkout(client, token, address_id, **extra):
     body = {"shipping_address_id": address_id}
     body.update(extra)
-    return client.post("/api/v1/checkout", headers=_auth(token), json=body)
+    headers = {**_auth(token), "Idempotency-Key": str(uuid4())}
+    return client.post("/api/v1/checkout", headers=headers, json=body)
 
 
 def _enable_direct_checkout(db, monkeypatch):
@@ -278,7 +279,7 @@ def test_orders_endpoint_redemption_linked_to_order_exactly_once(client, db, mon
 
     resp = client.post(
         "/api/v1/orders",
-        headers=_auth(token),
+        headers={**_auth(token), "Idempotency-Key": str(uuid4())},
         json={
             "items": [{"product_id": pid, "quantity": 1}],
             "shipping_address_id": address_id,
