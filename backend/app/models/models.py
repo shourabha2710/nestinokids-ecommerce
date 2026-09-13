@@ -137,6 +137,12 @@ class Category(Base):
     slug = Column(String(100), unique=True, nullable=False)
     description = Column(Text, nullable=True)
     image = Column(String(255), nullable=True)
+
+    # GST / tax configuration (G4.1): future fallback for products without
+    # their own HSN/tax rate. Nullable — no rates assumed or applied yet.
+    hsn_code = Column(String(8), nullable=True)
+    gst_rate = Column(Float, nullable=True)
+
     parent_id = Column(Integer, ForeignKey('categories.id'), nullable=True)
     is_active = Column(Boolean, default=True, index=True)
     
@@ -168,6 +174,12 @@ class Product(Base):
     short_description = Column(String(500), nullable=True)
     price = Column(Float, nullable=False)
     discount_price = Column(Float, nullable=True)
+
+    # GST / tax configuration (G4.1): future per-product HSN and tax rate.
+    # Nullable — no rates assumed or applied yet.
+    hsn_code = Column(String(8), nullable=True)
+    gst_rate = Column(Float, nullable=True)
+
     sku = Column(String(100), unique=True, nullable=False)
     quantity = Column(Integer, default=0)
     rating = Column(Float, default=0.0)
@@ -301,6 +313,17 @@ class Order(Base):
     tax_amount = Column(Float, default=0.0)
     shipping_amount = Column(Float, default=0.0)
     final_amount = Column(Float, nullable=False)
+
+    # GST / tax snapshot (G4.1): additive, nullable, NOT yet calculated.
+    # Existing orders remain NULL; the engine still runs tax-exempt.
+    taxable_amount = Column(Float, nullable=True, default=0.0)
+    cgst_amount = Column(Float, nullable=True, default=0.0)
+    sgst_amount = Column(Float, nullable=True, default=0.0)
+    igst_amount = Column(Float, nullable=True, default=0.0)
+    tax_type = Column(String(20), nullable=True, default="none")
+    place_of_supply = Column(String(100), nullable=True)
+    seller_state = Column(String(100), nullable=True)
+    invoice_number = Column(String(50), nullable=True)
     
     # Address info
     shipping_address_id = Column(Integer, ForeignKey('addresses.id'), nullable=True)
@@ -354,6 +377,18 @@ class OrderItem(Base):
     quantity = Column(Integer, nullable=False)
     price = Column(Float, nullable=False)
     total = Column(Float, nullable=False)
+
+    # GST / tax + product snapshot (G4.1): immutable order-time snapshots.
+    # Not yet populated — the future GST implementation fills these at
+    # checkout. Keeps historical invoices correct after product edits.
+    hsn_code = Column(String(8), nullable=True)
+    tax_rate = Column(Float, nullable=True, default=0.0)
+    taxable_value = Column(Float, nullable=True, default=0.0)
+    cgst_amount = Column(Float, nullable=True, default=0.0)
+    sgst_amount = Column(Float, nullable=True, default=0.0)
+    igst_amount = Column(Float, nullable=True, default=0.0)
+    product_name = Column(String(255), nullable=True)
+    sku = Column(String(100), nullable=True)
     
     # Relationships
     order = relationship("Order", back_populates="items")
@@ -557,6 +592,7 @@ class StoreSetting(Base):
     currency = Column(String(10), nullable=False, default="INR")
     timezone = Column(String(50), nullable=False, default="Asia/Kolkata")
     gst_number = Column(String(50), nullable=True)
+    seller_state = Column(String(100), nullable=True)
     tax_enabled = Column(Boolean, default=False)
     tax_percentage = Column(Float, default=0)
     free_shipping_enabled = Column(Boolean, default=False)
@@ -997,4 +1033,35 @@ class MarketplaceRedirectClick(Base):
     __table_args__ = (
         Index('idx_marketplace_click_listing', 'marketplace_listing_id'),
         Index('idx_marketplace_click_marketplace_time', 'marketplace', 'clicked_at'),
+    )
+
+
+class Invoice(Base):
+    """GST invoice foundation (G4.1).
+
+    Minimum structural schema for future GST invoicing:
+
+    - one invoice per order (``order_id`` unique) — a single document per
+      checkout, matching Indian GST practice (one invoice per order).
+    - ``invoice_number`` is nullable but uniquely constrained so a future
+      phase can assign GST-format numbers (``IN-<store>-<seq>``) without a
+      migration.
+
+    No numbering logic, PDF generation or API endpoints exist yet. Invoice
+    rows are intentionally NOT created during G4.1 — deferred population.
+    """
+
+    __tablename__ = "invoices"
+
+    id = Column(Integer, primary_key=True)
+    order_id = Column(Integer, ForeignKey("orders.id"), nullable=False)
+    invoice_number = Column(String(50), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    order = relationship("Order")
+
+    __table_args__ = (
+        UniqueConstraint('order_id', name='uq_invoice_order_id'),
+        UniqueConstraint('invoice_number', name='uq_invoice_number'),
     )
