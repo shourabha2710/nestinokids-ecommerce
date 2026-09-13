@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { shoppingAPI, loyaltyAPI, settingsAPI } from '../api/endpoints';
+import { orderSubmissionSignature } from '../api/orderIdempotency';
 import { clearCart } from '../store/slices/cartSlice';
 import { getErrorMessage } from '../utils/errorUtils';
 import { motion } from 'framer-motion';
@@ -135,11 +136,25 @@ const CheckoutPage = () => {
     try {
       setPlacing(true);
       setError(null);
-      const res = await shoppingAPI.checkout({
+      // One Idempotency-Key per logical submission: retries of the same order
+      // (network errors, accidental re-clicks) reuse it, while a changed
+      // payload/cart generates a new one. The server enforces idempotency.
+      const cartSignature = cartItems
+        .map((i) => `${i.product_id}:${i.variant_id || 0}:${i.quantity}`)
+        .sort()
+        .join('|');
+      const submissionSignature = orderSubmissionSignature({
+        shipping_address_id: selectedAddressId,
+        coupon_code: calc?.applied_coupon?.code ? String(calc.applied_coupon.code).toUpperCase() : null,
+        loyalty_points_to_redeem: useLoyalty ? loyaltyPoints : 0,
+        cart: cartSignature,
+      });
+      const body = {
         shipping_address_id: selectedAddressId,
         coupon_code: calc?.applied_coupon?.code || null,
         loyalty_points_to_redeem: useLoyalty ? loyaltyPoints : 0,
-      });
+      };
+      const res = await shoppingAPI.checkout(body, submissionSignature);
       dispatch(clearCart());
       navigate(`/orders/${res.data.id}`);
     } catch (err) {

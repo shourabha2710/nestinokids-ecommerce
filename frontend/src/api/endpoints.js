@@ -1,4 +1,9 @@
 import api from './axios';
+import {
+  getOrderIdempotencyKey,
+  rotateOrderIdempotencyKey,
+  orderSubmissionSignature,
+} from './orderIdempotency';
 
 // Auth APIs
 export const authAPI = {
@@ -38,9 +43,13 @@ export const shoppingAPI = {
   updateCartItem: (productId, quantity, variantId = null) => api.put(`/cart/${productId}`, null, { params: { quantity, variant_id: variantId } }),
   removeFromCart: (productId, variantId = null) => api.delete(`/cart/${productId}`, { params: { variant_id: variantId } }),
   calculateCart: (data) => api.post('/cart/calculate-totals', data),
-  
-  checkout: (data) => api.post('/checkout', data),
-  createOrder: (data) => api.post('/orders', data),
+
+  checkout: (data, signature) => api.post('/checkout', data, {
+    headers: { 'Idempotency-Key': getOrderIdempotencyKey(signature || orderSubmissionSignature(data)) },
+  }).then((res) => { rotateOrderIdempotencyKey(); return res; }),
+  createOrder: (data, signature) => api.post('/orders', data, {
+    headers: { 'Idempotency-Key': getOrderIdempotencyKey(signature || orderSubmissionSignature(data)) },
+  }).then((res) => { rotateOrderIdempotencyKey(); return res; }),
   getOrders: () => api.get('/orders'),
   getOrder: (id) => api.get(`/orders/${id}`),
   

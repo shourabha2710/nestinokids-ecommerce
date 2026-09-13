@@ -9,6 +9,7 @@ Verifies that StoreSetting.direct_checkout_enabled is:
   - audit-logged with old/new values on change
 """
 import itertools
+from uuid import uuid4
 
 import pytest
 
@@ -134,7 +135,8 @@ def _add_to_cart(client, token, product_id, qty=1):
 def _checkout(client, token, address_id, **extra):
     body = {"shipping_address_id": address_id}
     body.update(extra)
-    return client.post("/api/v1/checkout", headers=_auth(token), json=body)
+    headers = {**_auth(token), "Idempotency-Key": str(uuid4())}
+    return client.post("/api/v1/checkout", headers=headers, json=body)
 
 
 def _get_admin_settings(client, token):

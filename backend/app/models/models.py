@@ -365,6 +365,46 @@ class OrderItem(Base):
     )
 
 
+class OrderIdempotencyKey(Base):
+    """Server-side idempotency claim for order creation (G3).
+
+    One row per (user_id, scope, idempotency_key). The unique constraint is
+    the DB-enforced source of truth that makes concurrent identical order
+    submissions produce exactly one order:
+
+      - the first request INSERTs the claim (flushed, still uncommitted);
+      - a concurrent duplicate blocks on the unique index until that
+        transaction commits, then fails with IntegrityError; the loser rolls
+        back its own transaction, loads the winning row and replays the
+        original order instead of creating a second one;
+      - the claim row commits ATOMICALLY with the order it guards (same
+        transaction), so a failed order creation rolls the claim back too and
+        the client can safely retry the same key.
+
+    ``request_fingerprint`` is a SHA-256 of the canonical client-submitted
+    logical request; a reused key with a different fingerprint is a 409.
+    """
+    __tablename__ = "order_idempotency_keys"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    scope = Column(String(20), nullable=False)  # 'orders' or 'checkout'
+    idempotency_key = Column(String(128), nullable=False)
+    request_fingerprint = Column(String(64), nullable=False)
+    order_id = Column(Integer, ForeignKey('orders.id'), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint(
+            'user_id', 'scope', 'idempotency_key',
+            name='uq_order_idempotency_user_scope_key',
+        ),
+        Index('idx_order_idempotency_user', 'user_id'),
+        Index('idx_order_idempotency_key', 'idempotency_key'),
+        Index('idx_order_idempotency_order', 'order_id'),
+    )
+
+
 class Coupon(Base):
     __tablename__ = "coupons"
 
