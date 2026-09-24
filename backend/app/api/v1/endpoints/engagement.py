@@ -340,8 +340,21 @@ def award_loyalty_points_for_order(order_id: int, db: Session):
     if existing:
         return
 
+    # G4.2: loyalty is earned on the discounted chargeable amount BEFORE GST,
+    # excluding shipping. This only applies to orders that carried GST at
+    # checkout (they have a tax_type snapshot set); tax-exempt orders keep the
+    # legacy final_amount base so G4.1 loyalty behaviour is unchanged.
+    earning_amount = order.final_amount or 0.0
+    if order.tax_type not in (None, "none"):
+        earning_amount = max(
+            earning_amount
+            - (order.shipping_amount or 0.0)
+            - (order.tax_amount or 0.0),
+            0.0,
+        )
+
     loyalty_service.earn_points(
-        db, order.user_id, order.final_amount, order_id,
+        db, order.user_id, earning_amount, order_id,
         description=f"Points earned from order #{order.order_number}",
         reference_type="order"
     )

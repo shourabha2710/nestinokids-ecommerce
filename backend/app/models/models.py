@@ -595,6 +595,11 @@ class StoreSetting(Base):
     seller_state = Column(String(100), nullable=True)
     tax_enabled = Column(Boolean, default=False)
     tax_percentage = Column(Float, default=0)
+    # Shipping GST rate (percent, nullable). Additive — no GST is computed
+    # unless tax_enabled AND a shipping charge is actually applied AND this
+    # rate is configured. SHIPPING OPTION A: never backfilled, not derived
+    # from the legacy tax_percentage.
+    shipping_gst_rate = Column(Float, nullable=True)
     free_shipping_enabled = Column(Boolean, default=False)
     free_shipping_min = Column(Float, default=0)
     cod_enabled = Column(Boolean, default=True)

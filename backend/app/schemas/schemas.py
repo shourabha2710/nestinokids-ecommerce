@@ -72,6 +72,10 @@ class CategoryBase(BaseModel):
     meta_title: Optional[str] = None
     meta_description: Optional[str] = None
     meta_keywords: Optional[str] = None
+    # GST / tax configuration (G4.1/G4.2): fallback for products without
+    # their own HSN/rate. Nullable — no rates assumed.
+    hsn_code: Optional[str] = Field(None, max_length=8)
+    gst_rate: Optional[float] = Field(None, ge=0.0, le=100.0)
 
 
 class CategoryCreate(CategoryBase):
@@ -88,6 +92,8 @@ class CategoryUpdate(BaseModel):
     meta_title: Optional[str] = None
     meta_description: Optional[str] = None
     meta_keywords: Optional[str] = None
+    hsn_code: Optional[str] = Field(None, max_length=8)
+    gst_rate: Optional[float] = Field(None, ge=0.0, le=100.0)
 
 
 class CategoryResponse(CategoryBase):
@@ -153,6 +159,10 @@ class ProductBase(BaseModel):
     category_id: int
     price: float = Field(..., gt=0)
     discount_price: Optional[float] = None
+    # GST / tax configuration (G4.1/G4.2): per-product HSN + rate (percent).
+    # Nullable — no rates assumed; falls back to the product's category.
+    hsn_code: Optional[str] = Field(None, max_length=8)
+    gst_rate: Optional[float] = Field(None, ge=0.0, le=100.0)
     sku: str
     quantity: int = 0
     is_featured: bool = False
@@ -175,6 +185,8 @@ class ProductUpdate(BaseModel):
     category_id: Optional[int] = None
     price: Optional[float] = None
     discount_price: Optional[float] = None
+    hsn_code: Optional[str] = Field(None, max_length=8)
+    gst_rate: Optional[float] = Field(None, ge=0.0, le=100.0)
     sku: Optional[str] = None
     quantity: Optional[int] = None
     is_featured: Optional[bool] = None
@@ -243,6 +255,15 @@ class OrderItemResponse(BaseModel):
     variant_sku: Optional[str] = None
     variant_size: Optional[str] = None
     images: List[ProductImageResponse] = []
+    # Order-time tax + product snapshots (G4.1/G4.2). Immutable copies of the
+    # HSN, tax rate and tax split captured at checkout; never invoiced/used
+    # until populated by the GST engine.
+    hsn_code: Optional[str] = None
+    tax_rate: Optional[float] = None
+    taxable_value: Optional[float] = None
+    cgst_amount: Optional[float] = None
+    sgst_amount: Optional[float] = None
+    igst_amount: Optional[float] = None
     
     class Config:
         from_attributes = True
@@ -303,6 +324,15 @@ class OrderResponse(BaseModel):
     created_at: datetime
     items: List[OrderItemResponse] = []
     shipping_address: Optional[ShippingAddressSnapshot] = None
+    # Order-level GST snapshot (G4.1/G4.2). Defaults stay backward-compatible
+    # for orders created before the GST engine populated them.
+    taxable_amount: Optional[float] = None
+    cgst_amount: Optional[float] = None
+    sgst_amount: Optional[float] = None
+    igst_amount: Optional[float] = None
+    tax_type: str = "none"
+    place_of_supply: Optional[str] = None
+    seller_state: Optional[str] = None
     
     class Config:
         from_attributes = True
@@ -362,6 +392,14 @@ class AdminOrderResponse(BaseModel):
     allowed_transitions: List[str] = []
     status_history: List[OrderStatusHistoryResponse] = []
     shipping_address: Optional[str] = None
+    # Order-level GST snapshot (G4.1/G4.2), mirroring OrderResponse.
+    taxable_amount: Optional[float] = None
+    cgst_amount: Optional[float] = None
+    sgst_amount: Optional[float] = None
+    igst_amount: Optional[float] = None
+    tax_type: str = "none"
+    place_of_supply: Optional[str] = None
+    seller_state: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -1243,6 +1281,8 @@ class StoreSettingResponse(BaseModel):
     gst_number: Optional[str] = None
     tax_enabled: bool = False
     tax_percentage: float = 0
+    seller_state: Optional[str] = None
+    shipping_gst_rate: Optional[float] = None
     free_shipping_enabled: bool = False
     free_shipping_min: float = 0
     cod_enabled: bool = True
@@ -1274,6 +1314,8 @@ class StoreSettingUpdate(BaseModel):
     gst_number: Optional[str] = None
     tax_enabled: Optional[bool] = None
     tax_percentage: Optional[float] = None
+    seller_state: Optional[str] = None
+    shipping_gst_rate: Optional[float] = Field(None, ge=0.0, le=100.0)
     free_shipping_enabled: Optional[bool] = None
     free_shipping_min: Optional[float] = None
     cod_enabled: Optional[bool] = None
@@ -1561,6 +1603,26 @@ class AppliedCouponInfo(BaseModel):
     discount_amount: float
 
 
+class ItemTaxDetail(BaseModel):
+    """Per-line tax snapshot produced by the calculation engine.
+
+    ``variant_id`` keeps line tax details matchable to order items even when
+    the same product appears twice under different variants.
+    """
+    product_id: int
+    variant_id: Optional[int] = None
+    line_total: float = 0.0
+    discount_allocated: float = 0.0
+    hsn_code: Optional[str] = None
+    tax_rate: float = 0.0
+    taxable_value: float = 0.0
+    cgst_amount: float = 0.0
+    sgst_amount: float = 0.0
+    igst_amount: float = 0.0
+    product_name: str = ""
+    sku: Optional[str] = None
+
+
 class CalculationResponse(BaseModel):
     subtotal: float
     item_count: int
@@ -1577,6 +1639,22 @@ class CalculationResponse(BaseModel):
     free_shipping_threshold: float = 500.0
 
     tax: float = 0.0
+
+    # GST snapshot (G4.2). Prices are GST-inclusive, so these fields describe
+    # the tax EMBEDDED in the amounts the customer pays. ``tax`` is the sum of
+    # cgst + sgst + igst (items + shipping). ``tax_type`` is "none" while the
+    # store runs tax-exempt, exactly as in G4.1.
+    taxable_amount: float = 0.0
+    cgst_amount: float = 0.0
+    sgst_amount: float = 0.0
+    igst_amount: float = 0.0
+    tax_type: str = "none"
+    place_of_supply: Optional[str] = None
+    seller_state: Optional[str] = None
+    shipping_taxable: float = 0.0
+    shipping_tax: float = 0.0
+
+    items: list[ItemTaxDetail] = []
 
     wallet_discount: float = 0.0
     loyalty_discount: float = 0.0

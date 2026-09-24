@@ -1,20 +1,29 @@
 from datetime import datetime, timezone
-from typing import Optional
+from typing import List, Optional
 
+from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.models.models import Product, StoreSetting
 from app.schemas.schemas import (
     AppliedCouponInfo,
     AppliedPromotionInfo,
     CalculationNotification,
     CalculationResponse,
+    ItemTaxDetail,
 )
 from app.services.promotion_rule_service import evaluate_rules_for_cart
 from app.services.coupon_service import validate_coupon_for_cart, calculate_discount
-
-# Tax placeholder — future GST integration
-TAX_RATE = 0.0
+from app.services.gst_service import (
+    GstConfigError,
+    TAX_TYPE_NONE,
+    allocate_discounts,
+    compute_line_tax,
+    compute_shipping_tax,
+    money,
+    resolve_tax_type,
+)
 
 
 def calculate_order(
@@ -23,10 +32,26 @@ def calculate_order(
     coupon_code: Optional[str] = None,
     user_id: Optional[int] = None,
     loyalty_points_to_redeem: int = 0,
+    customer_state: Optional[str] = None,
+    enforce_tax_config: bool = False,
 ) -> CalculationResponse:
     """Centralized order calculation engine.
 
     Orchestrates: subtotal -> promotions -> coupon -> gift card -> wallet -> loyalty -> shipping -> tax -> grand total.
+
+    GST semantics (G4.2): customer prices are GST-INCLUSIVE, so the tax is
+    always *embedded* in the amounts the customer pays and ``grand_total``
+    never adds tax on top. Tax is only computed once ``store_settings`` has
+    ``tax_enabled=true`` AND every piece of required configuration exists
+    (seller state, per-product/category GST rate, shipping GST rate). Until
+    then the response is byte-for-byte the G4.1 tax-exempt output
+    (``tax == 0.0``, ``tax_type == "none"``).
+
+    ``customer_state`` is the customer's shipping-address state, derived
+    server-side by the caller (never trusted from the client). ``enforce_tax_config``
+    makes missing config raise 400 (order finalization); otherwise config
+    problems degrade gracefully to a ``warning`` notification with zero tax
+    (cart preview).
 
     Returns a fully populated CalculationResponse. Never returns raw DB objects.
     """
@@ -185,12 +210,183 @@ def calculate_order(
                 )
             )
 
-    # --- 8. Tax (placeholder) ---
-    taxable = max(subtotal - total_discount_before_shipping, 0.0)
-    tax = round(taxable * TAX_RATE, 2)
+    # ─── 8. GST / tax ─────────────────────────────────────────────────────
+    # GST-inclusive prices: the tax is embedded in the amounts the customer
+    # pays and grand_total never adds it on top. Tax stays fully zero until
+    # the store enables tax_enabled AND all required config exists.
+    store_row = db.query(StoreSetting).first()
+    tax_enabled = bool(store_row and store_row.tax_enabled)
+
+    taxable_amount = 0.0
+    cgst_total = 0.0
+    sgst_total = 0.0
+    igst_total = 0.0
+    shipping_taxable = 0.0
+    shipping_tax = 0.0
+    tax_type = TAX_TYPE_NONE
+    place_of_supply = None
+    seller_state_snapshot = None
+    item_tax_details: list[ItemTaxDetail] = []
+
+    if tax_enabled:
+        seller_state_config = (store_row.seller_state or "").strip()
+        place_of_supply = (customer_state or "").strip() or seller_state_config or None
+        resolved_tax_type = resolve_tax_type(seller_state_config, place_of_supply)
+
+        problems: list[str] = []
+        if not seller_state_config:
+            problems.append(
+                "Seller state must be configured before GST is enabled (store_settings.seller_state)"
+            )
+        if not place_of_supply:
+            problems.append(
+                "Place of supply (customer shipping state) is required for GST calculation"
+            )
+
+        if not problems:
+            # Per-line discounted consideration: discounts (promotion + coupon
+            # + gift card + wallet + loyalty) are allocated deterministically
+            # across lines so each line's tax base is item-accurate and the
+            # allocations add up exactly to the total discount.
+            line_totals: List[float] = [
+                round(
+                    float(
+                        item.get("total")
+                        or (item.get("price", 0) * item.get("quantity", 0))
+                    ),
+                    2,
+                )
+                for item in cart_items
+            ]
+            line_ids = [
+                item.get("product_id") or item.get("id") for item in cart_items
+            ]
+            line_variant_ids = [item.get("variant_id") for item in cart_items]
+            allocations = allocate_discounts(
+                line_totals, round(total_discount_before_shipping, 2)
+            )
+
+            clean_ids = [pid for pid in line_ids if pid]
+            products_by_id: dict = {}
+            if clean_ids:
+                products_by_id = {
+                    p.id: p
+                    for p in db.query(Product)
+                    .filter(Product.id.in_(clean_ids))
+                    .all()
+                }
+
+            for idx, item in enumerate(cart_items):
+                pid = line_ids[idx]
+                product = products_by_id.get(pid)
+                if product is None:
+                    problems.append(
+                        f"Product {pid} could not be resolved for GST configuration"
+                    )
+                    continue
+                rate = product.gst_rate
+                hsn = product.hsn_code
+                if rate is None and product.category is not None:
+                    rate = product.category.gst_rate
+                if hsn is None and product.category is not None:
+                    hsn = product.category.hsn_code
+                if rate is None:
+                    problems.append(
+                        f"GST rate is not configured for {product.name}"
+                    )
+                    continue
+
+                discounted_consideration = money(
+                    round(line_totals[idx], 2) - round(allocations[idx], 2)
+                )
+                line_tax = compute_line_tax(
+                    discounted_consideration, rate, resolved_tax_type
+                )
+                item_tax_details.append(
+                    ItemTaxDetail(
+                        product_id=pid,
+                        variant_id=line_variant_ids[idx],
+                        line_total=line_totals[idx],
+                        discount_allocated=round(allocations[idx], 2),
+                        hsn_code=hsn,
+                        tax_rate=float(rate),
+                        taxable_value=float(line_tax["taxable_value"]),
+                        cgst_amount=float(line_tax["cgst_amount"]),
+                        sgst_amount=float(line_tax["sgst_amount"]),
+                        igst_amount=float(line_tax["igst_amount"]),
+                        product_name=product.name,
+                        sku=product.sku,
+                    )
+                )
+
+            if shipping > 0:
+                try:
+                    shipping_tax_block = compute_shipping_tax(
+                        shipping, resolved_tax_type, store_row.shipping_gst_rate
+                    )
+                except GstConfigError as e:
+                    problems.append(str(e))
+                    shipping_tax_block = None
+            else:
+                shipping_tax_block = compute_shipping_tax(0, TAX_TYPE_NONE, None)
+
+            if shipping_tax_block is not None:
+                shipping_taxable = float(shipping_tax_block["taxable_value"])
+                shipping_tax = float(shipping_tax_block["total_tax"])
+
+        if problems:
+            message = " ".join(dict.fromkeys(problems))
+            if enforce_tax_config:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={"code": "TAX_CONFIG_ERROR", "message": message},
+                )
+            notifications.append(
+                CalculationNotification(
+                    type="warning",
+                    text=f"Tax cannot be calculated: {message}",
+                )
+            )
+            # Degrade the whole block to the G4.1 tax-exempt state rather than
+            # returning a partial/incorrect tax figure.
+            taxable_amount = 0.0
+            cgst_total = 0.0
+            sgst_total = 0.0
+            igst_total = 0.0
+            shipping_taxable = 0.0
+            shipping_tax = 0.0
+            tax_type = TAX_TYPE_NONE
+            place_of_supply = None
+            seller_state_snapshot = None
+            item_tax_details = []
+        else:
+            taxable_amount = (
+                sum(d.taxable_value for d in item_tax_details)
+                + shipping_taxable
+            )
+            cgst_total = (
+                sum(d.cgst_amount for d in item_tax_details)
+                + float(shipping_tax_block["cgst_amount"])
+            )
+            sgst_total = (
+                sum(d.sgst_amount for d in item_tax_details)
+                + float(shipping_tax_block["sgst_amount"])
+            )
+            igst_total = (
+                sum(d.igst_amount for d in item_tax_details)
+                + float(shipping_tax_block["igst_amount"])
+            )
+            tax_type = resolved_tax_type
+            seller_state_snapshot = seller_state_config or None
 
     # --- 9. Grand Total ---
-    grand_total = round(taxable + tax + shipping, 2)
+    # ``taxable`` is the discounted, GST-INCLUSIVE consideration. The embedded
+    # tax is NOT added here (prices are inclusive); shipping is inclusive too.
+    taxable = max(
+        round(subtotal - total_discount_before_shipping, 2), 0.0
+    )
+    tax = round(cgst_total + sgst_total + igst_total, 2)
+    grand_total = round(taxable + shipping, 2)
 
     return CalculationResponse(
         subtotal=subtotal,
@@ -204,6 +400,16 @@ def calculate_order(
         shipping=shipping,
         free_shipping_threshold=settings.FREE_SHIPPING_THRESHOLD,
         tax=tax,
+        taxable_amount=round(taxable_amount, 2) if tax_type != TAX_TYPE_NONE else 0.0,
+        cgst_amount=round(cgst_total, 2) if tax_type != TAX_TYPE_NONE else 0.0,
+        sgst_amount=round(sgst_total, 2) if tax_type != TAX_TYPE_NONE else 0.0,
+        igst_amount=round(igst_total, 2) if tax_type != TAX_TYPE_NONE else 0.0,
+        tax_type=tax_type,
+        place_of_supply=place_of_supply,
+        seller_state=seller_state_snapshot,
+        shipping_taxable=round(shipping_taxable, 2) if tax_type != TAX_TYPE_NONE else 0.0,
+        shipping_tax=round(shipping_tax, 2) if tax_type != TAX_TYPE_NONE else 0.0,
+        items=item_tax_details,
         wallet_discount=wallet_discount,
         loyalty_discount=loyalty_discount,
         loyalty_points_redeemed=loyalty_points_redeemed,
@@ -221,11 +427,20 @@ def calculate_for_order_creation(
     coupon_code: Optional[str] = None,
     user_id: Optional[int] = None,
     loyalty_points_to_redeem: int = 0,
+    customer_state: Optional[str] = None,
+    enforce_tax_config: bool = False,
 ) -> CalculationResponse:
     """Same as calculate_order but raises on coupon error (for order placement)."""
-    result = calculate_order(db, cart_items, coupon_code, user_id, loyalty_points_to_redeem)
+    result = calculate_order(
+        db,
+        cart_items,
+        coupon_code,
+        user_id,
+        loyalty_points_to_redeem,
+        customer_state=customer_state,
+        enforce_tax_config=enforce_tax_config,
+    )
     if coupon_code and result.coupon_error:
-        from fastapi import HTTPException, status
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=result.coupon_error,
