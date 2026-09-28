@@ -439,6 +439,13 @@ def _build_admin_order(order: Order) -> dict:
         "order_status": current_status,
         "item_count": len(order.items),
         "created_at": order.created_at,
+        "taxable_amount": order.taxable_amount,
+        "cgst_amount": order.cgst_amount,
+        "sgst_amount": order.sgst_amount,
+        "igst_amount": order.igst_amount,
+        "tax_type": order.tax_type or "none",
+        "place_of_supply": order.place_of_supply,
+        "seller_state": order.seller_state,
         "items": [
             {
                 "id": item.id,
@@ -455,6 +462,12 @@ def _build_admin_order(order: Order) -> dict:
                 "variant_sku": item.variant.sku if item.variant else None,
                 "variant_size": item.variant.size if item.variant else None,
                 "images": item.product.images if item.product else [],
+                "hsn_code": item.hsn_code,
+                "tax_rate": item.tax_rate,
+                "taxable_value": item.taxable_value,
+                "cgst_amount": item.cgst_amount,
+                "sgst_amount": item.sgst_amount,
+                "igst_amount": item.igst_amount,
             }
             for item in order.items
         ],
@@ -721,6 +734,8 @@ def admin_create_product(
         short_description=product_data.short_description,
         price=product_data.price,
         discount_price=product_data.discount_price,
+        hsn_code=product_data.hsn_code,
+        gst_rate=product_data.gst_rate,
         sku=sku,
         quantity=product_data.quantity,
         is_featured=product_data.is_featured,
@@ -778,6 +793,8 @@ def admin_create_product(
             "price": product.price,
             "sku": product.sku,
             "category_id": product.category_id,
+            "hsn_code": product.hsn_code,
+            "gst_rate": product.gst_rate,
         },
     )
 
@@ -801,6 +818,8 @@ def admin_update_product(
         "description": product.description,
         "status": product.is_active,
         "category_id": product.category_id,
+        "hsn_code": product.hsn_code,
+        "gst_rate": product.gst_rate,
     }
 
     update_data = product_data.dict(exclude_unset=True)
@@ -847,6 +866,8 @@ def admin_update_product(
             "description": product.description,
             "status": product.is_active,
             "category_id": product.category_id,
+            "hsn_code": product.hsn_code,
+            "gst_rate": product.gst_rate,
         },
     )
 
@@ -1264,6 +1285,8 @@ def admin_create_category(
         image=category_data.image,
         parent_id=category_data.parent_id,
         is_active=category_data.is_active,
+        hsn_code=category_data.hsn_code,
+        gst_rate=category_data.gst_rate,
         meta_title=category_data.meta_title,
         meta_description=category_data.meta_description,
         meta_keywords=category_data.meta_keywords,

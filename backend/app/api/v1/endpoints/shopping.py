@@ -379,6 +379,13 @@ def _build_order_response(order: Order) -> dict:
         "payment_status": order.payment_status.value if hasattr(order.payment_status, 'value') else order.payment_status,
         "created_at": order.created_at,
         "shipping_address": order.shipping_address_snapshot or None,
+        "taxable_amount": order.taxable_amount,
+        "cgst_amount": order.cgst_amount,
+        "sgst_amount": order.sgst_amount,
+        "igst_amount": order.igst_amount,
+        "tax_type": order.tax_type or "none",
+        "place_of_supply": order.place_of_supply,
+        "seller_state": order.seller_state,
         "items": [
             {
                 "id": item.id,
@@ -395,6 +402,12 @@ def _build_order_response(order: Order) -> dict:
                 "variant_sku": item.variant.sku if item.variant else None,
                 "variant_size": item.variant.size if item.variant else None,
                 "images": item.product.images if item.product else [],
+                "hsn_code": item.hsn_code,
+                "tax_rate": item.tax_rate,
+                "taxable_value": item.taxable_value,
+                "cgst_amount": item.cgst_amount,
+                "sgst_amount": item.sgst_amount,
+                "igst_amount": item.igst_amount,
             }
             for item in order.items
         ],
@@ -534,14 +547,22 @@ def _finalize_order(
             "quantity": item["quantity"],
             "price": item["price"],
             "total": item["total"],
+            "variant_id": item["variant_id"],
         }
         for item in order_items_list
     ]
     calc = calculate_for_order_creation(
         db, calc_items, coupon_code=coupon_code, user_id=current_user.id,
         loyalty_points_to_redeem=loyalty_points_to_redeem,
+        customer_state=(shipping_address.state or "").strip() or None,
+        enforce_tax_config=True,
     )
-    discount_amount = calc.coupon_discount + calc.loyalty_discount
+    # Order.discount_amount = all real discounts applied before shipping:
+    # promotion + coupon + loyalty. Gift card / wallet are payment instruments
+    # (placeholders today) and are never counted here as discounts.
+    discount_amount = (
+        calc.promotion_discount + calc.coupon_discount + calc.loyalty_discount
+    )
     coupon_id = None
     if calc.applied_coupon:
         coupon = db.query(Coupon).filter(
@@ -556,7 +577,7 @@ def _finalize_order(
         user_id=current_user.id,
         order_number=generate_order_number(),
         total_amount=sum(item["total"] for item in order_items_list),
-        discount_amount=discount_amount,
+        discount_amount=round(discount_amount, 2),
         tax_amount=calc.tax,
         shipping_amount=calc.shipping,
         final_amount=calc.grand_total,
@@ -565,6 +586,15 @@ def _finalize_order(
         payment_method=payment_method,
         coupon_id=coupon_id,
         shipping_address_snapshot=_build_shipping_address_snapshot(shipping_address),
+        # GST snapshot (G4.2): order-time immutable copies. invoice_number is
+        # intentionally never set here (invoicing/numbering is out of scope).
+        taxable_amount=calc.taxable_amount,
+        cgst_amount=calc.cgst_amount,
+        sgst_amount=calc.sgst_amount,
+        igst_amount=calc.igst_amount,
+        tax_type=calc.tax_type,
+        place_of_supply=calc.place_of_supply,
+        seller_state=calc.seller_state,
     )
     db.add(db_order)
     db.flush()
@@ -592,14 +622,47 @@ def _finalize_order(
                 detail=str(e),
             )
 
-    for item in order_items_list:
+    item_tax_details = calc.items
+    for idx, item in enumerate(order_items_list):
+        variant_row = None
+        if item["variant_id"]:
+            variant_row = db.query(ProductVariant).filter(
+                ProductVariant.id == item["variant_id"]
+            ).with_for_update().first()
+            if variant_row:
+                if variant_row.quantity < item["quantity"]:
+                    db.rollback()
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Insufficient variant stock for {item['product'].name}. Available: {variant_row.quantity}, Requested: {item['quantity']}",
+                    )
+                variant_row.quantity -= item["quantity"]
+                db.add(variant_row)
+
+        detail = item_tax_details[idx] if idx < len(item_tax_details) else None
+        line_tax_fields = {}
+        if detail:
+            line_tax_fields = {
+                "hsn_code": detail.hsn_code,
+                "tax_rate": detail.tax_rate,
+                "taxable_value": detail.taxable_value,
+                "cgst_amount": detail.cgst_amount,
+                "sgst_amount": detail.sgst_amount,
+                "igst_amount": detail.igst_amount,
+            }
+
+        # Order-time product snapshots (G4.1/G4.2): immutable copies so
+        # historical tax/invoice data survives later product renames/edits.
         order_item = OrderItem(
             order_id=db_order.id,
             product_id=item["product"].id,
             quantity=item["quantity"],
             price=item["price"],
             total=item["total"],
-            variant_id=item["variant_id"]
+            variant_id=item["variant_id"],
+            product_name=item["product"].name,
+            sku=variant_row.sku if variant_row else item["product"].sku,
+            **line_tax_fields,
         )
         db.add(order_item)
 
@@ -612,20 +675,6 @@ def _finalize_order(
             db.add(inventory)
             if inventory.available_quantity <= inventory.low_stock_threshold:
                 low_stock_products.append((item["product"], inventory))
-
-        if item["variant_id"]:
-            variant = db.query(ProductVariant).filter(
-                ProductVariant.id == item["variant_id"]
-            ).with_for_update().first()
-            if variant:
-                if variant.quantity < item["quantity"]:
-                    db.rollback()
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail=f"Insufficient variant stock for {item['product'].name}. Available: {variant.quantity}, Requested: {item['quantity']}",
-                    )
-                variant.quantity -= item["quantity"]
-                db.add(variant)
 
     # Record initial Pending status via state machine
     from app.services.order_state_machine import order_state_machine

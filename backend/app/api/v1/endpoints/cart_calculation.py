@@ -4,11 +4,35 @@ from sqlalchemy.orm import Session
 
 from app.db.database import get_db
 from app.api.v1.endpoints.auth import get_current_user
-from app.models.models import User, Product, ProductVariant, cart_association
+from app.models.models import Address, User, Product, ProductVariant, cart_association
 from app.schemas.schemas import CartCalculateRequest, CalculationResponse
 from app.services.order_calculation_service import calculate_order
 
 router = APIRouter(prefix="/api/v1/cart", tags=["cart-calculation"])
+
+
+def _resolve_customer_state(db: Session, user_id: int) -> str | None:
+    """Best available place-of-supply state for a cart preview (G4.2).
+
+    The cart has no selected shipping address (checkout takes an explicit
+    ``shipping_address_id``), but the place of supply must not silently default
+    to the seller's own state - doing so makes every preview resolve to
+    INTRA_STATE and CGST/SGST even when the customer will actually be billed
+    IGST. The user's default address is the authoritative context available at
+    this point; otherwise the most recently added address is used.
+
+    Only the *label* (CGST/SGST vs IGST) depends on this: the embedded tax
+    amount is identical either way.
+    """
+    address = (
+        db.query(Address)
+        .filter(Address.user_id == user_id)
+        .order_by(Address.is_default.desc(), Address.id.desc())
+        .first()
+    )
+    if address and address.state:
+        return (address.state or "").strip() or None
+    return None
 
 
 def _load_cart_items(db: Session, user_id: int) -> list[dict]:
@@ -61,4 +85,5 @@ def calculate_cart(
         coupon_code=data.coupon_code,
         user_id=current_user.id,
         loyalty_points_to_redeem=data.loyalty_points_to_redeem,
+        customer_state=_resolve_customer_state(db, current_user.id),
     )

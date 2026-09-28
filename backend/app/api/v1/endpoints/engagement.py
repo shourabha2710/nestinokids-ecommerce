@@ -20,8 +20,15 @@ from app.models.models import (
 )
 from app.api.v1.endpoints.auth import get_current_user, get_optional_current_user, require_admin
 from app.services.loyalty_service import loyalty_service
+from app.services.gst_service import money, to_decimal
+from decimal import Decimal
 from typing import List, Optional
 import math
+
+
+def _as_float(value: Decimal) -> float:
+    """Final Decimal -> float boundary for the loyalty ledger."""
+    return float(value)
 
 router = APIRouter(prefix="/api/v1", tags=["engagement"])
 
@@ -327,8 +334,43 @@ def apply_referral(
 
 # ─── Order-based Loyalty Earning ───
 
+def _loyalty_earning_base(order, db: Session) -> float:
+    """Merchandise consideration eligible for loyalty earning (G4.2).
+
+    Points are earned on what the customer actually bought, excluding GST and
+    excluding the entire shipping charge together with the GST embedded in it.
+
+    Why NOT ``final_amount - shipping_amount - tax_amount``: ``tax_amount``
+    bundles *product* GST with *shipping* GST. Subtracting the whole of it after
+    removing shipping removes shipping GST from a base that never contained it,
+    silently under-earning by exactly ``shipping_tax`` whenever GST is enabled
+    and a shipping charge applies.
+
+    For GST orders the base is summed straight from the frozen
+    ``OrderItem.taxable_value`` snapshots, i.e. the ex-GST discounted
+    merchandise value the engine actually computed - never live product config.
+
+    Tax-exempt orders deliberately keep the pre-G4.2 ``final_amount`` base: the
+    audited G4.1 contract is that enabling GST must not change loyalty
+    behaviour for stores that never enabled it.
+    """
+    if order.tax_type not in (None, "none"):
+        rows = (
+            db.query(OrderItem.taxable_value)
+            .filter(OrderItem.order_id == order.id)
+            .all()
+        )
+        if rows:
+            base = money(
+                sum((to_decimal(r[0] or 0) for r in rows), Decimal("0"))
+            )
+            return _as_float(max(base, Decimal("0")))
+
+    return _as_float(max(to_decimal(order.final_amount or 0), Decimal("0")))
+
+
 def award_loyalty_points_for_order(order_id: int, db: Session):
-    """Award loyalty points based on order final amount. Called after order is delivered."""
+    """Award loyalty points on the order's merchandise base. Called after delivery."""
     order = db.query(Order).filter(Order.id == order_id).first()
     if not order or order.status != OrderStatusEnum.DELIVERED:
         return
@@ -340,8 +382,10 @@ def award_loyalty_points_for_order(order_id: int, db: Session):
     if existing:
         return
 
+    earning_amount = _loyalty_earning_base(order, db)
+
     loyalty_service.earn_points(
-        db, order.user_id, order.final_amount, order_id,
+        db, order.user_id, earning_amount, order_id,
         description=f"Points earned from order #{order.order_number}",
         reference_type="order"
     )
