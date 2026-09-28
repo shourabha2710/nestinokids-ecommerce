@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import List, Optional
 
 from fastapi import HTTPException, status
@@ -17,13 +18,27 @@ from app.services.promotion_rule_service import evaluate_rules_for_cart
 from app.services.coupon_service import validate_coupon_for_cart, calculate_discount
 from app.services.gst_service import (
     GstConfigError,
+    TAX_CONFIG_ERROR,
     TAX_TYPE_NONE,
     allocate_discounts,
     compute_line_tax,
     compute_shipping_tax,
     money,
     resolve_tax_type,
+    to_decimal,
 )
+
+
+def _as_float(value: Decimal) -> float:
+    """Final Decimal -> float boundary.
+
+    The whole GST block accumulates in ``Decimal`` so every intermediate is
+    rounded once, with ROUND_HALF_UP, by :func:`money`. Floats exist only in the
+    Pydantic response/ORM models that are declared as ``Float``; converting here
+    (and nowhere earlier) keeps the arithmetic free of binary drift and free of
+    Python's banker's rounding.
+    """
+    return float(value)
 
 
 def calculate_order(
@@ -217,12 +232,16 @@ def calculate_order(
     store_row = db.query(StoreSetting).first()
     tax_enabled = bool(store_row and store_row.tax_enabled)
 
-    taxable_amount = 0.0
-    cgst_total = 0.0
-    sgst_total = 0.0
-    igst_total = 0.0
-    shipping_taxable = 0.0
-    shipping_tax = 0.0
+    # Every tax figure is accumulated as Decimal and converted to float exactly
+    # once, at the response boundary below.
+    zero = Decimal("0")
+    taxable_amount = zero
+    merchandise_taxable_value = zero
+    cgst_total = zero
+    sgst_total = zero
+    igst_total = zero
+    shipping_taxable = zero
+    shipping_tax = zero
     tax_type = TAX_TYPE_NONE
     place_of_supply = None
     seller_state_snapshot = None
@@ -234,27 +253,34 @@ def calculate_order(
         resolved_tax_type = resolve_tax_type(seller_state_config, place_of_supply)
 
         problems: list[str] = []
+        # Machine-readable codes for the problems raised by the pure GST core.
+        # Kept parallel to ``problems`` so a specific fault (e.g. a missing
+        # shipping GST rate) reaches the client instead of being flattened into
+        # the generic TAX_CONFIG_ERROR.
+        problem_codes: list[str] = []
+        # Per-line tax in Decimal, kept next to the float ItemTaxDetail snapshot
+        # so order-level totals are summed without re-adding rounded floats.
+        line_decimals: list[dict] = []
         if not seller_state_config:
             problems.append(
                 "Seller state must be configured before GST is enabled (store_settings.seller_state)"
             )
+            problem_codes.append(TAX_CONFIG_ERROR)
         if not place_of_supply:
             problems.append(
                 "Place of supply (customer shipping state) is required for GST calculation"
             )
+            problem_codes.append(TAX_CONFIG_ERROR)
 
         if not problems:
             # Per-line discounted consideration: discounts (promotion + coupon
             # + gift card + wallet + loyalty) are allocated deterministically
             # across lines so each line's tax base is item-accurate and the
             # allocations add up exactly to the total discount.
-            line_totals: List[float] = [
-                round(
-                    float(
-                        item.get("total")
-                        or (item.get("price", 0) * item.get("quantity", 0))
-                    ),
-                    2,
+            line_totals: List[Decimal] = [
+                money(
+                    item.get("total")
+                    or (item.get("price", 0) * item.get("quantity", 0))
                 )
                 for item in cart_items
             ]
@@ -263,7 +289,7 @@ def calculate_order(
             ]
             line_variant_ids = [item.get("variant_id") for item in cart_items]
             allocations = allocate_discounts(
-                line_totals, round(total_discount_before_shipping, 2)
+                line_totals, money(total_discount_before_shipping)
             )
 
             clean_ids = [pid for pid in line_ids if pid]
@@ -283,6 +309,7 @@ def calculate_order(
                     problems.append(
                         f"Product {pid} could not be resolved for GST configuration"
                     )
+                    problem_codes.append(TAX_CONFIG_ERROR)
                     continue
                 rate = product.gst_rate
                 hsn = product.hsn_code
@@ -294,26 +321,36 @@ def calculate_order(
                     problems.append(
                         f"GST rate is not configured for {product.name}"
                     )
+                    problem_codes.append(TAX_CONFIG_ERROR)
                     continue
 
-                discounted_consideration = money(
-                    round(line_totals[idx], 2) - round(allocations[idx], 2)
-                )
+                allocated = money(to_decimal(allocations[idx]))
+                discounted_consideration = money(line_totals[idx] - allocated)
                 line_tax = compute_line_tax(
                     discounted_consideration, rate, resolved_tax_type
+                )
+                # Keep the Decimal values alongside the float snapshot so the
+                # order-level totals below never have to re-add rounded floats.
+                line_decimals.append(
+                    {
+                        "taxable_value": line_tax["taxable_value"],
+                        "cgst_amount": line_tax["cgst_amount"],
+                        "sgst_amount": line_tax["sgst_amount"],
+                        "igst_amount": line_tax["igst_amount"],
+                    }
                 )
                 item_tax_details.append(
                     ItemTaxDetail(
                         product_id=pid,
                         variant_id=line_variant_ids[idx],
-                        line_total=line_totals[idx],
-                        discount_allocated=round(allocations[idx], 2),
+                        line_total=_as_float(line_totals[idx]),
+                        discount_allocated=_as_float(allocated),
                         hsn_code=hsn,
                         tax_rate=float(rate),
-                        taxable_value=float(line_tax["taxable_value"]),
-                        cgst_amount=float(line_tax["cgst_amount"]),
-                        sgst_amount=float(line_tax["sgst_amount"]),
-                        igst_amount=float(line_tax["igst_amount"]),
+                        taxable_value=_as_float(line_tax["taxable_value"]),
+                        cgst_amount=_as_float(line_tax["cgst_amount"]),
+                        sgst_amount=_as_float(line_tax["sgst_amount"]),
+                        igst_amount=_as_float(line_tax["igst_amount"]),
                         product_name=product.name,
                         sku=product.sku,
                     )
@@ -326,20 +363,29 @@ def calculate_order(
                     )
                 except GstConfigError as e:
                     problems.append(str(e))
+                    # Preserve the specific code so the client can tell a missing
+                    # shipping GST rate apart from any other configuration fault.
+                    problem_codes.append(e.code)
                     shipping_tax_block = None
             else:
                 shipping_tax_block = compute_shipping_tax(0, TAX_TYPE_NONE, None)
 
             if shipping_tax_block is not None:
-                shipping_taxable = float(shipping_tax_block["taxable_value"])
-                shipping_tax = float(shipping_tax_block["total_tax"])
+                shipping_taxable = shipping_tax_block["taxable_value"]
+                shipping_tax = shipping_tax_block["total_tax"]
 
         if problems:
             message = " ".join(dict.fromkeys(problems))
             if enforce_tax_config:
+                # Report the most specific code available: a dedicated fault such
+                # as SHIPPING_GST_RATE_MISSING must not be masked by the generic
+                # TAX_CONFIG_ERROR. Deterministic: first specific code wins,
+                # otherwise fall back to the generic one.
+                specific = [c for c in problem_codes if c != TAX_CONFIG_ERROR]
+                code = specific[0] if specific else TAX_CONFIG_ERROR
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail={"code": "TAX_CONFIG_ERROR", "message": message},
+                    detail={"code": code, "message": message},
                 )
             notifications.append(
                 CalculationNotification(
@@ -349,32 +395,33 @@ def calculate_order(
             )
             # Degrade the whole block to the G4.1 tax-exempt state rather than
             # returning a partial/incorrect tax figure.
-            taxable_amount = 0.0
-            cgst_total = 0.0
-            sgst_total = 0.0
-            igst_total = 0.0
-            shipping_taxable = 0.0
-            shipping_tax = 0.0
+            taxable_amount = zero
+            merchandise_taxable_value = zero
+            cgst_total = zero
+            sgst_total = zero
+            igst_total = zero
+            shipping_taxable = zero
+            shipping_tax = zero
             tax_type = TAX_TYPE_NONE
             place_of_supply = None
             seller_state_snapshot = None
             item_tax_details = []
         else:
-            taxable_amount = (
-                sum(d.taxable_value for d in item_tax_details)
-                + shipping_taxable
+            merchandise_taxable_value = money(
+                sum((d["taxable_value"] for d in line_decimals), zero)
             )
-            cgst_total = (
-                sum(d.cgst_amount for d in item_tax_details)
-                + float(shipping_tax_block["cgst_amount"])
+            taxable_amount = money(merchandise_taxable_value + shipping_taxable)
+            cgst_total = money(
+                sum((d["cgst_amount"] for d in line_decimals), zero)
+                + shipping_tax_block["cgst_amount"]
             )
-            sgst_total = (
-                sum(d.sgst_amount for d in item_tax_details)
-                + float(shipping_tax_block["sgst_amount"])
+            sgst_total = money(
+                sum((d["sgst_amount"] for d in line_decimals), zero)
+                + shipping_tax_block["sgst_amount"]
             )
-            igst_total = (
-                sum(d.igst_amount for d in item_tax_details)
-                + float(shipping_tax_block["igst_amount"])
+            igst_total = money(
+                sum((d["igst_amount"] for d in line_decimals), zero)
+                + shipping_tax_block["igst_amount"]
             )
             tax_type = resolved_tax_type
             seller_state_snapshot = seller_state_config or None
@@ -385,8 +432,13 @@ def calculate_order(
     taxable = max(
         round(subtotal - total_discount_before_shipping, 2), 0.0
     )
-    tax = round(cgst_total + sgst_total + igst_total, 2)
+    # GST tax total: summed in Decimal and rounded once with ROUND_HALF_UP.
+    # Never round() here - Python's round() is banker's rounding on binary
+    # floats and would corrupt half-paisa tax components.
+    tax = money(cgst_total + sgst_total + igst_total)
     grand_total = round(taxable + shipping, 2)
+
+    tax_applied = tax_type != TAX_TYPE_NONE
 
     return CalculationResponse(
         subtotal=subtotal,
@@ -399,16 +451,23 @@ def calculate_order(
         coupon_error=coupon_error,
         shipping=shipping,
         free_shipping_threshold=settings.FREE_SHIPPING_THRESHOLD,
-        tax=tax,
-        taxable_amount=round(taxable_amount, 2) if tax_type != TAX_TYPE_NONE else 0.0,
-        cgst_amount=round(cgst_total, 2) if tax_type != TAX_TYPE_NONE else 0.0,
-        sgst_amount=round(sgst_total, 2) if tax_type != TAX_TYPE_NONE else 0.0,
-        igst_amount=round(igst_total, 2) if tax_type != TAX_TYPE_NONE else 0.0,
+        tax=_as_float(tax) if tax_applied else 0.0,
+        taxable_amount=_as_float(taxable_amount) if tax_applied else 0.0,
+        cgst_amount=_as_float(cgst_total) if tax_applied else 0.0,
+        sgst_amount=_as_float(sgst_total) if tax_applied else 0.0,
+        igst_amount=_as_float(igst_total) if tax_applied else 0.0,
         tax_type=tax_type,
         place_of_supply=place_of_supply,
         seller_state=seller_state_snapshot,
-        shipping_taxable=round(shipping_taxable, 2) if tax_type != TAX_TYPE_NONE else 0.0,
-        shipping_tax=round(shipping_tax, 2) if tax_type != TAX_TYPE_NONE else 0.0,
+        shipping_taxable=_as_float(shipping_taxable) if tax_applied else 0.0,
+        shipping_tax=_as_float(shipping_tax) if tax_applied else 0.0,
+        # Loyalty earning base (G4.2): the merchandise consideration AFTER all
+        # discounts and BEFORE GST, with shipping and shipping GST excluded.
+        # This is the authoritative pre-tax product value - never re-derive it
+        # from final_amount, which folds shipping and its embedded GST together.
+        loyalty_earning_base=_as_float(
+            merchandise_taxable_value if tax_applied else taxable
+        ),
         items=item_tax_details,
         wallet_discount=wallet_discount,
         loyalty_discount=loyalty_discount,

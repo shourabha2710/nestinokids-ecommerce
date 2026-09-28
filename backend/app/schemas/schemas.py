@@ -1654,6 +1654,12 @@ class CalculationResponse(BaseModel):
     shipping_taxable: float = 0.0
     shipping_tax: float = 0.0
 
+    # Authoritative loyalty earning base (G4.2): merchandise consideration AFTER
+    # all discounts and BEFORE GST. Shipping and shipping GST are excluded, so
+    # this is never derivable from final_amount (which folds both together).
+    # While tax-exempt it is simply subtotal - discounts (no GST to remove).
+    loyalty_earning_base: float = 0.0
+
     items: list[ItemTaxDetail] = []
 
     wallet_discount: float = 0.0

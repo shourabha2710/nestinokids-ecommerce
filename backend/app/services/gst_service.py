@@ -30,15 +30,24 @@ TAX_TYPE_NONE = "none"
 TAX_TYPE_INTRA_STATE = "INTRA_STATE"
 TAX_TYPE_INTER_STATE = "INTER_STATE"
 
+# Machine-readable GST configuration error codes. These are part of the API
+# contract: they surface verbatim in the 400 response body so clients can react
+# to the *specific* missing piece of configuration instead of parsing prose.
+TAX_CONFIG_ERROR = "TAX_CONFIG_ERROR"
+SHIPPING_GST_RATE_MISSING = "SHIPPING_GST_RATE_MISSING"
+
 
 class GstConfigError(ValueError):
     """Raised when GST is enabled but required configuration is missing.
 
     ``code`` carries a stable machine-readable identifier so the API layer can
     produce structured 400 responses (e.g. ``{"code": ..., "message": ...}``).
+    Callers MUST propagate ``code`` rather than flattening every failure to the
+    generic default, otherwise distinct configuration faults become
+    indistinguishable to the client.
     """
 
-    def __init__(self, message: str, code: str = "TAX_CONFIG_ERROR") -> None:
+    def __init__(self, message: str, code: str = TAX_CONFIG_ERROR) -> None:
         super().__init__(message)
         self.code = code
 
@@ -184,7 +193,7 @@ def compute_shipping_tax(
     if shipping_gst_rate is None:
         raise GstConfigError(
             "Shipping GST rate is not configured for this store",
-            code="SHIPPING_GST_RATE_MISSING",
+            code=SHIPPING_GST_RATE_MISSING,
         )
     taxable, total_tax = extract_inclusive_tax(shipping, shipping_gst_rate)
     cgst, sgst, igst = split_tax(total_tax, tax_type)
