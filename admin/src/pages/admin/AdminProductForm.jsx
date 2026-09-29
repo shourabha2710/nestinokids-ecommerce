@@ -87,6 +87,8 @@ const AdminProductForm = () => {
     discount_price: '',
     quantity: '0',
     sku: '',
+    hsn_code: '',
+    gst_rate: '',
     is_featured: false,
     is_active: true,
     meta_title: '',
@@ -132,6 +134,8 @@ const AdminProductForm = () => {
             discount_price: p.discount_price ? String(p.discount_price) : '',
             quantity: String(p.quantity),
             sku: p.sku,
+            hsn_code: p.hsn_code || '',
+            gst_rate: p.gst_rate != null ? String(p.gst_rate) : '',
             is_featured: p.is_featured,
             is_active: p.is_active,
             meta_title: p.meta_title || '',
@@ -341,6 +345,8 @@ const AdminProductForm = () => {
         price: Number(form.price),
         discount_price: form.discount_price ? Number(form.discount_price) : undefined,
         sku: form.sku || undefined,
+        hsn_code: form.hsn_code || undefined,
+        gst_rate: form.gst_rate !== '' ? Number(form.gst_rate) : undefined,
         quantity: hasVariants ? 0 : Number(form.quantity),
         is_featured: form.is_featured,
         is_active: form.is_active,
@@ -610,6 +616,36 @@ const AdminProductForm = () => {
                   onChange={handleChange}
                   placeholder="Auto-generated if empty"
                   className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold transition-all text-sm font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  HSN Code
+                </label>
+                <input
+                  type="text"
+                  name="hsn_code"
+                  value={form.hsn_code}
+                  onChange={handleChange}
+                  maxLength={8}
+                  placeholder="Max 8 characters"
+                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold transition-all text-sm font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">GST Rate (%)</label>
+                <input
+                  type="number"
+                  name="gst_rate"
+                  value={form.gst_rate}
+                  onChange={handleChange}
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  placeholder="0 to 100"
+                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold transition-all text-sm"
                 />
               </div>
 

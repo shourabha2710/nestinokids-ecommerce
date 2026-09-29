@@ -1,6 +1,6 @@
 import React from 'react';
 
-const SettingsInput = ({ label, name, value, onChange, type = 'text', placeholder, required, disabled, error }) => {
+const SettingsInput = ({ label, name, value, onChange, type = 'text', placeholder, required, disabled, error, min, max, step }) => {
   return (
     <div>
       <label htmlFor={name} className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -29,6 +29,9 @@ const SettingsInput = ({ label, name, value, onChange, type = 'text', placeholde
           onChange={onChange}
           placeholder={placeholder}
           disabled={disabled}
+          min={min}
+          max={max}
+          step={step}
           className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold/30 focus:border-gold transition-colors ${
             disabled ? 'bg-gray-50 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-900'
           } ${error ? 'border-red-300' : 'border-gray-200'}`}

@@ -20,6 +20,8 @@ const AdminCategoryForm = () => {
     description: '',
     is_active: true,
     parent_id: null,
+    hsn_code: '',
+    gst_rate: '',
     meta_title: '',
     meta_description: '',
     meta_keywords: '',
@@ -55,6 +57,8 @@ const AdminCategoryForm = () => {
               description: cat.description || '',
               is_active: cat.is_active,
               parent_id: cat.parent_id,
+              hsn_code: cat.hsn_code || '',
+              gst_rate: cat.gst_rate != null ? String(cat.gst_rate) : '',
               meta_title: cat.meta_title || '',
               meta_description: cat.meta_description || '',
               meta_keywords: cat.meta_keywords || '',
@@ -107,6 +111,8 @@ const AdminCategoryForm = () => {
         description: form.description || undefined,
         is_active: form.is_active,
         parent_id: form.parent_id || undefined,
+        hsn_code: form.hsn_code || undefined,
+        gst_rate: form.gst_rate !== '' ? Number(form.gst_rate) : undefined,
         meta_title: form.meta_title || undefined,
         meta_description: form.meta_description || undefined,
         meta_keywords: form.meta_keywords || undefined,
@@ -246,6 +252,34 @@ const AdminCategoryForm = () => {
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">HSN Code</label>
+              <input
+                type="text"
+                name="hsn_code"
+                value={form.hsn_code}
+                onChange={handleChange}
+                maxLength={8}
+                placeholder="Max 8 characters"
+                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold transition-all text-sm font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">GST Rate (%)</label>
+              <input
+                type="number"
+                name="gst_rate"
+                value={form.gst_rate}
+                onChange={handleChange}
+                min="0"
+                max="100"
+                step="0.01"
+                placeholder="0 to 100"
+                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold transition-all text-sm"
+              />
             </div>
 
             <div>

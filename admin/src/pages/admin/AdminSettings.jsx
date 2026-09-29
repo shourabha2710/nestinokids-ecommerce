@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { settingsApi } from '../../services/settingsApi';
 import SettingsSection from '../../components/settings/SettingsSection';
 import SettingsInput from '../../components/settings/SettingsInput';
+import SettingsSelect from '../../components/settings/SettingsSelect';
 import SettingsToggle from '../../components/settings/SettingsToggle';
 import SettingsTabs from '../../components/settings/SettingsTabs';
 import CharCounter from '../../components/settings/CharCounter';
@@ -37,6 +38,45 @@ const CURRENCIES = [
   { value: 'GBP', label: 'GBP - British Pound' },
   { value: 'AED', label: 'AED - UAE Dirham' },
   { value: 'SGD', label: 'SGD - Singapore Dollar' },
+];
+
+const INDIAN_STATES = [
+  'Andaman and Nicobar Islands',
+  'Andhra Pradesh',
+  'Arunachal Pradesh',
+  'Assam',
+  'Bihar',
+  'Chandigarh',
+  'Chhattisgarh',
+  'Dadra and Nagar Haveli and Daman and Diu',
+  'Delhi',
+  'Goa',
+  'Gujarat',
+  'Haryana',
+  'Himachal Pradesh',
+  'Jammu and Kashmir',
+  'Jharkhand',
+  'Karnataka',
+  'Kerala',
+  'Ladakh',
+  'Lakshadweep',
+  'Madhya Pradesh',
+  'Maharashtra',
+  'Manipur',
+  'Meghalaya',
+  'Mizoram',
+  'Nagaland',
+  'Odisha',
+  'Puducherry',
+  'Punjab',
+  'Rajasthan',
+  'Sikkim',
+  'Tamil Nadu',
+  'Telangana',
+  'Tripura',
+  'Uttar Pradesh',
+  'Uttarakhand',
+  'West Bengal',
 ];
 
 const AdminSettings = () => {
@@ -224,6 +264,14 @@ const AdminSettings = () => {
   const renderTaxTab = () => (
     <SettingsSection title="Tax Configuration" description="GST and tax settings" icon={Receipt}>
       <SettingsInput label="GST Number" name="gst_number" value={form.gst_number} onChange={handleChange} placeholder="22AAAAA0000A1Z5" />
+      <SettingsSelect
+        label="Seller State"
+        name="seller_state"
+        value={form.seller_state}
+        onChange={handleChange}
+        options={INDIAN_STATES}
+        placeholder="Select seller state"
+      />
       <SettingsToggle
         label="Enable Tax"
         description="Apply tax to all orders"
@@ -256,6 +304,18 @@ const AdminSettings = () => {
         onChange={handleChange}
         type="number"
         disabled={!form.free_shipping_enabled}
+      />
+      <SettingsInput
+        label="Shipping GST Rate (%)"
+        name="shipping_gst_rate"
+        value={form.shipping_gst_rate}
+        onChange={handleChange}
+        type="number"
+        placeholder="0 to 100"
+        min="0"
+        max="100"
+        step="0.01"
+        disabled={!form.tax_enabled}
       />
     </SettingsSection>
   );
